@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Ventas Pro</title>
+    <title>Control de Ventas Fuente Nueva</title>
 
     <!-- Librerías de Terceros (CDN) -->
     <!-- Chart.js para gráficas -->
@@ -680,7 +680,68 @@
                     </div>
                 </div>
             </div>
+// === Fecha automática diaria ===
+function setDailyDate() {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("daily-sale-date");
 
+    if (!savedDate || savedDate !== today) {
+        localStorage.setItem("daily-sale-date", today);
+    }
+
+    document.getElementById("sale-date").value = localStorage.getItem("daily-sale-date");
+}
+
+setDailyDate();
+
+// === Calcular total dinámico ===
+const quantityInput = document.getElementById("sale-quantity");
+const priceDisplay = document.getElementById("sale-price-display");
+const totalDisplay = document.getElementById("sale-total-display");
+
+quantityInput.addEventListener("input", updateTotal);
+
+function updateTotal() {
+    const price = parseFloat(priceDisplay.textContent.replace("$", "")) || 0;
+    const qty = parseInt(quantityInput.value) || 0;
+    totalDisplay.textContent = `$${(price * qty).toFixed(2)}`;
+}
+
+// === Enviar datos a Firebase ===
+document.getElementById("sale-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const product = document.getElementById("sale-product-select").value;
+    const quantity = parseInt(document.getElementById("sale-quantity").value);
+    const total = parseFloat(totalDisplay.textContent.replace("$", ""));
+    const paymentType = document.getElementById("sale-payment-type").value;
+    const date = document.getElementById("sale-date").value;
+    const observations = document.getElementById("sale-observations").value;
+    const seller = "NombreVendedor"; // Puedes poner dinámico según usuario logueado
+
+    const saleData = {
+        product,
+        quantity,
+        total,
+        paymentType,
+        date,
+        observations,
+        seller
+    };
+
+    try {
+        // === Agregar la venta a Firestore ===
+        await firebase.firestore().collection("ventas").add(saleData);
+        alert("Venta registrada correctamente!");
+
+        // Limpiar formulario
+        document.getElementById("sale-form").reset();
+        setDailyDate();  // Mantener la fecha diaria
+    } catch (error) {
+        console.error("Error al registrar venta: ", error);
+        alert("Hubo un error al registrar la venta.");
+    }
+});
             <!-- Página: Productos -->
             <div id="page-products" class="app-page">
                 <h1 class="page-header">Gestión de Productos</h1>
@@ -1565,5 +1626,6 @@
 </body>
 </html>
 	
+
 
 
