@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- [MODIFICADO] Título de la pestaña -->
     <title>Control de Ventas Fuente Nueva</title>
 
     <!-- Librerías de Terceros (CDN) -->
@@ -149,6 +150,10 @@
             outline: none;
             border-color: var(--color-primary);
             box-shadow: 0 0 0 2px rgba(10, 116, 218, 0.2);
+        }
+        
+        .form-input.bg-gray-100 {
+            background-color: #f3f4f6; /* Tailwind gray-100 */
         }
 
         .btn {
@@ -421,6 +426,13 @@
             padding: 1rem;
             border-bottom: 1px solid var(--color-border);
             vertical-align: middle;
+            white-space: nowrap; /* Evita que el texto de la tabla se rompa */
+        }
+        
+        /* Permitir que las observaciones se ajusten */
+        td.wrap-text {
+            white-space: normal;
+            min-width: 200px; /* Ancho mínimo para observaciones */
         }
 
         thead th {
@@ -469,11 +481,12 @@
             }
             #app-nav {
                 width: 100%;
-                justify-content: space-around;
+                overflow-x: auto;
+                justify-content: flex-start;
                 border-top: 1px solid var(--color-border);
                 padding-top: 0.5rem;
             }
-            .nav-link { flex-grow: 1; text-align: center; }
+            .nav-link { flex-grow: 0; flex-shrink: 0; }
 
             #app-main {
                 padding: 1rem;
@@ -556,11 +569,13 @@
         <!-- Header -->
         <header id="app-header">
             <div class="header-left">
-                <div class="app-title">VentasPro</div>
+                <!-- [MODIFICADO] Título de la App -->
+                <div class="app-title">Fuente Nueva</div>
                 <nav id="app-nav">
                     <a href="#dashboard" class="nav-link active" data-page="page-dashboard">Dashboard</a>
                     <a href="#ventas" class="nav-link" data-page="page-sales">Ventas</a>
                     <a href="#productos" class="nav-link" data-page="page-products">Productos</a>
+                    <a href="#por-cobrar" class="nav-link" data-page="page-pending-sales">Por Cobrar</a>
                 </nav>
             </div>
             <div class="header-right">
@@ -626,7 +641,7 @@
 
                 <!-- Registrar Venta -->
                 <div class="card">
-                    <div class="card-header">Registrar Nueva Venta</div>
+                    <div class="card-header">Registrar Nueva Venta (Completada)</div>
                     <form id="sale-form">
                         <div class="form-row">
                             <div class="form-group">
@@ -648,6 +663,26 @@
                                 <p id="sale-total-display" class="form-input bg-gray-100 font-bold">$0.00</p>
                             </div>
                         </div>
+                        <!-- [MODIFICADO] Campos adicionales de Venta -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sale-date">Fecha de Venta</label>
+                                <input type="date" id="sale-date" class="form-input bg-gray-100" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="sale-payment-type">Tipo de Pago</label>
+                                <select id="sale-payment-type" class="form-input" required>
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Transferencia">Transferencia</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row" style="grid-template-columns: 1fr;">
+                            <div class="form-group">
+                                <label for="sale-observations">Observaciones (Opcional)</label>
+                                <textarea id="sale-observations" class="form-input" rows="2" placeholder="Ej: Cliente solicitó factura, entrega especial..."></textarea>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary">
                             <i data-feather="shopping-cart"></i> Registrar Venta
                         </button>
@@ -657,7 +692,7 @@
                 <!-- Historial de Ventas -->
                 <div class="card">
                     <div class="card-header">
-                        Historial de Ventas
+                        Historial de Ventas (Completadas)
                         <button id="export-excel-btn" class="btn btn-success btn-sm">
                             <i data-feather="download"></i> Exportar a Excel
                         </button>
@@ -666,11 +701,14 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Fecha</th>
+                                    <th>Fecha de Registro</th>
                                     <th>Producto</th>
                                     <th>Cantidad</th>
                                     <th>Total</th>
                                     <th>Vendedor</th>
+                                    <!-- [MODIFICADO] Nuevas columnas -->
+                                    <th>Tipo de Pago</th>
+                                    <th>Observaciones</th>
                                 </tr>
                             </thead>
                             <tbody id="sales-table-body">
@@ -680,68 +718,7 @@
                     </div>
                 </div>
             </div>
-// === Fecha automática diaria ===
-function setDailyDate() {
-    const today = new Date().toISOString().split("T")[0];
-    const savedDate = localStorage.getItem("daily-sale-date");
 
-    if (!savedDate || savedDate !== today) {
-        localStorage.setItem("daily-sale-date", today);
-    }
-
-    document.getElementById("sale-date").value = localStorage.getItem("daily-sale-date");
-}
-
-setDailyDate();
-
-// === Calcular total dinámico ===
-const quantityInput = document.getElementById("sale-quantity");
-const priceDisplay = document.getElementById("sale-price-display");
-const totalDisplay = document.getElementById("sale-total-display");
-
-quantityInput.addEventListener("input", updateTotal);
-
-function updateTotal() {
-    const price = parseFloat(priceDisplay.textContent.replace("$", "")) || 0;
-    const qty = parseInt(quantityInput.value) || 0;
-    totalDisplay.textContent = `$${(price * qty).toFixed(2)}`;
-}
-
-// === Enviar datos a Firebase ===
-document.getElementById("sale-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const product = document.getElementById("sale-product-select").value;
-    const quantity = parseInt(document.getElementById("sale-quantity").value);
-    const total = parseFloat(totalDisplay.textContent.replace("$", ""));
-    const paymentType = document.getElementById("sale-payment-type").value;
-    const date = document.getElementById("sale-date").value;
-    const observations = document.getElementById("sale-observations").value;
-    const seller = "NombreVendedor"; // Puedes poner dinámico según usuario logueado
-
-    const saleData = {
-        product,
-        quantity,
-        total,
-        paymentType,
-        date,
-        observations,
-        seller
-    };
-
-    try {
-        // === Agregar la venta a Firestore ===
-        await firebase.firestore().collection("ventas").add(saleData);
-        alert("Venta registrada correctamente!");
-
-        // Limpiar formulario
-        document.getElementById("sale-form").reset();
-        setDailyDate();  // Mantener la fecha diaria
-    } catch (error) {
-        console.error("Error al registrar venta: ", error);
-        alert("Hubo un error al registrar la venta.");
-    }
-});
             <!-- Página: Productos -->
             <div id="page-products" class="app-page">
                 <h1 class="page-header">Gestión de Productos</h1>
@@ -799,6 +776,63 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                     </div>
                 </div>
             </div>
+            
+            <!-- Página: Ventas por Cobrar -->
+            <div id="page-pending-sales" class="app-page">
+                <h1 class="page-header">Ventas por Cobrar</h1>
+                
+                <!-- Formulario de Cuenta por Cobrar -->
+                <div class="card">
+                    <div class="card-header">Registrar Nueva Cuenta por Cobrar</div>
+                    <form id="pending-sale-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="pending-sale-customer">Nombre del Cliente</label>
+                                <input type="text" id="pending-sale-customer" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pending-sale-total">Total a Cobrar (USD)</label>
+                                <input type="number" id="pending-sale-total" class="form-input" min="0.01" step="0.01" required>
+                            </div>
+                        </div>
+                         <div class="form-row">
+                             <div class="form-group">
+                                <label for="pending-sale-date">Día de la Venta</label>
+                                <input type="date" id="pending-sale-date" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label>&nbsp;</label> <!-- Spacer for alignment -->
+                                <div style="display: flex; align-items: flex-end; height: 100%;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i data-feather="plus-circle"></i> Agregar Pendiente
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Lista de Cuentas por Cobrar -->
+                <div class="card">
+                    <div class="card-header">Listado Pendiente</div>
+                     <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Fecha de Venta</th>
+                                    <th>Total</th>
+                                    <th>Registrado por</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pending-sales-table-body">
+                                <!-- Filas de cuentas por cobrar se insertan aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
         </main>
     </div>
@@ -811,7 +845,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
     <script type="module">
         
         // --- 1. IMPORTACIONES DE FIREBASE (CDN) ---
-        // Debes reemplazar estas URL si usas una versión diferente de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
@@ -843,14 +876,13 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         // ¡¡¡ IMPORTANTE !!!
         // Pega tu objeto de configuración de Firebase aquí
         const firebaseConfig = {
-  apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk",
-  authDomain: "fuente-nueva.firebaseapp.com",
-  projectId: "fuente-nueva",
-  storageBucket: "fuente-nueva.firebasestorage.app",
-  messagingSenderId: "256396830278",
-  appId: "1:256396830278:web:0d9cff310705e52bb20c47",
-  measurementId: "G-8NGS5XH8K6"
-};
+            apiKey: "TU_API_KEY", // <--- PEGA TUS CLAVES AQUÍ
+            authDomain: "TU_AUTH_DOMAIN",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_STORAGE_BUCKET",
+            messagingSenderId: "TU_MESSAGING_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
         
         // --- 3. INICIALIZACIÓN DE FIREBASE Y VARIABLES GLOBALES ---
         let app, auth, db;
@@ -864,11 +896,13 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         // Descriptores para listeners de Firestore (para cancelarlos al hacer logout)
         let productsListenerUnsubscribe = null;
         let salesListenerUnsubscribe = null;
+        let pendingSalesListenerUnsubscribe = null;
         
         // Habilitar logs detallados de Firestore
         try {
             setLogLevel('Debug');
         } catch(e) { console.warn("No se pudo establecer el nivel de log de Firestore."); }
+
 
         // --- 4. SELECTORES DEL DOM ---
         // Vistas
@@ -909,6 +943,11 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         const saleTotalDisplay = document.getElementById('sale-total-display');
         const salesTableBody = document.getElementById('sales-table-body');
         const exportExcelBtn = document.getElementById('export-excel-btn');
+        
+        // [MODIFICADO] Selectores para campos adicionales de venta
+        const saleDateInput = document.getElementById('sale-date');
+        const salePaymentTypeInput = document.getElementById('sale-payment-type');
+        const saleObservationsInput = document.getElementById('sale-observations');
 
         // Productos
         const productForm = document.getElementById('product-form');
@@ -919,6 +958,14 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         const productStockInput = document.getElementById('product-stock');
         const clearProductFormBtn = document.getElementById('clear-product-form-btn');
         const productsTableBody = document.getElementById('products-table-body');
+
+        // Cuentas por Cobrar
+        const pendingSaleForm = document.getElementById('pending-sale-form');
+        const pendingSaleCustomerInput = document.getElementById('pending-sale-customer');
+        const pendingSaleTotalInput = document.getElementById('pending-sale-total');
+        const pendingSaleDateInput = document.getElementById('pending-sale-date');
+        const pendingSalesTableBody = document.getElementById('pending-sales-table-body');
+
 
         // --- 5. FUNCIONES AUXILIARES ---
 
@@ -946,6 +993,9 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         
         /** Formatea un número como moneda (USD) */
         const formatCurrency = (amount) => {
+            if (typeof amount !== 'number') {
+                amount = parseFloat(amount) || 0;
+            }
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
@@ -955,6 +1005,36 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         /** Formatea un objeto Timestamp de Firebase o una Fecha */
         const formatDate = (date) => {
             if (date && typeof date.toDate === 'function') {
+                date = date.toDate(); // Convertir Timestamp a Date
+            }
+            if (!(date instanceof Date)) {
+                if (typeof date === 'string') {
+                    try {
+                        const parts = date.split('-'); // Formato YYYY-MM-DD
+                        if (parts.length === 3) {
+                            date = new Date(parts[0], parts[1] - 1, parts[2]);
+                            // Sumar offset de zona horaria para mostrar la fecha correcta
+                            date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+                        } else {
+                             return 'Fecha inválida';
+                        }
+                    } catch (e) {
+                         return 'Fecha inválida';
+                    }
+                } else {
+                    return 'Fecha inválida';
+                }
+            }
+            return date.toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        };
+        
+        /** [MODIFICADO] Formato para fecha de registro (con hora) */
+        const formatDateTime = (date) => {
+             if (date && typeof date.toDate === 'function') {
                 date = date.toDate(); // Convertir Timestamp a Date
             }
             if (!(date instanceof Date)) {
@@ -968,6 +1048,15 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 minute: '2-digit'
             });
         };
+        
+        /** Obtiene la fecha de hoy en formato YYYY-MM-DD */
+        function getTodayYYYYMMDD() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
 
         // --- 6. MÓDULO DE AUTENTICACIÓN ---
 
@@ -983,7 +1072,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 if (userDoc.exists()) {
                     userRole = userDoc.data().role || 'vendedor';
                 } else {
-                    // Esto no debería pasar si el registro es correcto
                     userRole = 'vendedor';
                     console.warn("No se encontró el documento del usuario, asignando rol 'vendedor'");
                 }
@@ -1016,6 +1104,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 productsTableBody.innerHTML = '';
                 salesTableBody.innerHTML = '';
                 saleProductSelect.innerHTML = '';
+                pendingSalesTableBody.innerHTML = '';
             }
             hideLoading();
             feather.replace(); // Actualizar iconos
@@ -1025,10 +1114,21 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         async function initializeAppData() {
             showLoading();
             // Mostrar la página de dashboard por defecto
-            showPage('page-dashboard');
+            handleHashChange(); // Cargar página según el hash
             // Cargar datos
             listenForProducts();
             listenForSales();
+            listenForPendingSales();
+            
+            // [MODIFICADO] Establecer la fecha de hoy en el formulario de ventas
+            if (saleDateInput) {
+                saleDateInput.value = getTodayYYYYMMDD();
+            }
+            // [MODIFICADO] Establecer la fecha de hoy en el formulario de cuentas por cobrar
+            if (pendingSaleDateInput) {
+                 pendingSaleDateInput.value = getTodayYYYYMMDD();
+            }
+            
             hideLoading();
         }
 
@@ -1042,6 +1142,10 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 salesListenerUnsubscribe();
                 salesListenerUnsubscribe = null;
             }
+            if (pendingSalesListenerUnsubscribe) {
+                pendingSalesListenerUnsubscribe();
+                pendingSalesListenerUnsubscribe = null;
+            }
         }
 
         /** Maneja el inicio de sesión */
@@ -1053,7 +1157,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             const password = loginForm['login-password'].value;
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged se encargará del resto
             } catch (error) {
                 console.error("Error de login:", error.message);
                 showAuthError("Email o contraseña incorrectos.");
@@ -1080,14 +1183,12 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 
-                // Guardar información adicional del usuario (rol) en Firestore
                 await setDoc(doc(db, "users", user.uid), {
                     email: user.email,
                     role: role,
                     createdAt: serverTimestamp()
                 });
                 
-                // onAuthStateChanged se encargará del resto
             } catch (error) {
                 console.error("Error de registro:", error.message);
                 if (error.code === 'auth/email-already-in-use') {
@@ -1103,7 +1204,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         logoutBtn.addEventListener('click', async () => {
             showLoading();
             await signOut(auth);
-            // onAuthStateChanged se encargará del resto
+            window.location.hash = ""; // Limpiar hash al salir
         });
 
         /** Cambia entre formularios de login y registro */
@@ -1129,9 +1230,13 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             appPages.forEach(page => {
                 page.classList.remove('active');
             });
-            document.getElementById(pageId).classList.add('active');
+            const newPage = document.getElementById(pageId);
+            if (newPage) {
+                newPage.classList.add('active');
+            } else {
+                document.getElementById('page-dashboard').classList.add('active');
+            }
             
-            // Actualizar enlace activo en la navegación
             appNav.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
                 if (link.dataset.page === pageId) {
@@ -1146,16 +1251,27 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 e.preventDefault();
                 const pageId = e.target.dataset.page;
                 showPage(pageId);
-                // Actualizar la URL hash para un mejor historial (opcional)
                 window.location.hash = e.target.hash;
             }
         });
+        
+        /** Manejar la navegación por hash (al recargar la página) */
+        function handleHashChange() {
+            const hash = window.location.hash.substring(1);
+            const navLink = document.querySelector(`.nav-link[href="#${hash}"]`);
+            if (navLink && navLink.dataset.page) {
+                showPage(navLink.dataset.page);
+            } else {
+                showPage('page-dashboard');
+            }
+        }
+
 
         // --- 8. MÓDULO DE PRODUCTOS ---
 
         /** Escucha los cambios en la colección de productos */
         function listenForProducts() {
-            if (productsListenerUnsubscribe) productsListenerUnsubscribe(); // Detener listener anterior
+            if (productsListenerUnsubscribe) productsListenerUnsubscribe();
             
             const q = query(collection(db, "products"), orderBy("name"));
             productsListenerUnsubscribe = onSnapshot(q, (snapshot) => {
@@ -1168,8 +1284,8 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 
                 renderProductsTable();
                 populateProductSelect();
-                updateSaleForm(); // Actualizar formulario de venta si el producto seleccionado cambia
-                statStock.textContent = totalStock; // Actualizar stat de stock
+                updateSaleForm();
+                statStock.textContent = totalStock;
                 
             }, (error) => {
                 console.error("Error al cargar productos:", error);
@@ -1179,7 +1295,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
 
         /** Renderiza la tabla de productos */
         function renderProductsTable() {
-            productsTableBody.innerHTML = ''; // Limpiar tabla
+            productsTableBody.innerHTML = '';
             if (allProducts.length === 0) {
                 productsTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No hay productos registrados.</td></tr>';
                 return;
@@ -1203,7 +1319,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 productsTableBody.appendChild(tr);
             });
             
-            // Reemplazar iconos
             feather.replace({width: 16, height: 16});
         }
 
@@ -1211,7 +1326,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         function populateProductSelect() {
             saleProductSelect.innerHTML = '<option value="">-- Selecciona un producto --</option>';
             allProducts.forEach(product => {
-                if(product.stock > 0) { // Solo mostrar productos con stock
+                if(product.stock > 0) {
                     const option = document.createElement('option');
                     option.value = product.id;
                     option.textContent = `${product.name} (${product.stock} en stock)`;
@@ -1234,12 +1349,10 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
 
             try {
                 if (productId) {
-                    // Actualizar producto
                     const productRef = doc(db, "products", productId);
                     await updateDoc(productRef, productData);
                     showAppMessage("Producto actualizado con éxito.");
                 } else {
-                    // Crear nuevo producto
                     productData.createdAt = serverTimestamp();
                     await addDoc(collection(db, "products"), productData);
                     showAppMessage("Producto creado con éxito.");
@@ -1276,7 +1389,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                     productNameInput.value = product.name;
                     productPriceInput.value = product.price;
                     productStockInput.value = product.stock;
-                    window.scrollTo(0, 0); // Ir al inicio de la página
+                    window.scrollTo(0, 0);
                     productNameInput.focus();
                 }
             }
@@ -1287,8 +1400,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                     return;
                 }
                 
-                // Usar confirmación nativa (simple)
-                // Para una app "profesional" real, usarías un modal personalizado.
                 if (confirm("¿Estás seguro de que quieres borrar este producto? Esta acción no se puede deshacer.")) {
                     deleteProduct(productId);
                 }
@@ -1301,7 +1412,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             try {
                 await deleteDoc(doc(db, "products", id));
                 showAppMessage("Producto borrado con éxito.");
-                // El listener onSnapshot actualizará la tabla
             } catch (error) {
                 console.error("Error al borrar producto:", error);
                 showAppMessage("Error al borrar el producto.", true);
@@ -1313,7 +1423,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
 
         /** Escucha los cambios en la colección de ventas */
         function listenForSales() {
-            if (salesListenerUnsubscribe) salesListenerUnsubscribe(); // Detener listener anterior
+            if (salesListenerUnsubscribe) salesListenerUnsubscribe();
             
             const q = query(collection(db, "sales"), orderBy("timestamp", "desc"));
             salesListenerUnsubscribe = onSnapshot(q, (snapshot) => {
@@ -1323,7 +1433,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 });
                 
                 renderSalesTable();
-                updateDashboard(); // Actualizar dashboard con las nuevas ventas
+                updateDashboard();
                 
             }, (error) => {
                 console.error("Error al cargar ventas:", error);
@@ -1333,20 +1443,22 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
 
         /** Renderiza la tabla de historial de ventas */
         function renderSalesTable() {
-            salesTableBody.innerHTML = ''; // Limpiar tabla
+            salesTableBody.innerHTML = '';
             if (allSales.length === 0) {
-                salesTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay ventas registradas.</td></tr>';
+                salesTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No hay ventas registradas.</td></tr>';
                 return;
             }
             
             allSales.forEach(sale => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${formatDate(sale.timestamp)}</td>
+                    <td>${formatDateTime(sale.timestamp)}</td>
                     <td>${sale.product_name}</td>
                     <td>${sale.qty}</td>
                     <td>${formatCurrency(sale.total)}</td>
                     <td>${sale.sold_by}</td>
+                    <td>${sale.paymentType || '--'}</td>
+                    <td class="wrap-text">${sale.observations || '--'}</td>
                 `;
                 salesTableBody.appendChild(tr);
             });
@@ -1362,11 +1474,10 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             if (product) {
                 salePriceDisplay.textContent = formatCurrency(product.price);
                 saleTotalDisplay.textContent = formatCurrency(product.price * quantity);
-                // Validar que la cantidad no exceda el stock
                 saleQuantityInput.max = product.stock;
                 if (quantity > product.stock) {
                     saleQuantityInput.value = product.stock;
-                    updateSaleForm(); // Re-calcular
+                    updateSaleForm();
                 }
             } else {
                 salePriceDisplay.textContent = formatCurrency(0);
@@ -1385,6 +1496,11 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             const productId = saleProductSelect.value;
             const quantity = parseInt(saleQuantityInput.value, 10);
             
+            // [MODIFICADO] Obtener valores de los campos adicionales
+            const saleDate = saleDateInput.value;
+            const paymentType = salePaymentTypeInput.value;
+            const observations = saleObservationsInput.value;
+
             const product = allProducts.find(p => p.id === productId);
             
             if (!product || quantity <= 0) {
@@ -1409,12 +1525,14 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 qty: quantity,
                 total: product.price * quantity,
                 sold_by: currentUser.email,
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(), // Fecha/hora de registro
+                // [MODIFICADO] Añadir nuevos campos al objeto de datos
+                saleDate: saleDate, // Fecha de venta seleccionada
+                paymentType: paymentType,
+                observations: observations
             };
 
             try {
-                // Usar una transacción para asegurar la consistencia de datos
-                // (Registrar venta Y actualizar stock atómicamente)
                 await runTransaction(db, async (transaction) => {
                     const productDoc = await transaction.get(productRef);
                     if (!productDoc.exists()) {
@@ -1426,20 +1544,17 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                         throw new Error("Stock insuficiente.");
                     }
                     
-                    // 1. Actualizar el stock del producto
                     transaction.update(productRef, { stock: newStock });
                     
-                    // 2. Crear el registro de venta
-                    // Usamos addDoc fuera de la transacción si queremos el ID
-                    // O creamos una referencia y la seteamos dentro
-                    const newSaleRef = doc(salesCollectionRef); // Genera un ID por adelantado
+                    const newSaleRef = doc(salesCollectionRef);
                     transaction.set(newSaleRef, saleData);
                 });
 
                 showAppMessage("Venta registrada con éxito.");
                 saleForm.reset();
                 updateSaleForm();
-                // Los listeners onSnapshot actualizarán las tablas y el stock
+                // [MODIFICADO] Resetear la fecha al día de hoy
+                saleDateInput.value = getTodayYYYYMMDD();
                 
             } catch (error) {
                 console.error("Error en la transacción de venta:", error);
@@ -1453,12 +1568,11 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
         
         /** Actualiza todas las estadísticas y la gráfica del Dashboard */
         function updateDashboard() {
-            // Calcular estadísticas
             const now = new Date();
             const todayStart = new Date(now.setHours(0, 0, 0, 0));
             
             const weekStart = new Date(todayStart);
-            weekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Inicio de la semana (Domingo)
+            weekStart.setDate(todayStart.getDate() - todayStart.getDay());
             
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             
@@ -1466,7 +1580,6 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             let totalWeek = 0;
             let totalMonth = 0;
             
-            // Datos para la gráfica (últimos 7 días)
             const last7DaysData = {};
             const days = [];
             for (let i = 6; i >= 0; i--) {
@@ -1478,27 +1591,23 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             }
 
             allSales.forEach(sale => {
-                if (!sale.timestamp) return; // Saltar ventas sin fecha
+                if (!sale.timestamp) return;
                 const saleDate = sale.timestamp.toDate();
 
-                // Totales
                 if (saleDate >= todayStart) totalToday += sale.total;
                 if (saleDate >= weekStart) totalWeek += sale.total;
                 if (saleDate >= monthStart) totalMonth += sale.total;
                 
-                // Gráfica
                 const dayString = saleDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
                 if (dayString in last7DaysData) {
                     last7DaysData[dayString] += sale.total;
                 }
             });
             
-            // Renderizar Stats
             statToday.textContent = formatCurrency(totalToday);
             statWeek.textContent = formatCurrency(totalWeek);
             statMonth.textContent = formatCurrency(totalMonth);
             
-            // Renderizar Gráfica
             renderSalesChart(days, Object.values(last7DaysData));
         }
 
@@ -1507,7 +1616,7 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
             const ctx = salesChartCanvas.getContext('2d');
             
             if (salesChartInstance) {
-                salesChartInstance.destroy(); // Destruir gráfica anterior
+                salesChartInstance.destroy();
             }
             
             salesChartInstance = new Chart(ctx, {
@@ -1559,36 +1668,132 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
 
             showLoading();
             
-            // Mapear datos al formato deseado
+            // [MODIFICADO] Mapear datos al formato deseado
             const dataToExport = allSales.map(sale => ({
-                "Fecha": formatDate(sale.timestamp),
+                "Fecha de Registro": formatDateTime(sale.timestamp),
+                "Fecha de Venta": sale.saleDate || '--',
                 "Producto": sale.product_name,
                 "Cantidad": sale.qty,
-                "Precio Unitario": sale.price_per_unit,
-                "Total": sale.total,
-                "Vendedor": sale.sold_by
+                "Precio Unitario": formatCurrency(sale.price_per_unit),
+                "Total": formatCurrency(sale.total),
+                "Vendedor": sale.sold_by,
+                "Tipo de Pago": sale.paymentType || '--',
+                "Observaciones": sale.observations || '--'
             }));
             
-            // Crear la hoja de cálculo
             const ws = XLSX.utils.json_to_sheet(dataToExport);
             
-            // (Opcional) Ajustar ancho de columnas
+            // [MODIFICADO] Ajustar ancho de columnas
             const colWidths = [
-                {wch: 20}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 25}
+                {wch: 20}, {wch: 15}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 25}, {wch: 15}, {wch: 30}
             ];
             ws['!cols'] = colWidths;
 
-            // Crear el libro
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Historial de Ventas");
             
-            // Descargar el archivo
             XLSX.writeFile(wb, "Reporte_Ventas.xlsx");
             
             hideLoading();
         });
 
-        // --- 12. FUNCIÓN PRINCIPAL DE INICIO ---
+        // --- 12. MÓDULO DE CUENTAS POR COBRAR ---
+        
+        /** Escucha los cambios en la colección de cuentas por cobrar */
+        function listenForPendingSales() {
+            if (pendingSalesListenerUnsubscribe) pendingSalesListenerUnsubscribe();
+            
+            const q = query(collection(db, "pending_sales"), orderBy("saleDate", "desc"));
+            pendingSalesListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+                const pendingSales = [];
+                snapshot.forEach(doc => {
+                    pendingSales.push({ id: doc.id, ...doc.data() });
+                });
+                renderPendingSalesTable(pendingSales);
+            }, (error) => {
+                console.error("Error al cargar cuentas por cobrar:", error);
+                showAppMessage("Error al cargar cuentas por cobrar.", true);
+            });
+        }
+        
+        /** Renderiza la tabla de cuentas por cobrar */
+        function renderPendingSalesTable(pendingSales) {
+            pendingSalesTableBody.innerHTML = '';
+            if (pendingSales.length === 0) {
+                pendingSalesTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay cuentas pendientes.</td></tr>';
+                return;
+            }
+            
+            pendingSales.forEach(sale => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${sale.customer}</td>
+                    <td>${formatDate(sale.saleDate)}</td>
+                    <td>${formatCurrency(sale.total)}</td>
+                    <td>${sale.createdBy}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-success btn-sm" data-id="${sale.id}" data-action="mark-paid">
+                            <i data-feather="check-circle" class="btn-icon"></i> Pagado
+                        </button>
+                    </td>
+                `;
+                pendingSalesTableBody.appendChild(tr);
+            });
+            feather.replace({width: 16, height: 16});
+        }
+        
+        /** Maneja el envío del formulario de cuenta por cobrar */
+        pendingSaleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            const saleData = {
+                customer: pendingSaleCustomerInput.value,
+                total: parseFloat(pendingSaleTotalInput.value),
+                saleDate: pendingSaleDateInput.value,
+                createdBy: currentUser.email,
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                await addDoc(collection(db, "pending_sales"), saleData);
+                showAppMessage("Cuenta por cobrar registrada.");
+                pendingSaleForm.reset();
+                // [MODIFICADO] Resetear la fecha al día de hoy
+                pendingSaleDateInput.value = getTodayYYYYMMDD();
+            } catch (error) {
+                console.error("Error al guardar cuenta por cobrar:", error);
+                showAppMessage("Error al guardar la cuenta.", true);
+            }
+            hideLoading();
+        });
+        
+        /** Maneja los clics en la tabla de cuentas por cobrar (Marcar como Pagado) */
+        pendingSalesTableBody.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-action="mark-paid"]');
+            if (!button) return;
+            
+            const docId = button.dataset.id;
+            if (confirm("¿Confirmas que esta cuenta ya fue pagada? Se quitará de la lista.")) {
+                markAsPaid(docId);
+            }
+        });
+        
+        /** Borra la cuenta por cobrar (la marca como pagada) */
+        async function markAsPaid(id) {
+            showLoading();
+            try {
+                await deleteDoc(doc(db, "pending_sales", id));
+                showAppMessage("Cuenta marcada como pagada.");
+            } catch (error) {
+                console.error("Error al marcar como pagado:", error);
+                showAppMessage("Error al actualizar la cuenta.", true);
+            }
+            hideLoading();
+        }
+
+
+        // --- 13. FUNCIÓN PRINCIPAL DE INICIO ---
         
         function main() {
             try {
@@ -1609,6 +1814,9 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
                 
                 // Establecer el listener de autenticación
                 onAuthStateChanged(auth, handleAuthStateChanged);
+
+                // Escuchar cambios en el hash de la URL para la navegación
+                window.addEventListener('hashchange', handleHashChange);
                 
             } catch (error) {
                 console.error("Error al inicializar Firebase:", error);
@@ -1625,7 +1833,5 @@ document.getElementById("sale-form").addEventListener("submit", async (e) => {
     </script>
 </body>
 </html>
-	
-
 
 
