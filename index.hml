@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Ventas Pro</title>
+
+    <!-- Librerías de Terceros (CDN) -->
+    <!-- Chart.js para gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (xlsx) para exportar a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Iconos (Feather Icons) -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+    <style>
+        /* --- CSS Moderno (style.css) --- */
+
+        /* 1. Variables Globales y Reseteo */
+        :root {
+            --color-primary: #0a74da; /* Azul principal */
+            --color-primary-dark: #085dab;
+            --color-secondary: #10b981; /* Verde (éxito) */
+            --color-danger: #ef4444; /* Rojo (error) */
+            --color-warning: #f59e0b; /* Amarillo (aviso) */
+            --color-bg-light: #f9fafb; /* Fondo principal */
+            --color-bg-white: #ffffff;
+            --color-text-primary: #1f2937; /* Texto principal */
+            --color-text-secondary: #6b7280; /* Texto gris */
+            --color-border: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-md: 0.375rem; /* 6px */
+            --radius-lg: 0.5rem; /* 8px */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+
+        body {
+            background-color: var(--color-bg-light);
+            color: var(--color-text-primary);
+            line-height: 1.5;
+        }
+
+        /* 2. Ocultar vistas */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 3. Pantalla de Carga (Spinner) */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 6px solid var(--color-border);
+            border-top-color: var(--color-primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 4. Vista de Autenticación (Login/Registro) */
+        #auth-view {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--color-bg-light);
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 1rem;
+            padding: 2rem;
+            background-color: var(--color-bg-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .auth-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .auth-tab {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            border-bottom: 2px solid transparent;
+        }
+
+        .auth-tab.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(10, 116, 218, 0.2);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primary-dark);
+        }
+        
+        .btn-secondary {
+            background-color: var(--color-bg-white);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-border);
+        }
+        .btn-secondary:hover {
+            background-color: var(--color-bg-light);
+        }
+
+        .btn-danger {
+            background-color: var(--color-danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #d93a3a;
+        }
+        
+        .btn-success {
+            background-color: var(--color-secondary);
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #0e946a;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        #auth-error, #app-message {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            background-color: #fee2e2;
+            color: #b91c1c;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        #app-message {
+            background-color: #d1fae5;
+            color: #065f46;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 500;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* 5. Vista Principal de la Aplicación */
+        #app-view {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* 5.1 Barra Superior (Header) */
+        #app-header {
+            background-color: var(--color-bg-white);
+            border-bottom: 1px solid var(--color-border);
+            padding: 0 1.5rem;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 400;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        #app-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            border-radius: var(--radius-md);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .nav-link:hover {
+            background-color: var(--color-bg-light);
+            color: var(--color-text-primary);
+        }
+
+        .nav-link.active {
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #user-info {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            text-align: right;
+        }
+        
+        #user-info span {
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        #logout-btn {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius-md);
+        }
+        #logout-btn:hover {
+            background-color: var(--color-bg-light);
+            color: var(--color-danger);
+        }
+
+        /* 5.2 Contenido Principal (Main) */
+        #app-main {
+            flex-grow: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .app-page {
+            display: none; /* Ocultas por defecto, JS las muestra */
+        }
+
+        .app-page.active {
+            display: block;
+        }
+
+        .page-header {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        /* 5.3 Tarjetas (Cards) */
+        .card {
+            background-color: var(--color-bg-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 5.4 Layout de Rejilla (Grid) */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .col-span-1 { grid-column: span 1 / span 1; }
+        .col-span-2 { grid-column: span 2 / span 2; }
+        .col-span-3 { grid-column: span 3 / span 3; }
+
+        /* 6. Estilos Específicos de Páginas */
+
+        /* 6.1 Dashboard */
+        .stat-card {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .stat-icon {
+            flex-shrink: 0;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .stat-icon.bg-blue { background-color: var(--color-primary); }
+        .stat-icon.bg-green { background-color: var(--color-secondary); }
+        .stat-icon.bg-yellow { background-color: var(--color-warning); }
+        .stat-icon.bg-red { background-color: var(--color-danger); }
+
+        .stat-info h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+        }
+        .stat-info p {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+        }
+
+        /* 6.2 Ventas y Productos */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            vertical-align: middle;
+        }
+
+        thead th {
+            background-color: var(--color-bg-light);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+        }
+
+        tbody tr:hover {
+            background-color: #fcfdfe;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* 7. Responsividad */
+        @media (max-width: 1024px) {
+            .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .col-span-2 { grid-column: span 1 / span 1; }
+            .col-span-3 { grid-column: span 2 / span 2; }
+            .form-row { grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
+        }
+
+        @media (max-width: 768px) {
+            #app-header {
+                height: auto;
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 1rem;
+                gap: 1rem;
+            }
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+            #app-nav {
+                width: 100%;
+                justify-content: space-around;
+                border-top: 1px solid var(--color-border);
+                padding-top: 0.5rem;
+            }
+            .nav-link { flex-grow: 1; text-align: center; }
+
+            #app-main {
+                padding: 1rem;
+            }
+            
+            .page-header {
+                font-size: 1.75rem;
+                margin-bottom: 1rem;
+            }
+
+            .grid-cols-2, .grid-cols-4 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+            .col-span-3 { grid-column: span 1 / span 1; }
+            
+            .auth-container {
+                margin: 0.5rem;
+                padding: 1.5rem;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 1. Pantalla de Carga Global -->
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- 2. Mensajes Globales -->
+    <div id="app-message" class="hidden"></div>
+
+    <!-- 3. Vista de Autenticación -->
+    <div id="auth-view">
+        <div class="auth-container">
+            <div class="auth-tabs">
+                <button id="login-tab-btn" class="auth-tab active">Iniciar Sesión</button>
+                <button id="register-tab-btn" class="auth-tab">Registro</button>
+            </div>
+
+            <!-- Formulario de Login -->
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Entrar</button>
+            </form>
+
+            <!-- Formulario de Registro -->
+            <form id="register-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Contraseña</label>
+                    <input type="password" id="register-password" class="form-input" required minlength="6">
+                </div>
+                 <div class="form-group">
+                    <label for="register-role">Rol</label>
+                    <select id="register-role" class="form-input" required>
+                        <option value="vendedor">Vendedor</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Crear Cuenta</button>
+            </form>
+            
+            <div id="auth-error" class="hidden"></div>
+        </div>
+    </div>
+
+    <!-- 4. Vista Principal de la App -->
+    <div id="app-view" class="hidden">
+        
+        <!-- Header -->
+        <header id="app-header">
+            <div class="header-left">
+                <div class="app-title">VentasPro</div>
+                <nav id="app-nav">
+                    <a href="#dashboard" class="nav-link active" data-page="page-dashboard">Dashboard</a>
+                    <a href="#ventas" class="nav-link" data-page="page-sales">Ventas</a>
+                    <a href="#productos" class="nav-link" data-page="page-products">Productos</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div id="user-info">
+                    <span id="user-email-display"></span><br>
+                    <em id="user-role-display"></em>
+                </div>
+                <button id="logout-btn" title="Cerrar Sesión">
+                    <i data-feather="log-out"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Contenido Principal -->
+        <main id="app-main">
+
+            <!-- Página: Dashboard -->
+            <div id="page-dashboard" class="app-page active">
+                <h1 class="page-header">Dashboard</h1>
+                
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                    <div class="card stat-card">
+                        <div class="stat-icon bg-blue"><i data-feather="dollar-sign"></i></div>
+                        <div class="stat-info">
+                            <h3>Ventas de Hoy</h3>
+                            <p id="stat-today">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon bg-green"><i data-feather="bar-chart-2"></i></div>
+                        <div class="stat-info">
+                            <h3>Ventas (Semana)</h3>
+                            <p id="stat-week">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-icon bg-yellow"><i data-feather="calendar"></i></div>
+                        <div class="stat-info">
+                            <h3>Ventas (Mes)</h3>
+                            <p id="stat-month">$0.00</p>
+                        </div>
+                    </div>
+                     <div class="card stat-card">
+                        <div class="stat-icon bg-red"><i data-feather="package"></i></div>
+                        <div class="stat-info">
+                            <h3>Stock Total</h3>
+                            <p id="stat-stock">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfica -->
+                <div class="card">
+                    <div class="card-header">Ventas Últimos 7 Días</div>
+                    <canvas id="sales-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Página: Ventas -->
+            <div id="page-sales" class="app-page">
+                <h1 class="page-header">Gestión de Ventas</h1>
+
+                <!-- Registrar Venta -->
+                <div class="card">
+                    <div class="card-header">Registrar Nueva Venta</div>
+                    <form id="sale-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sale-product-select">Producto</label>
+                                <select id="sale-product-select" class="form-input" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sale-quantity">Cantidad</label>
+                                <input type="number" id="sale-quantity" class="form-input" value="1" min="1" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Precio Unitario</label>
+                                <p id="sale-price-display" class="form-input bg-gray-100">$0.00</p>
+                            </div>
+                             <div class="form-group">
+                                <label>Total</label>
+                                <p id="sale-total-display" class="form-input bg-gray-100 font-bold">$0.00</p>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="shopping-cart"></i> Registrar Venta
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Historial de Ventas -->
+                <div class="card">
+                    <div class="card-header">
+                        Historial de Ventas
+                        <button id="export-excel-btn" class="btn btn-success btn-sm">
+                            <i data-feather="download"></i> Exportar a Excel
+                        </button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Producto</th>
+                                    <th>Cantidad</th>
+                                    <th>Total</th>
+                                    <th>Vendedor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-table-body">
+                                <!-- Filas de ventas se insertan aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Página: Productos -->
+            <div id="page-products" class="app-page">
+                <h1 class="page-header">Gestión de Productos</h1>
+                
+                <!-- Formulario de Producto -->
+                <div class="card">
+                    <div class="card-header" id="product-form-title">Agregar Nuevo Producto</div>
+                    <form id="product-form">
+                        <input type="hidden" id="product-id">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="product-name">Nombre</label>
+                                <input type="text" id="product-name" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="product-price">Precio (USD)</label>
+                                <input type="number" id="product-price" class="form-input" min="0.01" step="0.01" required>
+                            </div>
+                        </div>
+                         <div class="form-row">
+                             <div class="form-group">
+                                <label for="product-stock">Stock (Inventario)</label>
+                                <input type="number" id="product-stock" class="form-input" min="0" step="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>&nbsp;</label> <!-- Spacer for alignment -->
+                                <div style="display: flex; gap: 1rem; align-items: flex-end; height: 100%;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i data-feather="save"></i> Guardar Producto
+                                    </button>
+                                    <button type="button" id="clear-product-form-btn" class="btn btn-secondary">Limpiar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Lista de Productos -->
+                <div class="card">
+                    <div class="card-header">Inventario</div>
+                     <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-table-body">
+                                <!-- Filas de productos se insertan aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- 
+      --- JavaScript (app.js) ---
+      Incluido aquí para un solo archivo, usando un script de tipo módulo 
+      para permitir importaciones de Firebase.
+    -->
+    <script type="module">
+        
+        // --- 1. IMPORTACIONES DE FIREBASE (CDN) ---
+        // Debes reemplazar estas URL si usas una versión diferente de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            addDoc, 
+            updateDoc,
+            deleteDoc,
+            collection, 
+            query, 
+            where, 
+            orderBy, 
+            onSnapshot,
+            serverTimestamp,
+            runTransaction,
+            Timestamp,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 2. CONFIGURACIÓN DE FIREBASE ---
+        // ¡¡¡ IMPORTANTE !!!
+        // Pega tu objeto de configuración de Firebase aquí
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY", // <--- PEGA TUS CLAVES AQUÍ
+            authDomain: "TU_AUTH_DOMAIN",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_STORAGE_BUCKET",
+            messagingSenderId: "TU_MESSAGING_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+        
+        // --- 3. INICIALIZACIÓN DE FIREBASE Y VARIABLES GLOBALES ---
+        let app, auth, db;
+        let currentUser = null;
+        let userRole = "vendedor"; // Default
+        
+        let allProducts = []; // Caché local de productos
+        let allSales = []; // Caché local de ventas
+        let salesChartInstance = null; // Instancia del gráfico
+
+        // Descriptores para listeners de Firestore (para cancelarlos al hacer logout)
+        let productsListenerUnsubscribe = null;
+        let salesListenerUnsubscribe = null;
+        
+        // Habilitar logs detallados de Firestore
+        try {
+            setLogLevel('Debug');
+        } catch(e) { console.warn("No se pudo establecer el nivel de log de Firestore."); }
+
+        // --- 4. SELECTORES DEL DOM ---
+        // Vistas
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const authView = document.getElementById('auth-view');
+        const appView = document.getElementById('app-view');
+        
+        // Mensajes
+        const authError = document.getElementById('auth-error');
+        const appMessage = document.getElementById('app-message');
+
+        // Autenticación
+        const loginTab = document.getElementById('login-tab-btn');
+        const registerTab = document.getElementById('register-tab-btn');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfo = document.getElementById('user-info');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userRoleDisplay = document.getElementById('user-role-display');
+
+        // Navegación
+        const appNav = document.getElementById('app-nav');
+        const appPages = document.querySelectorAll('.app-page');
+
+        // Dashboard
+        const statToday = document.getElementById('stat-today');
+        const statWeek = document.getElementById('stat-week');
+        const statMonth = document.getElementById('stat-month');
+        const statStock = document.getElementById('stat-stock');
+        const salesChartCanvas = document.getElementById('sales-chart');
+
+        // Ventas
+        const saleForm = document.getElementById('sale-form');
+        const saleProductSelect = document.getElementById('sale-product-select');
+        const saleQuantityInput = document.getElementById('sale-quantity');
+        const salePriceDisplay = document.getElementById('sale-price-display');
+        const saleTotalDisplay = document.getElementById('sale-total-display');
+        const salesTableBody = document.getElementById('sales-table-body');
+        const exportExcelBtn = document.getElementById('export-excel-btn');
+
+        // Productos
+        const productForm = document.getElementById('product-form');
+        const productFormTitle = document.getElementById('product-form-title');
+        const productIdInput = document.getElementById('product-id');
+        const productNameInput = document.getElementById('product-name');
+        const productPriceInput = document.getElementById('product-price');
+        const productStockInput = document.getElementById('product-stock');
+        const clearProductFormBtn = document.getElementById('clear-product-form-btn');
+        const productsTableBody = document.getElementById('products-table-body');
+
+        // --- 5. FUNCIONES AUXILIARES ---
+
+        /** Muestra el overlay de carga */
+        function showLoading() { loadingOverlay.classList.remove('hidden'); }
+        /** Oculta el overlay de carga */
+        function hideLoading() { loadingOverlay.classList.add('hidden'); }
+
+        /** Muestra un mensaje de error de autenticación */
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.remove('hidden');
+        }
+        /** Oculta el mensaje de error de autenticación */
+        function hideAuthError() { authError.classList.add('hidden'); }
+
+        /** Muestra un mensaje global (éxito o error) */
+        function showAppMessage(message, isError = false) {
+            appMessage.textContent = message;
+            appMessage.style.backgroundColor = isError ? '#fee2e2' : '#d1fae5';
+            appMessage.style.color = isError ? '#b91c1c' : '#065f46';
+            appMessage.classList.remove('hidden');
+            setTimeout(() => appMessage.classList.add('hidden'), 4000);
+        }
+        
+        /** Formatea un número como moneda (USD) */
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            }).format(amount);
+        };
+        
+        /** Formatea un objeto Timestamp de Firebase o una Fecha */
+        const formatDate = (date) => {
+            if (date && typeof date.toDate === 'function') {
+                date = date.toDate(); // Convertir Timestamp a Date
+            }
+            if (!(date instanceof Date)) {
+                return 'Fecha inválida';
+            }
+            return date.toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        // --- 6. MÓDULO DE AUTENTICACIÓN ---
+
+        /** Maneja el cambio de estado de autenticación */
+        async function handleAuthStateChanged(user) {
+            if (user) {
+                currentUser = user;
+                
+                // Obtener el rol del usuario desde Firestore
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (userDoc.exists()) {
+                    userRole = userDoc.data().role || 'vendedor';
+                } else {
+                    // Esto no debería pasar si el registro es correcto
+                    userRole = 'vendedor';
+                    console.warn("No se encontró el documento del usuario, asignando rol 'vendedor'");
+                }
+                
+                // Actualizar UI
+                userEmailDisplay.textContent = user.email;
+                userRoleDisplay.textContent = `(${userRole})`;
+                authView.classList.add('hidden');
+                appView.classList.remove('hidden');
+                
+                // Cargar datos de la app
+                await initializeAppData();
+
+            } else {
+                currentUser = null;
+                userRole = 'vendedor';
+                
+                // Limpiar UI
+                authView.classList.remove('hidden');
+                appView.classList.add('hidden');
+                userEmailDisplay.textContent = '';
+                userRoleDisplay.textContent = '';
+                
+                // Detener listeners de datos
+                cleanupListeners();
+                
+                // Limpiar datos en caché y tablas
+                allProducts = [];
+                allSales = [];
+                productsTableBody.innerHTML = '';
+                salesTableBody.innerHTML = '';
+                saleProductSelect.innerHTML = '';
+            }
+            hideLoading();
+            feather.replace(); // Actualizar iconos
+        }
+
+        /** Carga los datos iniciales y establece los listeners de Firestore */
+        async function initializeAppData() {
+            showLoading();
+            // Mostrar la página de dashboard por defecto
+            showPage('page-dashboard');
+            // Cargar datos
+            listenForProducts();
+            listenForSales();
+            hideLoading();
+        }
+
+        /** Detiene todos los listeners de Firestore activos */
+        function cleanupListeners() {
+            if (productsListenerUnsubscribe) {
+                productsListenerUnsubscribe();
+                productsListenerUnsubscribe = null;
+            }
+            if (salesListenerUnsubscribe) {
+                salesListenerUnsubscribe();
+                salesListenerUnsubscribe = null;
+            }
+        }
+
+        /** Maneja el inicio de sesión */
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            hideAuthError();
+            const email = loginForm['login-email'].value;
+            const password = loginForm['login-password'].value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged se encargará del resto
+            } catch (error) {
+                console.error("Error de login:", error.message);
+                showAuthError("Email o contraseña incorrectos.");
+                hideLoading();
+            }
+        });
+
+        /** Maneja el registro de nuevos usuarios */
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            hideAuthError();
+            const email = registerForm['register-email'].value;
+            const password = registerForm['register-password'].value;
+            const role = registerForm['register-role'].value;
+
+            if (password.length < 6) {
+                showAuthError("La contraseña debe tener al menos 6 caracteres.");
+                hideLoading();
+                return;
+            }
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                
+                // Guardar información adicional del usuario (rol) en Firestore
+                await setDoc(doc(db, "users", user.uid), {
+                    email: user.email,
+                    role: role,
+                    createdAt: serverTimestamp()
+                });
+                
+                // onAuthStateChanged se encargará del resto
+            } catch (error) {
+                console.error("Error de registro:", error.message);
+                if (error.code === 'auth/email-already-in-use') {
+                    showAuthError("Este email ya está registrado.");
+                } else {
+                    showAuthError("Error al crear la cuenta.");
+                }
+                hideLoading();
+            }
+        });
+
+        /** Maneja el cierre de sesión */
+        logoutBtn.addEventListener('click', async () => {
+            showLoading();
+            await signOut(auth);
+            // onAuthStateChanged se encargará del resto
+        });
+
+        /** Cambia entre formularios de login y registro */
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            hideAuthError();
+        });
+        registerTab.addEventListener('click', () => {
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            hideAuthError();
+        });
+
+        // --- 7. MÓDULO DE NAVEGACIÓN ---
+
+        /** Muestra una página específica y oculta las demás */
+        function showPage(pageId) {
+            appPages.forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            
+            // Actualizar enlace activo en la navegación
+            appNav.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.page === pageId) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        /** Maneja los clics en la barra de navegación */
+        appNav.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A' && e.target.dataset.page) {
+                e.preventDefault();
+                const pageId = e.target.dataset.page;
+                showPage(pageId);
+                // Actualizar la URL hash para un mejor historial (opcional)
+                window.location.hash = e.target.hash;
+            }
+        });
+
+        // --- 8. MÓDULO DE PRODUCTOS ---
+
+        /** Escucha los cambios en la colección de productos */
+        function listenForProducts() {
+            if (productsListenerUnsubscribe) productsListenerUnsubscribe(); // Detener listener anterior
+            
+            const q = query(collection(db, "products"), orderBy("name"));
+            productsListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+                allProducts = [];
+                let totalStock = 0;
+                snapshot.forEach(doc => {
+                    allProducts.push({ id: doc.id, ...doc.data() });
+                    totalStock += doc.data().stock || 0;
+                });
+                
+                renderProductsTable();
+                populateProductSelect();
+                updateSaleForm(); // Actualizar formulario de venta si el producto seleccionado cambia
+                statStock.textContent = totalStock; // Actualizar stat de stock
+                
+            }, (error) => {
+                console.error("Error al cargar productos:", error);
+                showAppMessage("Error al cargar productos.", true);
+            });
+        }
+
+        /** Renderiza la tabla de productos */
+        function renderProductsTable() {
+            productsTableBody.innerHTML = ''; // Limpiar tabla
+            if (allProducts.length === 0) {
+                productsTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No hay productos registrados.</td></tr>';
+                return;
+            }
+            
+            allProducts.forEach(product => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${formatCurrency(product.price)}</td>
+                    <td>${product.stock}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-secondary btn-sm" data-id="${product.id}" data-action="edit">
+                            <i data-feather="edit-2" class="btn-icon"></i> Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm ${userRole !== 'admin' ? 'hidden' : ''}" data-id="${product.id}" data-action="delete">
+                            <i data-feather="trash-2" class="btn-icon"></i> Borrar
+                        </button>
+                    </td>
+                `;
+                productsTableBody.appendChild(tr);
+            });
+            
+            // Reemplazar iconos
+            feather.replace({width: 16, height: 16});
+        }
+
+        /** Rellena el select de productos en la página de ventas */
+        function populateProductSelect() {
+            saleProductSelect.innerHTML = '<option value="">-- Selecciona un producto --</option>';
+            allProducts.forEach(product => {
+                if(product.stock > 0) { // Solo mostrar productos con stock
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.name} (${product.stock} en stock)`;
+                    saleProductSelect.appendChild(option);
+                }
+            });
+        }
+
+        /** Maneja el envío del formulario de producto (Crear/Actualizar) */
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            const productId = productIdInput.value;
+            const productData = {
+                name: productNameInput.value,
+                price: parseFloat(productPriceInput.value),
+                stock: parseInt(productStockInput.value, 10),
+            };
+
+            try {
+                if (productId) {
+                    // Actualizar producto
+                    const productRef = doc(db, "products", productId);
+                    await updateDoc(productRef, productData);
+                    showAppMessage("Producto actualizado con éxito.");
+                } else {
+                    // Crear nuevo producto
+                    productData.createdAt = serverTimestamp();
+                    await addDoc(collection(db, "products"), productData);
+                    showAppMessage("Producto creado con éxito.");
+                }
+                clearProductForm();
+            } catch (error) {
+                console.error("Error al guardar producto:", error);
+                showAppMessage("Error al guardar el producto.", true);
+            }
+            hideLoading();
+        });
+
+        /** Limpia el formulario de producto */
+        function clearProductForm() {
+            productForm.reset();
+            productIdInput.value = '';
+            productFormTitle.textContent = 'Agregar Nuevo Producto';
+        }
+        clearProductFormBtn.addEventListener('click', clearProductForm);
+
+        /** Maneja los clics en la tabla de productos (Editar/Borrar) */
+        productsTableBody.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-action]');
+            if (!button) return;
+
+            const productId = button.dataset.id;
+            const action = button.dataset.action;
+
+            if (action === 'edit') {
+                const product = allProducts.find(p => p.id === productId);
+                if (product) {
+                    productFormTitle.textContent = `Editando: ${product.name}`;
+                    productIdInput.value = product.id;
+                    productNameInput.value = product.name;
+                    productPriceInput.value = product.price;
+                    productStockInput.value = product.stock;
+                    window.scrollTo(0, 0); // Ir al inicio de la página
+                    productNameInput.focus();
+                }
+            }
+            
+            if (action === 'delete') {
+                if (userRole !== 'admin') {
+                    showAppMessage("No tienes permiso para borrar productos.", true);
+                    return;
+                }
+                
+                // Usar confirmación nativa (simple)
+                // Para una app "profesional" real, usarías un modal personalizado.
+                if (confirm("¿Estás seguro de que quieres borrar este producto? Esta acción no se puede deshacer.")) {
+                    deleteProduct(productId);
+                }
+            }
+        });
+
+        /** Borra un producto de Firestore */
+        async function deleteProduct(id) {
+            showLoading();
+            try {
+                await deleteDoc(doc(db, "products", id));
+                showAppMessage("Producto borrado con éxito.");
+                // El listener onSnapshot actualizará la tabla
+            } catch (error) {
+                console.error("Error al borrar producto:", error);
+                showAppMessage("Error al borrar el producto.", true);
+            }
+            hideLoading();
+        }
+
+        // --- 9. MÓDULO DE VENTAS ---
+
+        /** Escucha los cambios en la colección de ventas */
+        function listenForSales() {
+            if (salesListenerUnsubscribe) salesListenerUnsubscribe(); // Detener listener anterior
+            
+            const q = query(collection(db, "sales"), orderBy("timestamp", "desc"));
+            salesListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+                allSales = [];
+                snapshot.forEach(doc => {
+                    allSales.push({ id: doc.id, ...doc.data() });
+                });
+                
+                renderSalesTable();
+                updateDashboard(); // Actualizar dashboard con las nuevas ventas
+                
+            }, (error) => {
+                console.error("Error al cargar ventas:", error);
+                showAppMessage("Error al cargar ventas.", true);
+            });
+        }
+
+        /** Renderiza la tabla de historial de ventas */
+        function renderSalesTable() {
+            salesTableBody.innerHTML = ''; // Limpiar tabla
+            if (allSales.length === 0) {
+                salesTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay ventas registradas.</td></tr>';
+                return;
+            }
+            
+            allSales.forEach(sale => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatDate(sale.timestamp)}</td>
+                    <td>${sale.product_name}</td>
+                    <td>${sale.qty}</td>
+                    <td>${formatCurrency(sale.total)}</td>
+                    <td>${sale.sold_by}</td>
+                `;
+                salesTableBody.appendChild(tr);
+            });
+        }
+
+        /** Actualiza el formulario de venta (precio/total) al cambiar la selección */
+        function updateSaleForm() {
+            const productId = saleProductSelect.value;
+            const quantity = parseInt(saleQuantityInput.value, 10) || 1;
+            
+            const product = allProducts.find(p => p.id === productId);
+            
+            if (product) {
+                salePriceDisplay.textContent = formatCurrency(product.price);
+                saleTotalDisplay.textContent = formatCurrency(product.price * quantity);
+                // Validar que la cantidad no exceda el stock
+                saleQuantityInput.max = product.stock;
+                if (quantity > product.stock) {
+                    saleQuantityInput.value = product.stock;
+                    updateSaleForm(); // Re-calcular
+                }
+            } else {
+                salePriceDisplay.textContent = formatCurrency(0);
+                saleTotalDisplay.textContent = formatCurrency(0);
+                saleQuantityInput.max = 9999;
+            }
+        }
+        saleProductSelect.addEventListener('change', updateSaleForm);
+        saleQuantityInput.addEventListener('input', updateSaleForm);
+
+        /** Maneja el registro de una nueva venta */
+        saleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            const productId = saleProductSelect.value;
+            const quantity = parseInt(saleQuantityInput.value, 10);
+            
+            const product = allProducts.find(p => p.id === productId);
+            
+            if (!product || quantity <= 0) {
+                showAppMessage("Por favor, selecciona un producto y una cantidad válida.", true);
+                hideLoading();
+                return;
+            }
+            
+            if (quantity > product.stock) {
+                showAppMessage("No hay suficiente stock para esta venta.", true);
+                hideLoading();
+                return;
+            }
+            
+            const productRef = doc(db, "products", productId);
+            const salesCollectionRef = collection(db, "sales");
+            
+            const saleData = {
+                product_id: productId,
+                product_name: product.name,
+                price_per_unit: product.price,
+                qty: quantity,
+                total: product.price * quantity,
+                sold_by: currentUser.email,
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                // Usar una transacción para asegurar la consistencia de datos
+                // (Registrar venta Y actualizar stock atómicamente)
+                await runTransaction(db, async (transaction) => {
+                    const productDoc = await transaction.get(productRef);
+                    if (!productDoc.exists()) {
+                        throw new Error("El producto ya no existe.");
+                    }
+                    
+                    const newStock = productDoc.data().stock - quantity;
+                    if (newStock < 0) {
+                        throw new Error("Stock insuficiente.");
+                    }
+                    
+                    // 1. Actualizar el stock del producto
+                    transaction.update(productRef, { stock: newStock });
+                    
+                    // 2. Crear el registro de venta
+                    // Usamos addDoc fuera de la transacción si queremos el ID
+                    // O creamos una referencia y la seteamos dentro
+                    const newSaleRef = doc(salesCollectionRef); // Genera un ID por adelantado
+                    transaction.set(newSaleRef, saleData);
+                });
+
+                showAppMessage("Venta registrada con éxito.");
+                saleForm.reset();
+                updateSaleForm();
+                // Los listeners onSnapshot actualizarán las tablas y el stock
+                
+            } catch (error) {
+                console.error("Error en la transacción de venta:", error);
+                showAppMessage(`Error al registrar la venta: ${error.message}`, true);
+            }
+            
+            hideLoading();
+        });
+
+        // --- 10. MÓDULO DE DASHBOARD (ESTADÍSTICAS Y GRÁFICA) ---
+        
+        /** Actualiza todas las estadísticas y la gráfica del Dashboard */
+        function updateDashboard() {
+            // Calcular estadísticas
+            const now = new Date();
+            const todayStart = new Date(now.setHours(0, 0, 0, 0));
+            
+            const weekStart = new Date(todayStart);
+            weekStart.setDate(todayStart.getDate() - todayStart.getDay()); // Inicio de la semana (Domingo)
+            
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            let totalToday = 0;
+            let totalWeek = 0;
+            let totalMonth = 0;
+            
+            // Datos para la gráfica (últimos 7 días)
+            const last7DaysData = {};
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(todayStart);
+                d.setDate(d.getDate() - i);
+                const dayString = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+                days.push(dayString);
+                last7DaysData[dayString] = 0;
+            }
+
+            allSales.forEach(sale => {
+                if (!sale.timestamp) return; // Saltar ventas sin fecha
+                const saleDate = sale.timestamp.toDate();
+
+                // Totales
+                if (saleDate >= todayStart) totalToday += sale.total;
+                if (saleDate >= weekStart) totalWeek += sale.total;
+                if (saleDate >= monthStart) totalMonth += sale.total;
+                
+                // Gráfica
+                const dayString = saleDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+                if (dayString in last7DaysData) {
+                    last7DaysData[dayString] += sale.total;
+                }
+            });
+            
+            // Renderizar Stats
+            statToday.textContent = formatCurrency(totalToday);
+            statWeek.textContent = formatCurrency(totalWeek);
+            statMonth.textContent = formatCurrency(totalMonth);
+            
+            // Renderizar Gráfica
+            renderSalesChart(days, Object.values(last7DaysData));
+        }
+
+        /** Renderiza (o actualiza) la gráfica de ventas */
+        function renderSalesChart(labels, data) {
+            const ctx = salesChartCanvas.getContext('2d');
+            
+            if (salesChartInstance) {
+                salesChartInstance.destroy(); // Destruir gráfica anterior
+            }
+            
+            salesChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ventas',
+                        data: data,
+                        backgroundColor: 'rgba(10, 116, 218, 0.1)',
+                        borderColor: 'rgba(10, 116, 218, 1)',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        fill: true,
+                        pointBackgroundColor: 'rgba(10, 116, 218, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) { return formatCurrency(value); }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Ventas: ${formatCurrency(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 11. MÓDULO DE EXPORTACIÓN (SHEETJS) ---
+        
+        exportExcelBtn.addEventListener('click', () => {
+            if (allSales.length === 0) {
+                showAppMessage("No hay ventas para exportar.", true);
+                return;
+            }
+
+            showLoading();
+            
+            // Mapear datos al formato deseado
+            const dataToExport = allSales.map(sale => ({
+                "Fecha": formatDate(sale.timestamp),
+                "Producto": sale.product_name,
+                "Cantidad": sale.qty,
+                "Precio Unitario": sale.price_per_unit,
+                "Total": sale.total,
+                "Vendedor": sale.sold_by
+            }));
+            
+            // Crear la hoja de cálculo
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            
+            // (Opcional) Ajustar ancho de columnas
+            const colWidths = [
+                {wch: 20}, {wch: 30}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 25}
+            ];
+            ws['!cols'] = colWidths;
+
+            // Crear el libro
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Historial de Ventas");
+            
+            // Descargar el archivo
+            XLSX.writeFile(wb, "Reporte_Ventas.xlsx");
+            
+            hideLoading();
+        });
+
+        // --- 12. FUNCIÓN PRINCIPAL DE INICIO ---
+        
+        function main() {
+            try {
+                // Validar config
+                if (firebaseConfig.apiKey === "TU_API_KEY") {
+                    document.body.innerHTML = `<div style="padding: 2rem; text-align: center; font-family: sans-serif;">
+                        <h1>Error de Configuración</h1>
+                        <p>Por favor, edita este archivo (<code>control_ventas_app.html</code>) y reemplaza el objeto <code>firebaseConfig</code> con tus propias claves de Firebase.</p>
+                        <p>No puedes usar la aplicación hasta que hagas esto.</p>
+                    </div>`;
+                    return;
+                }
+                
+                // Inicializar Firebase
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                // Establecer el listener de autenticación
+                onAuthStateChanged(auth, handleAuthStateChanged);
+                
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                document.body.innerHTML = `<div style="padding: 2rem; text-align: center; font-family: sans-serif;">
+                    <h1>Error Crítico al Cargar Firebase</h1>
+                    <p>Revisa la consola para más detalles. ¿Las claves de Firebase son correctas?</p>
+                </div>`;
+            }
+        }
+
+        // Iniciar la aplicación cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', main);
+
+    </script>
+</body>
+</html>
+	
