@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Ventas planta Fuente Nueva</title>
+    <title>Control de Ventas Planta Fuente Nueva</title>
 
     <!-- Librerías -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,20 +21,28 @@
         
         /* Utilidades */
         .hidden { display: none !important; }
-        .admin-only { display: none; } /* Oculto por defecto, JS lo activa si es admin */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .admin-only { display: none; } /* Oculto por defecto */
         .text-red { color: var(--danger); font-weight: bold; }
         .text-green { color: var(--secondary); font-weight: bold; }
         .bg-red-100 { background-color: #fee2e2; }
         
         /* Spinner */
-        #loader { position: fixed; inset: 0; bg: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 2000; }
         .spin { width: 50px; height: 50px; border: 5px solid #ddd; border-top-color: var(--primary); border-radius: 50%; animation: s 1s infinite linear; }
         @keyframes s { to { transform: rotate(360deg); } }
 
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+        .modal-content { background: white; padding: 2rem; border-radius: 0.5rem; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
         /* Layout */
         .app-container { display: flex; flex-direction: column; min-height: 100vh; }
-        header { background: var(--white); padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        nav { display: flex; gap: 1rem; overflow-x: auto; }
+        header { background: var(--white); padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        nav { display: flex; gap: 1rem; overflow-x: auto; padding-top: 0.5rem; }
         nav a { text-decoration: none; color: var(--gray); font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: 0.2s; white-space: nowrap; }
         nav a.active, nav a:hover { background: var(--primary); color: var(--white); }
         
@@ -47,16 +55,20 @@
         th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
         th { background: #f9fafb; font-size: 0.85rem; text-transform: uppercase; color: var(--gray); }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; }
-        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; color: white; display: inline-flex; gap: 0.5rem; align-items: center; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 0.5rem; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--gray); margin-bottom: 0.25rem; display: block; }
+        
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; color: white; display: inline-flex; gap: 0.5rem; align-items: center; justify-content: center; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
         .btn-blue { background: var(--primary); }
         .btn-green { background: var(--secondary); }
         .btn-red { background: var(--danger); }
+        .btn-gray { background: #e5e7eb; color: var(--text); }
         
         /* Login */
         .auth-box { max-width: 400px; margin: 10vh auto; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        @media(max-width: 768px) { .form-grid { grid-template-columns: 1fr; } header { flex-direction: column; gap: 1rem; } }
+        @media(max-width: 768px) { .form-grid { grid-template-columns: 1fr; } header > div { flex-direction: column; gap: 1rem; } }
     </style>
 </head>
 <body>
@@ -64,23 +76,43 @@
     <div id="loader" class="hidden"><div class="spin"></div></div>
     <div id="toast" style="position:fixed; bottom:20px; right:20px; padding:1rem; background:#10b981; color:white; border-radius:0.5rem; display:none; z-index:3000;"></div>
 
+    <!-- MODAL DE REABASTECIMIENTO -->
+    <div id="modal-restock" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 0.5rem;">📥 Entrada de Inventario</h3>
+            <p style="color:var(--gray); margin-bottom: 1rem;">Estás agregando stock a: <b id="modal-prod-name" style="color:var(--primary)"></b></p>
+            
+            <form id="form-restock">
+                <input type="hidden" id="restock-prod-id">
+                <label>Cantidad a Ingresar (Unidades sueltas):</label>
+                <input type="number" id="restock-qty" min="1" placeholder="Ej: 100" required style="font-size:1.2rem; padding:1rem;">
+                
+                <div style="display:flex; gap:1rem; margin-top:1rem;">
+                    <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
+                    <button type="submit" class="btn btn-green" style="flex:1">Confirmar Entrada</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- LOGIN -->
     <div id="auth-view">
         <div class="auth-box">
             <h2 style="text-align:center; margin-bottom:1.5rem; color:var(--primary);">Fuente Nueva ERP</h2>
             <div style="display:flex; gap:1rem; margin-bottom:1rem; border-bottom:1px solid #eee;">
-                <button id="tab-login" class="btn" style="background:none; color:var(--primary); border-bottom:2px solid var(--primary);">Login</button>
-                <button id="tab-register" class="btn" style="background:none; color:var(--gray);">Registro</button>
+                <button id="tab-login" class="btn" style="background:none; color:var(--primary); border-bottom:2px solid var(--primary); width:50%;">Login</button>
+                <button id="tab-register" class="btn" style="background:none; color:var(--gray); width:50%;">Registro</button>
             </div>
             <form id="login-form">
-                <input type="email" id="l-email" placeholder="Email" required style="margin-bottom:1rem;">
-                <input type="password" id="l-pass" placeholder="Contraseña" required style="margin-bottom:1rem;">
+                <input type="email" id="l-email" placeholder="Email" required>
+                <input type="password" id="l-pass" placeholder="Contraseña" required>
                 <button type="submit" class="btn btn-blue" style="width:100%">Ingresar</button>
             </form>
             <form id="register-form" class="hidden">
-                <input type="email" id="r-email" placeholder="Email" required style="margin-bottom:1rem;">
-                <input type="password" id="r-pass" placeholder="Contraseña (min 6 chars)" required style="margin-bottom:1rem;">
-                <select id="r-role" style="margin-bottom:1rem;">
+                <input type="email" id="r-email" placeholder="Email" required>
+                <input type="password" id="r-pass" placeholder="Contraseña (min 6 chars)" required>
+                <label>Rol:</label>
+                <select id="r-role">
                     <option value="vendedor">Vendedor</option>
                     <option value="admin">Administrador</option>
                 </select>
@@ -93,91 +125,109 @@
     <!-- APP PRINCIPAL -->
     <div id="app-view" class="app-container hidden">
         <header>
-            <div style="font-weight:bold; font-size:1.2rem; color:var(--primary);">Fuente Nueva</div>
+            <div class="flex justify-between items-center">
+                <div style="font-weight:bold; font-size:1.5rem; color:var(--primary);">Fuente Nueva</div>
+                <div>
+                    <small id="user-display" style="color:var(--gray); display:block; text-align:right;"></small>
+                    <button onclick="logout()" style="border:none; background:none; color:var(--danger); cursor:pointer; float:right; font-size:0.9rem;">Cerrar Sesión</button>
+                </div>
+            </div>
             <nav>
                 <a href="#dashboard" class="nav-link active" onclick="nav('dashboard')">Dashboard</a>
                 <a href="#ventas" class="nav-link" onclick="nav('ventas')">Ventas</a>
                 <a href="#cobros" class="nav-link" onclick="nav('cobros')">Por Cobrar</a>
                 <!-- Admin Only Links -->
                 <a href="#productos" class="nav-link admin-only" onclick="nav('productos')">Productos</a>
-                <a href="#inventario" class="nav-link admin-only" onclick="nav('inventario')">Inventario & Alertas</a>
+                <a href="#inventario" class="nav-link admin-only" onclick="nav('inventario')">Inventario</a>
                 <a href="#reportes" class="nav-link admin-only" onclick="nav('reportes')">Reportes</a>
             </nav>
-            <div>
-                <small id="user-display" style="color:var(--gray); display:block; text-align:right;"></small>
-                <button onclick="logout()" style="border:none; background:none; color:var(--danger); cursor:pointer; float:right;">Salir</button>
-            </div>
         </header>
 
         <main>
             <!-- DASHBOARD -->
             <div id="page-dashboard" class="page">
-                <h1 style="margin-bottom:1rem;">Resumen de Indicadores</h1>
+                <h1 style="margin-bottom:1.5rem;">Resumen General</h1>
                 <div class="grid-4">
-                    <div class="card"><h4 style="color:var(--gray)">Ventas Hoy</h4><h2 id="d-today">$0.00</h2></div>
-                    <div class="card"><h4 style="color:var(--gray)">Ganancia Hoy</h4><h2 id="d-profit" class="text-green">$0.00</h2></div>
-                    <div class="card"><h4 style="color:var(--gray)">Stock Crítico</h4><h2 id="d-critical" class="text-red">0</h2><small>Productos</small></div>
-                    <div class="card"><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending">$0.00</h2></div>
-                </div>
-                <div class="grid-4" style="grid-template-columns: 2fr 1fr;">
-                    <div class="card"><h3>Tendencia de Ventas</h3><canvas id="chart-sales"></canvas></div>
-                    <div class="card"><h3>Rentabilidad</h3><canvas id="chart-profit"></canvas></div>
+                    <div class="card">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Ventas Hoy</h4><h2 id="d-today">$0.00</h2></div>
+                            <div class="stat-icon bg-blue" style="padding:10px; background:#ebf8ff; border-radius:50%; color:var(--primary);"><i data-feather="dollar-sign"></i></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Ganancia Hoy</h4><h2 id="d-profit" class="text-green">$0.00</h2></div>
+                            <div class="stat-icon" style="padding:10px; background:#ecfdf5; border-radius:50%; color:var(--secondary);"><i data-feather="trending-up"></i></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Stock Bajo</h4><h2 id="d-critical" class="text-red">0</h2></div>
+                            <div class="stat-icon" style="padding:10px; background:#fef2f2; border-radius:50%; color:var(--danger);"><i data-feather="alert-triangle"></i></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending">$0.00</h2></div>
+                            <div class="stat-icon" style="padding:10px; background:#fffbeb; border-radius:50%; color:var(--warning);"><i data-feather="clock"></i></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- VENTAS -->
             <div id="page-ventas" class="page hidden">
-                <div class="card">
-                    <h3>Registrar Venta</h3>
-                    <form id="form-sale">
-                        <div class="form-grid">
-                            <div>
-                                <label>Producto</label>
-                                <select id="sale-product" required onchange="updateSaleForm()"></select>
+                <div class="grid-4" style="grid-template-columns: 1fr 2fr;">
+                    <!-- Formulario -->
+                    <div class="card">
+                        <h3>🛒 Nueva Venta</h3>
+                        <form id="form-sale">
+                            <label>Producto:</label>
+                            <select id="sale-product" required onchange="updateSaleForm()"></select>
+                            
+                            <label>Presentación:</label>
+                            <select id="sale-presentation" required onchange="updateSaleForm()">
+                                <option value="1">Unidad (1 botella)</option>
+                                <option value="6">Paca de 6</option>
+                                <option value="9">Paca de 9</option>
+                                <option value="12">Paca de 12</option>
+                            </select>
+                            
+                            <label>Cantidad de Presentaciones:</label>
+                            <input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()">
+                            
+                            <label>Tipo de Pago:</label>
+                            <select id="sale-type">
+                                <option>Efectivo</option>
+                                <option>Transferencia</option>
+                            </select>
+
+                            <label>Observaciones:</label>
+                            <textarea id="sale-obs" rows="2"></textarea>
+
+                            <div style="background:#f0f9ff; padding:1rem; border-radius:0.5rem; margin:1rem 0;">
+                                <div class="flex justify-between"><small>Precio Base:</small> <b id="sale-price-unit">$0.00</b></div>
+                                <div class="flex justify-between"><small>Descuento Inventario:</small> <b id="sale-deduct">0 un.</b></div>
+                                <hr style="margin:0.5rem 0; border:0; border-top:1px solid #ddd;">
+                                <div class="flex justify-between items-center">
+                                    <span>TOTAL:</span>
+                                    <span id="sale-total" style="font-size:1.5rem; font-weight:bold; color:var(--primary);">$0.00</span>
+                                </div>
                             </div>
-                            <div>
-                                <label>Presentación (Descarga Automática)</label>
-                                <select id="sale-presentation" required onchange="updateSaleForm()">
-                                    <option value="1">Unidad (1 botella)</option>
-                                    <option value="12">Paca de 12 (600 ml)</option>
-                                    <option value="20">Paca de 20 (300 ml)</option>
-                                    <option value="9">Paca de 9 (1 litro)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>Cantidad de Presentaciones</label>
-                                <input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()">
-                            </div>
-                            <div>
-                                <label>Tipo de Pago</label>
-                                <select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select>
-                            </div>
+                            
+                            <button type="submit" class="btn btn-blue" style="width:100%">CONFIRMAR VENTA</button>
+                        </form>
+                    </div>
+
+                    <!-- Historial -->
+                    <div class="card">
+                        <h3>📋 Ventas Recientes</h3>
+                        <div style="overflow-x:auto">
+                            <table id="table-sales">
+                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Cant.</th><th>Total</th><th>Pago</th><th>Obs.</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
-                        <div class="form-grid">
-                            <input type="text" id="sale-obs" placeholder="Observaciones (Opcional)">
-                            <input type="text" id="sale-date" readonly style="background:#eee;">
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; padding:1rem; background:#f0f9ff; border-radius:0.5rem;">
-                            <div>
-                                <small>Precio Unitario Base:</small> <b id="sale-price-unit">$0.00</b><br>
-                                <small>Descuento Inventario:</small> <b id="sale-deduct">0</b> unidades
-                            </div>
-                            <div style="text-align:right;">
-                                <small>Total a Pagar:</small><br>
-                                <span id="sale-total" style="font-size:1.5rem; font-weight:bold; color:var(--primary);">$0.00</span>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-blue" style="width:100%; margin-top:1rem;">Confirmar Venta</button>
-                    </form>
-                </div>
-                <!-- Historial Reciente -->
-                <div class="card">
-                    <h3>Últimas Ventas</h3>
-                    <div style="overflow-x:auto">
-                        <table id="table-sales">
-                            <thead><tr><th>Fecha</th><th>Prod.</th><th>Present.</th><th>Cant.</th><th>Total</th><th>Ganancia</th><th>Pago</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
                     </div>
                 </div>
             </div>
@@ -185,43 +235,46 @@
             <!-- PRODUCTOS (ADMIN) -->
             <div id="page-productos" class="page hidden">
                 <div class="card">
-                    <h3>Gestión de Catálogo</h3>
+                    <h3>🛠️ Gestión de Catálogo (Crear/Editar)</h3>
+                    <p style="color:var(--gray); font-size:0.9rem; margin-bottom:1rem;">Utiliza este formulario para registrar NUEVOS productos o cambiar precios. <b>NO uses esto para reabastecer stock diario.</b></p>
                     <form id="form-product">
                         <input type="hidden" id="prod-id">
                         <div class="form-grid">
-                            <input type="text" id="prod-name" placeholder="Nombre del Producto" required>
-                            <input type="number" id="prod-price" step="0.01" placeholder="Precio Venta (Unitario)" required>
-                            <input type="number" id="prod-cost" step="0.01" placeholder="Costo Compra (Unitario)" required>
-                            <input type="number" id="prod-stock" placeholder="Stock Inicial (Unidades)" required>
-                            <input type="number" id="prod-min" placeholder="Stock Mínimo (Alerta)" required>
-                            <input type="date" id="prod-restock">
+                            <div><label>Nombre del Producto</label><input type="text" id="prod-name" required></div>
+                            <div><label>Fecha Reabastecimiento (Est.)</label><input type="date" id="prod-restock"></div>
+                            <div><label>Precio Venta (Por Botella)</label><input type="number" id="prod-price" step="0.01" required></div>
+                            <div><label>Costo Compra (Por Botella)</label><input type="number" id="prod-cost" step="0.01" required></div>
+                            <div><label>Stock Inicial (Solo nuevos)</label><input type="number" id="prod-stock" required></div>
+                            <div><label>Alerta Stock Mínimo</label><input type="number" id="prod-min" required></div>
                         </div>
-                        <button type="submit" class="btn btn-blue">Guardar Producto</button>
-                        <button type="button" onclick="resetProdForm()" class="btn" style="background:#eee; color:#333">Cancelar</button>
+                        <div class="flex gap-2">
+                            <button type="submit" class="btn btn-blue">Guardar Ficha de Producto</button>
+                            <button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar / Cancelar</button>
+                        </div>
                     </form>
                 </div>
                 <div class="card">
-                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Nombre</th><th>$ Venta</th><th>$ Costo</th><th>Stock</th><th>Min</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock Actual</th><th>Min</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </div>
 
             <!-- INVENTARIO (ADMIN) -->
             <div id="page-inventario" class="page hidden">
                 <div class="card">
-                    <h3>Monitoreo de Stock & Alertas</h3>
-                    <p style="margin-bottom:1rem; color:var(--gray)">Los productos en rojo están por debajo del mínimo. La proyección se basa en la velocidad de ventas de los últimos 7 días.</p>
+                    <h3>📦 Control de Stock y Reabastecimiento</h3>
+                    <p style="margin-bottom:1rem;">Aquí se gestionan las ENTRADAS de mercancía. Usa el botón verde para sumar stock.</p>
                     <div style="overflow-x:auto">
                         <table id="table-inventory">
-                            <thead><tr><th>Producto</th><th>Stock Actual</th><th>Estado</th><th>Velocidad (u/día)</th><th>Se agota en</th><th>Reabastecer el</th></tr></thead>
+                            <thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Días Restantes</th><th>Próx. Reabastecimiento</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
                 </div>
                 <div class="card">
-                    <h3>Auditoría de Movimientos (Inmodificable)</h3>
+                    <h3>📜 Auditoría de Movimientos</h3>
                     <div style="overflow-x:auto; max-height:400px;">
                         <table id="table-movements" style="font-size:0.85rem;">
-                            <thead><tr><th>Fecha/Hora</th><th>Usuario</th><th>Acción</th><th>Producto</th><th>Cambio</th><th>Valor</th></tr></thead>
+                            <thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Producto</th><th>Cant.</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -230,45 +283,41 @@
 
             <!-- POR COBRAR -->
             <div id="page-cobros" class="page hidden">
-                <div class="card">
-                    <h3>Registro de Cuentas por Cobrar</h3>
-                    <form id="form-pending">
-                        <div class="form-grid">
-                            <input type="text" id="pend-client" placeholder="Cliente" required>
-                            <input type="number" id="pend-total" step="0.01" placeholder="Monto" required>
-                            <input type="date" id="pend-date" required>
-                        </div>
-                        <button type="submit" class="btn btn-blue">Registrar Deuda</button>
-                    </form>
-                </div>
-                <div class="card">
-                    <div style="overflow-x:auto"><table id="table-pending"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th><th>Usuario</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                <div class="grid-4" style="grid-template-columns: 1fr 2fr;">
+                    <div class="card">
+                        <h3>📒 Registrar Deuda</h3>
+                        <form id="form-pending">
+                            <label>Cliente:</label><input type="text" id="pend-client" required>
+                            <label>Monto Total ($):</label><input type="number" id="pend-total" step="0.01" required>
+                            <label>Fecha:</label><input type="date" id="pend-date" required>
+                            <button type="submit" class="btn btn-blue" style="width:100%; margin-top:1rem;">Guardar</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>Listado de Pendientes</h3>
+                        <div style="overflow-x:auto"><table id="table-pending"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    </div>
                 </div>
             </div>
 
             <!-- REPORTES (ADMIN) -->
             <div id="page-reportes" class="page hidden">
-                <h1>Centro de Reportes</h1>
+                <h1>Centro de Descargas</h1>
                 <div class="grid-4">
                     <div class="card">
-                        <h3>📦 Inventario Total</h3>
-                        <p>Descarga el estado actual con costos y valoración.</p>
+                        <h3>📦 Inventario Valorizado</h3>
+                        <p style="color:var(--gray)">Estado actual con valoración de costos y precios.</p>
                         <button onclick="exportInventory()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                     <div class="card">
-                        <h3>💰 Ventas y Ganancias</h3>
-                        <p>Detalle de todas las ventas con cálculo de utilidad.</p>
+                        <h3>💰 Ventas Detalladas</h3>
+                        <p style="color:var(--gray)">Reporte de ventas con cálculo de ganancia neta.</p>
                         <button onclick="exportSales()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                     <div class="card">
-                        <h3>📉 Movimientos</h3>
-                        <p>Historial de auditoría completo.</p>
+                        <h3>📉 Auditoría Completa</h3>
+                        <p style="color:var(--gray)">Registro de todas las entradas, salidas y ediciones.</p>
                         <button onclick="exportMovements()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
-                    </div>
-                    <div class="card">
-                        <h3>⚠️ Críticos</h3>
-                        <p>Productos próximos a agotarse.</p>
-                        <button onclick="exportCritical()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                 </div>
             </div>
@@ -281,35 +330,31 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURACIÓN (PEGA TUS CLAVES AQUÍ) ---
-       const firebaseConfig = {
-  apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk",
-  authDomain: "fuente-nueva.firebaseapp.com",
-  projectId: "fuente-nueva",
-  storageBucket: "fuente-nueva.firebasestorage.app",
-  messagingSenderId: "256396830278",
-  appId: "1:256396830278:web:0d9cff310705e52bb20c47",
-  measurementId: "G-8NGS5XH8K6"
-};
+        // --- PEGA TUS CLAVES DE FIREBASE AQUÍ ---
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_AUTH_DOMAIN",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_STORAGE_BUCKET",
+            messagingSenderId: "TU_MESSAGING_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
 
-        // Inicialización
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Estado Global
         let user = null;
         let role = 'vendedor';
         let products = [];
         let sales = [];
         let movements = [];
 
-        // --- SISTEMA DE FECHAS ---
         const today = () => new Date().toISOString().split('T')[0];
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
-        const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString() : '--';
+        const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
 
-        // --- AUTH & PERMISOS ---
+        // Auth Listener
         onAuthStateChanged(auth, async (u) => {
             document.getElementById('loader').classList.remove('hidden');
             if (u) {
@@ -319,21 +364,14 @@
                 
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
-                document.getElementById('user-display').innerHTML = `${u.email}<br><b>${role.toUpperCase()}</b>`;
+                document.getElementById('user-display').innerHTML = `${u.email} <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
                 
-                // Aplicar Permisos
-                if(role === 'admin') {
-                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
-                } else {
-                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-                }
+                // Control de Permisos
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
 
                 initListeners();
-                document.getElementById('sale-date').value = today();
                 document.getElementById('pend-date').value = today();
-                if(location.hash) nav(location.hash.substring(1));
-                else nav('dashboard');
-
+                nav('dashboard');
             } else {
                 document.getElementById('auth-view').classList.remove('hidden');
                 document.getElementById('app-view').classList.add('hidden');
@@ -341,261 +379,176 @@
             document.getElementById('loader').classList.add('hidden');
         });
 
-        // --- LISTENERS DE DATOS (REALTIME) ---
         function initListeners() {
-            // 1. Productos
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => {
                 products = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderProducts();
-                renderInventory(); // Actualiza alertas
+                renderInventory();
                 updateSelects();
             });
-            // 2. Ventas (Últimos 30 días para rendimiento) - En producción usar paginación
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSalesTable();
                 updateDashboard();
             });
-            // 3. Movimientos (Solo Admin carga esto si es necesario, pero aqui lo cargamos para reportes)
             if(role === 'admin') {
                 onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
                     movements = sn.docs.map(d => ({id: d.id, ...d.data()}));
                     renderMovements();
                 });
             }
-            // 4. Por Cobrar
             onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => {
                 const list = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderPending(list);
-                // Actualizar KPI dashboard
-                const totalPending = list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0);
-                document.getElementById('d-pending').textContent = fmtMoney(totalPending);
+                const total = list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0);
+                document.getElementById('d-pending').textContent = fmtMoney(total);
             });
         }
 
-        // --- LOGICA DE NEGOCIO (CORE) ---
+        // --- FUNCIONES PRINCIPALES ---
 
-        // Auditoría Automática
-        async function logMovement(type, prodName, qty, val, t) {
-            await addDoc(collection(db, "movements"), {
-                type, product: prodName, quantity: qty, value: val, 
-                user: user.email, timestamp: serverTimestamp()
-            });
-        }
+        // Reabastecimiento Seguro (Modal)
+        window.openRestock = (id) => {
+            const p = products.find(x => x.id === id);
+            if(!p) return;
+            document.getElementById('modal-prod-name').textContent = p.name;
+            document.getElementById('restock-prod-id').value = p.id;
+            document.getElementById('restock-qty').value = '';
+            document.getElementById('modal-restock').classList.remove('hidden');
+            document.getElementById('restock-qty').focus();
+        };
+        window.closeModal = () => document.getElementById('modal-restock').classList.add('hidden');
 
-        // Gestión Productos
+        document.getElementById('form-restock').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('restock-prod-id').value;
+            const qty = parseInt(document.getElementById('restock-qty').value);
+            const p = products.find(x => x.id === id);
+
+            if(qty <= 0) return alert("Cantidad inválida");
+
+            try {
+                const newStock = (p.stock || 0) + qty;
+                await updateDoc(doc(db, "products", id), { stock: newStock });
+                await addDoc(collection(db, "movements"), {
+                    type: "ENTRADA", product: p.name, quantity: qty, value: 0,
+                    user: user.email, timestamp: serverTimestamp()
+                });
+                toast("✅ Stock Agregado Correctamente");
+                closeModal();
+            } catch(err) { alert(err.message); }
+        });
+
+        // Gestión Productos (Solo Metadata)
         window.productForm = document.getElementById('form-product');
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if(role !== 'admin') return alert("Acceso denegado");
-            
+            if(role !== 'admin') return alert("Solo admin");
             const id = document.getElementById('prod-id').value;
             const data = {
                 name: document.getElementById('prod-name').value,
                 price: parseFloat(document.getElementById('prod-price').value),
                 cost: parseFloat(document.getElementById('prod-cost').value),
-                stock: parseInt(document.getElementById('prod-stock').value),
                 min: parseInt(document.getElementById('prod-min').value),
                 restock: document.getElementById('prod-restock').value
             };
+            // Solo actualizamos stock si es CREACION. Si es edicion, no tocamos el stock.
+            if(!id) data.stock = parseInt(document.getElementById('prod-stock').value);
 
             try {
                 if(id) {
                     await updateDoc(doc(db, "products", id), data);
-                    logMovement("EDICION", data.name, 0, data.price);
+                    await addDoc(collection(db, "movements"), { type: "EDICION_FICHA", product: data.name, quantity:0, value:0, user: user.email, timestamp: serverTimestamp() });
                 } else {
                     await addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() });
-                    logMovement("CREACION", data.name, data.stock, data.price);
+                    await addDoc(collection(db, "movements"), { type: "CREACION_PRODUCTO", product: data.name, quantity: data.stock, value:0, user: user.email, timestamp: serverTimestamp() });
                 }
                 resetProdForm();
                 toast("Producto Guardado");
             } catch(e) { alert(e.message); }
         });
 
-        // Registrar Venta (Compleja)
+        // Registrar Venta
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const pid = document.getElementById('sale-product').value;
-            const pres = parseInt(document.getElementById('sale-presentation').value); // 1, 12, 20, 9
+            const pres = parseInt(document.getElementById('sale-presentation').value);
             const qty = parseInt(document.getElementById('sale-qty').value);
             
             const prod = products.find(p => p.id === pid);
             if(!prod) return;
 
-            const totalUnits = qty * pres; // Total botellas a descontar
+            const totalUnits = qty * pres; 
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
-            // Costo proporcional para calcular ganancia exacta
-            // Si vendí 1 paca de 12, el costo es 12 * costo_unitario
-            const totalCost = totalUnits * (prod.cost || 0);
-            const profit = totalPrice - totalCost;
+            const profit = totalPrice - (totalUnits * (prod.cost || 0));
 
-            if(prod.stock < totalUnits) return alert("Stock insuficiente para esta venta");
+            if(prod.stock < totalUnits) return alert("❌ Stock insuficiente");
 
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
-                    if(!pDoc.exists()) throw "Producto no existe";
-                    
                     const newStock = pDoc.data().stock - totalUnits;
-                    t.update(pRef, { stock: newStock });
+                    if(newStock < 0) throw "Stock insuficiente";
                     
-                    const saleRef = doc(collection(db, "sales"));
-                    t.set(saleRef, {
-                        product: prod.name,
-                        pid: pid,
-                        presentation_val: pres, // Para saber si fue paca o unidad
-                        qty_packs: qty,         // Cantidad de pacas/unidades seleccionadas
-                        qty_total_units: totalUnits, // Lo que se descontó
-                        price: totalPrice,
-                        cost: totalCost,
-                        profit: profit,
+                    t.update(pRef, { stock: newStock });
+                    t.set(doc(collection(db, "sales")), {
+                        product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits,
+                        price: totalPrice, cost: (totalUnits * prod.cost), profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
-                        user: user.email,
-                        timestamp: serverTimestamp(),
-                        date_str: today() // Para filtros fáciles
+                        user: user.email, timestamp: serverTimestamp()
                     });
                 });
-                logMovement("VENTA", prod.name, -totalUnits, totalPrice);
-                toast("Venta Exitosa");
+                toast("✅ Venta Registrada");
                 document.getElementById('form-sale').reset();
-                document.getElementById('sale-date').value = today();
                 updateSaleForm();
-            } catch(err) { console.error(err); alert("Error: " + err.message); }
+            } catch(err) { alert(err.message); }
         });
 
-        // --- INTERFAZ Y CALCULOS ---
-
+        // --- RENDERIZADO ---
         window.updateSaleForm = () => {
             const pid = document.getElementById('sale-product').value;
-            const pres = parseInt(document.getElementById('sale-presentation').value);
-            const qty = parseInt(document.getElementById('sale-qty').value) || 0;
-            
+            const pres = parseInt(document.getElementById('sale-presentation').value)||1;
+            const qty = parseInt(document.getElementById('sale-qty').value)||0;
             const prod = products.find(p => p.id === pid);
             if(!prod) return;
 
-            // Aquí asumimos que el precio base es por BOTELLA (Unidad)
-            // Si quieres precio por paca específico, habría que agregar campos al producto.
-            // Por ahora: Precio Venta = (Precio Unitario * Unidades en Paca) * Cantidad Pacas
-            
-            const unitsPerOp = pres; 
-            const totalUnits = unitsPerOp * qty;
+            const totalUnits = qty * pres;
             const total = totalUnits * prod.price;
-
             document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
-            document.getElementById('sale-deduct').textContent = totalUnits;
+            document.getElementById('sale-deduct').textContent = totalUnits + " un.";
             document.getElementById('sale-total').textContent = fmtMoney(total);
         };
 
         function renderInventory() {
-            const tb = document.querySelector('#table-inventory tbody');
-            tb.innerHTML = '';
+            const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = '';
             let criticalCount = 0;
-
             products.forEach(p => {
-                // Calcular velocidad venta (últimos 7 días)
-                const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                const recentSales = sales.filter(s => s.pid === p.id && s.timestamp?.toDate() > sevenDaysAgo);
-                const totalSold7d = recentSales.reduce((sum, s) => sum + (s.qty_total_units || 0), 0);
-                const dailyVelocity = totalSold7d / 7;
-                
-                let daysLeft = "Infinito";
-                if(dailyVelocity > 0) {
-                    daysLeft = Math.floor(p.stock / dailyVelocity) + " días";
-                }
-
-                const isLow = p.stock <= (p.min || 0);
+                // Calculo dias restantes
+                const last7d = sales.filter(s => s.pid === p.id && (new Date() - s.timestamp?.toDate()) < 604800000);
+                const velocity = last7d.reduce((a,b)=>a+b.qty_total_units,0) / 7;
+                const daysLeft = velocity > 0 ? Math.floor(p.stock/velocity) : "Infinito";
+                const isLow = p.stock <= p.min;
                 if(isLow) criticalCount++;
 
-                const tr = document.createElement('tr');
-                if(isLow) tr.classList.add('bg-red-100');
-                
-                tr.innerHTML = `
+                tb.innerHTML += `<tr>
                     <td style="font-weight:bold">${p.name}</td>
-                    <td class="${isLow ? 'text-red':''}">${p.stock}</td>
-                    <td>${isLow ? '⚠️ CRÍTICO' : 'OK'}</td>
-                    <td>${dailyVelocity.toFixed(1)}</td>
-                    <td>${daysLeft}</td>
+                    <td class="${isLow?'text-red':''}">${p.stock}</td>
+                    <td>${isLow?'⚠️ BAJO':'OK'}</td>
+                    <td>${daysLeft} días</td>
                     <td>${p.restock || '--'}</td>
-                `;
-                tb.appendChild(tr);
+                    <td><button onclick="openRestock('${p.id}')" class="btn btn-green btn-sm">➕ Reabastecer</button></td>
+                </tr>`;
             });
             document.getElementById('d-critical').textContent = criticalCount;
         }
 
-        function updateDashboard() {
-            // Filtros de fecha
-            const now = new Date();
-            const startDay = new Date(now.setHours(0,0,0,0));
-            
-            const salesToday = sales.filter(s => s.timestamp?.toDate() >= startDay);
-            const totalSold = salesToday.reduce((acc, s) => acc + s.price, 0);
-            const totalProfit = salesToday.reduce((acc, s) => acc + (s.profit || 0), 0);
-
-            document.getElementById('d-today').textContent = fmtMoney(totalSold);
-            document.getElementById('d-profit').textContent = fmtMoney(totalProfit);
-
-            // Gráfica Simple
-            const ctx = document.getElementById('chart-sales');
-            // (Simplificado: agrupar por fecha string)
-            // En producción usarías lógica de agrupación real por días de la semana
-        }
-
-        // --- REPORTES EXCEL ---
-        window.exportInventory = () => {
-            const data = products.map(p => ({
-                Producto: p.name, Stock: p.stock, CostoUnit: p.cost, 
-                ValorTotalCosto: p.stock*p.cost, ValorVenta: p.stock*p.price
-            }));
-            saveExcel(data, "Inventario");
-        }
-        window.exportSales = () => {
-            const data = sales.map(s => ({
-                Fecha: fmtDate(s.timestamp), Producto: s.product, 
-                Presentacion: s.presentation_val == 1 ? "Unidad" : "Paca "+s.presentation_val,
-                Cant_Comprada: s.qty_packs, Unidades_Descontadas: s.qty_total_units,
-                Venta_Total: s.price, Costo_Total: s.cost, Ganancia: s.profit,
-                Usuario: s.user
-            }));
-            saveExcel(data, "Ventas_Ganancias");
-        }
-        window.exportMovements = () => {
-            const data = movements.map(m => ({
-                Fecha: fmtDate(m.timestamp), Usuario: m.user, Tipo: m.type,
-                Producto: m.product, Cantidad: m.quantity, Valor: m.value
-            }));
-            saveExcel(data, "Auditoria");
-        }
-        
-        function saveExcel(json, name) {
-            const ws = XLSX.utils.json_to_sheet(json);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Datos");
-            XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
-        }
-
-        // --- UTILIDADES UI ---
-        window.nav = (id) => {
-            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-            document.getElementById('page-'+id).classList.remove('hidden');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            // Activar link correspondiente (lógica simple)
-        };
-        window.toast = (msg) => {
-            const t = document.getElementById('toast');
-            t.textContent = msg; t.style.display='block';
-            setTimeout(()=>t.style.display='none', 3000);
-        };
-        window.logout = () => signOut(auth);
-        window.resetProdForm = () => { window.productForm.reset(); document.getElementById('prod-id').value=''; }
-
-        // Funciones Render (Simplificadas para brevedad, similares a la versión anterior pero adaptadas)
         function renderProducts() {
             const tb = document.querySelector('#table-products tbody'); tb.innerHTML='';
             products.forEach(p => {
                 tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${p.min}</td>
-                <td><button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Edit</button></td></tr>`;
+                <td><button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Editar</button></td></tr>`;
             });
         }
         window.editProd = (id) => {
@@ -604,80 +557,98 @@
             document.getElementById('prod-name').value=p.name;
             document.getElementById('prod-price').value=p.price;
             document.getElementById('prod-cost').value=p.cost||0;
-            document.getElementById('prod-stock').value=p.stock;
+            // Ocultamos stock en edicion para evitar errores, se debe usar Reabastecer
+            document.getElementById('prod-stock').value=p.stock; 
+            document.getElementById('prod-stock').disabled = true;
             document.getElementById('prod-min').value=p.min||0;
             document.getElementById('prod-restock').value=p.restock||'';
         };
+        window.resetProdForm = () => { 
+            document.getElementById('form-product').reset(); 
+            document.getElementById('prod-id').value=''; 
+            document.getElementById('prod-stock').disabled = false; 
+        }
+
         function renderSalesTable() {
             const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
-            sales.slice(0,50).forEach(s => { // Mostrar ultimas 50
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td>
-                <td>${s.presentation_val==1?'Unidad':'Paca '+s.presentation_val}</td>
-                <td>${s.qty_packs}</td><td>${fmtMoney(s.price)}</td>
-                <td class="text-green">+${fmtMoney(s.profit||0)}</td><td>${s.type}</td></tr>`;
+            sales.slice(0,30).forEach(s => {
+                const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td>
+                <td>${fmtMoney(s.price)}</td><td>${s.type}</td><td style="font-size:0.8em; color:gray">${s.obs||''}</td></tr>`;
             });
         }
         function renderMovements() {
             const tb = document.querySelector('#table-movements tbody'); tb.innerHTML='';
-            movements.slice(0,100).forEach(m => {
-                tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.user}</td><td>${m.type}</td><td>${m.product}</td><td>${m.quantity}</td><td>${fmtMoney(m.value)}</td></tr>`;
+            movements.slice(0,50).forEach(m => {
+                tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.user}</td><td>${m.type}</td><td>${m.product}</td><td>${m.quantity}</td></tr>`;
             });
         }
-        
-        // Lógica Cuentas por Cobrar (Misma lógica anterior)
-        const pForm = document.getElementById('form-pending');
-        pForm.addEventListener('submit', async(e)=>{
-            e.preventDefault();
-            await addDoc(collection(db,"pending"),{
-                client: document.getElementById('pend-client').value,
-                total: parseFloat(document.getElementById('pend-total').value),
-                date: document.getElementById('pend-date').value,
-                user: user.email
-            });
-            pForm.reset(); toast("Deuda Registrada");
-        });
-        function renderPending(list){
+        function renderPending(list) {
             const tb = document.querySelector('#table-pending tbody'); tb.innerHTML='';
-            list.forEach(i=>{
-                tb.innerHTML+=`<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td>${i.user}</td>
-                <td><button onclick="payPending('${i.id}')" class="btn btn-green btn-sm">Cobrado</button></td></tr>`;
+            list.forEach(i => {
+                tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td>
+                <td><button onclick="payPending('${i.id}')" class="btn btn-green btn-sm">Pagado</button></td></tr>`;
             });
         }
-        window.payPending = async(id) => {
-            if(confirm("¿Marcar como cobrado?")) await deleteDoc(doc(db,"pending",id));
+        window.payPending = async (id) => { if(confirm("¿Marcar como cobrado?")) await deleteDoc(doc(db,"pending",id)); }
+
+        function updateDashboard() {
+            const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+            const todaySales = sales.filter(s => s.timestamp?.toDate() >= todayStart);
+            document.getElementById('d-today').textContent = fmtMoney(todaySales.reduce((a,b)=>a+b.price,0));
+            document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
+            
+            // Chart Sales
+            const ctx = document.getElementById('chart-sales');
+            if(window.myChart) window.myChart.destroy();
+            // Agrupar por fecha simple (ultimos 7 dias)
+            const labels = [], data = [];
+            for(let i=6; i>=0; i--) {
+                const d = new Date(); d.setDate(d.getDate()-i);
+                const str = d.toISOString().split('T')[0];
+                labels.push(str);
+                const dayTotal = sales.filter(s => s.timestamp?.toDate().toISOString().startsWith(str)).reduce((a,b)=>a+b.price,0);
+                data.push(dayTotal);
+            }
+            window.myChart = new Chart(ctx, {
+                type: 'line', data: { labels, datasets: [{ label: 'Ventas ($)', data, borderColor: '#0a74da', tension:0.3 }] }
+            });
         }
 
-        // Tabs Login
-        document.getElementById('tab-login').onclick = (e)=>{
-            e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden');
-        };
-        document.getElementById('tab-register').onclick = (e)=>{
-            e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden');
-        };
-        
-        // Login Handlers
-        document.getElementById('login-form').onsubmit = async(e)=>{
-            e.preventDefault();
-            try { await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); }
-            catch(err){ document.getElementById('auth-msg').textContent = "Error: "+err.message; }
-        };
-        document.getElementById('register-form').onsubmit = async(e)=>{
-            e.preventDefault();
-            try {
-                const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value);
-                await setDoc(doc(db,"users",c.user.uid), { email: c.user.email, role: document.getElementById('r-role').value });
-            } catch(err){ document.getElementById('auth-msg').textContent = "Error: "+err.message; }
-        };
+        // Exports
+        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost, ValorTotal:p.stock*p.cost})), "Inventario");
+        window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
+        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
+        window.exportCritical = () => saveExcel(products.filter(p=>p.stock<=p.min).map(p=>({Producto:p.name, Stock:p.stock, Minimo:p.min})), "Stock_Critico");
+        function saveExcel(json, name) {
+            const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
+        }
 
-        // Llenar selects inicial
+        // UI Utils
+        window.nav = (id) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-'+id).classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector(`a[href="#${id}"]`)?.classList.add('active');
+        };
+        window.toast = (msg) => { const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); };
+        window.logout = () => signOut(auth);
+        
         function updateSelects() {
             const sel = document.getElementById('sale-product');
             sel.innerHTML = '<option value="">Seleccione...</option>';
-            products.forEach(p => {
-                sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`;
-            });
+            products.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`);
         }
 
+        // Login Handlers
+        document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); };
+        document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); };
+        document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
+        document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c=await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{email:c.user.email,role:document.getElementById('r-role').value}); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
+        document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value), date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
+
+        feather.replace();
     </script>
 </body>
 </html>
