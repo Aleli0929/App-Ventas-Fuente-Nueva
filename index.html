@@ -25,7 +25,7 @@
         .flex-col { flex-direction: column; }
         .items-center { align-items: center; }
         .justify-between { justify-content: space-between; }
-        .admin-only { display: none; }
+        .admin-only { display: none; } /* Oculto por JS si no es admin */
         .text-red { color: var(--danger); font-weight: bold; }
         .text-green { color: var(--secondary); font-weight: bold; }
         .bg-red-100 { background-color: #fee2e2; }
@@ -76,7 +76,7 @@
     <div id="loader" class="hidden"><div class="spin"></div></div>
     <div id="toast" style="position:fixed; bottom:20px; right:20px; padding:1rem; background:#10b981; color:white; border-radius:0.5rem; display:none; z-index:3000;"></div>
 
-    <!-- MODAL DE REABASTECIMIENTO (La única forma correcta de sumar stock) -->
+    <!-- MODAL DE REABASTECIMIENTO (Solo Admin) -->
     <div id="modal-restock" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 style="margin-bottom: 0.5rem;">📥 Entrada de Inventario</h3>
@@ -84,9 +84,9 @@
             
             <form id="form-restock">
                 <input type="hidden" id="restock-prod-id">
-                <label>Cantidad a Ingresar (Unidades/Botellas sueltas):</label>
+                <label>Cantidad a Ingresar (Unidades/Botellas):</label>
                 <input type="number" id="restock-qty" min="1" placeholder="Ej: 100" required style="font-size:1.2rem; padding:1rem; border: 2px solid var(--secondary);">
-                <p style="font-size:0.8rem; color:var(--gray); margin-top:0.5rem;">* Esto sumará al inventario actual. No crea un producto nuevo.</p>
+                <p style="font-size:0.8rem; color:var(--gray); margin-top:0.5rem;">* Suma al stock existente.</p>
                 
                 <div style="display:flex; gap:1rem; margin-top:1.5rem;">
                     <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
@@ -186,7 +186,7 @@
                             <label>Producto:</label>
                             <select id="sale-product" required onchange="updateSaleForm()"></select>
                             
-                            <label>Presentación (Fijo):</label>
+                            <label>Presentación:</label>
                             <select id="sale-presentation" required onchange="updateSaleForm()" style="font-weight:bold; color:var(--primary);">
                                 <option value="1">Unidad (1 botella)</option>
                                 <option value="6">Paca de 6</option>
@@ -225,7 +225,7 @@
                         <h3>📋 Ventas del Día</h3>
                         <div style="overflow-x:auto">
                             <table id="table-sales">
-                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Cant.</th><th>Total</th><th>Pago</th></tr></thead>
+                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Total</th><th>Ganancia</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -233,13 +233,12 @@
                 </div>
             </div>
 
-            <!-- PRODUCTOS (ADMIN) - CREACIÓN SOLAMENTE -->
+            <!-- PRODUCTOS (ADMIN) -->
             <div id="page-productos" class="page hidden">
                 <div class="card">
                     <h3>🛠️ Catálogo de Productos (Solo Nuevos)</h3>
                     <div style="background:#fffbeb; padding:1rem; margin-bottom:1rem; border-left:4px solid var(--warning);">
-                        <b>¡ATENCIÓN!</b> No uses este formulario para reabastecer. Si el producto ya existe, ve a la pestaña <b>"INVENTARIO"</b> y usa el botón verde.
-                        <br>Este formulario es <b>SOLO para crear productos que nunca has vendido antes.</b>
+                        <b>Nota:</b> Este formulario es solo para crear productos nuevos. Para sumar stock, ve a la pestaña "Inventario".
                     </div>
                     
                     <form id="form-product">
@@ -253,24 +252,23 @@
                             <div><label>Alerta Stock Mínimo</label><input type="number" id="prod-min" required></div>
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="btn btn-blue">Crear Nuevo Producto</button>
+                            <button type="submit" class="btn btn-blue">Crear / Guardar</button>
                             <button type="button" onclick="resetProdForm()" class="btn btn-gray">Cancelar</button>
                         </div>
                     </form>
                 </div>
                 <div class="card">
-                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock Total</th><th>Min</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock Total</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </div>
 
-            <!-- INVENTARIO (ADMIN) - REABASTECIMIENTO -->
+            <!-- INVENTARIO (ADMIN) -->
             <div id="page-inventario" class="page hidden">
                 <div class="card">
                     <h3>📦 Gestión de Stock y Entradas</h3>
-                    <p style="margin-bottom:1rem;">Usa el botón <b>"➕ Reabastecer"</b> para sumar mercancía a productos existentes.</p>
                     <div style="overflow-x:auto">
                         <table id="table-inventory">
-                            <thead><tr><th>Producto</th><th>Stock Actual</th><th>Estado</th><th>Días Restantes</th><th>Próx. Reabastecimiento</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Producto</th><th>Stock Actual</th><th>Estado</th><th>Días Restantes</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -308,20 +306,24 @@
             <!-- REPORTES (ADMIN) -->
             <div id="page-reportes" class="page hidden">
                 <h1>Centro de Descargas</h1>
-                <div class="grid-4">
+                
+                <div class="card" style="border: 2px solid var(--danger);">
+                    <h3 class="text-red">🚨 ZONA DE PELIGRO</h3>
+                    <p>Esta acción borrará TODOS los productos, ventas y movimientos. El stock quedará vacío.</p>
+                    <button onclick="resetSystem()" class="btn btn-red" style="width:100%; margin-top:1rem;">⚠️ BORRAR TODO Y REINICIAR STOCK</button>
+                </div>
+
+                <div class="grid-4" style="margin-top:2rem;">
                     <div class="card">
-                        <h3>📦 Inventario Valorizado</h3>
-                        <p style="color:var(--gray)">Estado actual con valoración.</p>
+                        <h3>📦 Inventario</h3>
                         <button onclick="exportInventory()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                     <div class="card">
-                        <h3>💰 Ventas Detalladas</h3>
-                        <p style="color:var(--gray)">Ventas con cálculo de ganancia.</p>
+                        <h3>💰 Ventas</h3>
                         <button onclick="exportSales()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                     <div class="card">
-                        <h3>📉 Auditoría Completa</h3>
-                        <p style="color:var(--gray)">Entradas, salidas y ediciones.</p>
+                        <h3>📉 Auditoría</h3>
                         <button onclick="exportMovements()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                 </div>
@@ -333,7 +335,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- PEGA TUS CLAVES DE FIREBASE AQUÍ ---
         const firebaseConfig = {
@@ -368,7 +370,10 @@
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
                 document.getElementById('user-display').innerHTML = `${u.email} <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
+                
+                // Control estricto de permisos
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+
                 initListeners();
                 document.getElementById('pend-date').value = today();
                 nav('dashboard');
@@ -402,9 +407,9 @@
             });
         }
 
-        // --- LOGICA PRINCIPAL CORREGIDA ---
+        // --- LÓGICA PRINCIPAL ---
 
-        // REABASTECIMIENTO (Modal)
+        // Reabastecimiento (Admin)
         window.openRestock = (id) => {
             const p = products.find(x => x.id === id);
             if(!p) return;
@@ -430,25 +435,23 @@
                     type: "ENTRADA", product: p.name, quantity: qty, value: 0,
                     user: user.email, timestamp: serverTimestamp()
                 });
-                toast("✅ Stock Agregado Correctamente");
+                toast("✅ Stock Agregado");
                 closeModal();
             } catch(err) { alert(err.message); }
         });
 
-        // CREACIÓN DE PRODUCTOS (CON BLOQUEO DE DUPLICADOS)
+        // Crear/Editar Producto (Admin)
         window.productForm = document.getElementById('form-product');
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if(role !== 'admin') return alert("Solo admin");
+            if(role !== 'admin') return alert("Acceso denegado");
             
             const id = document.getElementById('prod-id').value;
             const name = document.getElementById('prod-name').value.trim();
             
-            // VALIDACIÓN DE DUPLICADOS
             if (!id) {
-                const exists = products.some(p => p.name.toLowerCase() === name.toLowerCase());
-                if(exists) {
-                    return alert("❌ ERROR: El producto '" + name + "' YA EXISTE.\n\nVe a la pestaña 'INVENTARIO' para agregar más stock.");
+                if(products.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+                    return alert("ERROR: El producto YA existe.");
                 }
             }
 
@@ -474,7 +477,7 @@
             } catch(e) { alert(e.message); }
         });
 
-        // REGISTRAR VENTA (LÓGICA DE PACAS CORREGIDA)
+        // Registrar Venta
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const pid = document.getElementById('sale-product').value;
@@ -484,11 +487,12 @@
             const prod = products.find(p => p.id === pid);
             if(!prod) return;
 
-            const totalUnits = qty * pres; // Conversión a unidades
+            const totalUnits = qty * pres; 
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
+            // Cálculo de ganancia: Venta Total - (Unidades * Costo Unitario)
             const profit = totalPrice - (totalUnits * (prod.cost || 0));
 
-            if(prod.stock < totalUnits) return alert("❌ Stock insuficiente (" + prod.stock + " disponibles)");
+            if(prod.stock < totalUnits) return alert("❌ Stock insuficiente");
 
             try {
                 await runTransaction(db, async (t) => {
@@ -500,19 +504,44 @@
                     t.update(pRef, { stock: newStock });
                     t.set(doc(collection(db, "sales")), {
                         product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits,
-                        price: totalPrice, cost: (totalUnits * prod.cost), profit,
+                        price: totalPrice, cost: (totalUnits * prod.cost), profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
                         user: user.email, timestamp: serverTimestamp()
                     });
                 });
-                toast("✅ Venta Registrada");
+                toast("✅ Venta Exitosa");
                 document.getElementById('form-sale').reset();
                 updateSaleForm();
             } catch(err) { alert(err.message); }
         });
 
-        // --- RENDERIZADO ---
+        // RESET TOTAL (ADMIN)
+        window.resetSystem = async () => {
+            if(role !== 'admin') return;
+            if(!confirm("¿ESTÁS SEGURO? Se borrarán TODOS los productos, ventas y movimientos. No se puede deshacer.")) return;
+            if(!confirm("Confirmación final: ¿Borrar todo?")) return;
+            
+            document.getElementById('loader').classList.remove('hidden');
+            const batchDelete = async (col) => {
+                const q = query(collection(db, col));
+                const snap = await getDocs(q);
+                const batch = writeBatch(db);
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            };
+            
+            try {
+                await batchDelete("products");
+                await batchDelete("sales");
+                await batchDelete("movements");
+                await batchDelete("pending");
+                toast("♻️ Sistema Reiniciado");
+            } catch(e) { alert("Error: " + e.message); }
+            document.getElementById('loader').classList.add('hidden');
+        };
+
+        // --- RENDERIZADO Y UI ---
         window.updateSaleForm = () => {
             const pid = document.getElementById('sale-product').value;
             const pres = parseInt(document.getElementById('sale-presentation').value)||1;
@@ -537,13 +566,17 @@
                 const isLow = p.stock <= p.min;
                 if(isLow) criticalCount++;
 
+                // Botón solo para admin
+                const actionBtn = role === 'admin' ? 
+                    `<button onclick="openRestock('${p.id}')" class="btn btn-green btn-sm">➕ Reabastecer</button>` : 
+                    `<span style="color:#999">-</span>`;
+
                 tb.innerHTML += `<tr>
                     <td style="font-weight:bold">${p.name}</td>
                     <td class="${isLow?'text-red':''}">${p.stock}</td>
                     <td>${isLow?'⚠️ BAJO':'OK'}</td>
                     <td>${daysLeft} días</td>
-                    <td>${p.restock || '--'}</td>
-                    <td><button onclick="openRestock('${p.id}')" class="btn btn-green btn-sm">➕ Reabastecer</button></td>
+                    <td>${actionBtn}</td>
                 </tr>`;
             });
             document.getElementById('d-critical').textContent = criticalCount;
@@ -552,10 +585,15 @@
         function renderProducts() {
             const tb = document.querySelector('#table-products tbody'); tb.innerHTML='';
             products.forEach(p => {
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${p.min}</td>
-                <td><button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Editar</button></td></tr>`;
+                // Botón solo para admin
+                const editBtn = role === 'admin' ? 
+                    `<button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Editar</button>` : 
+                    `<span style="color:#999">Solo lectura</span>`;
+
+                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${editBtn}</td></tr>`;
             });
         }
+
         window.editProd = (id) => {
             const p = products.find(x=>x.id==id);
             document.getElementById('prod-id').value=p.id;
@@ -563,7 +601,7 @@
             document.getElementById('prod-price').value=p.price;
             document.getElementById('prod-cost').value=p.cost||0;
             document.getElementById('prod-stock').value=p.stock; 
-            document.getElementById('prod-stock').disabled = true; // Bloquear stock al editar
+            document.getElementById('prod-stock').disabled = true; 
             document.getElementById('prod-min').value=p.min||0;
             document.getElementById('prod-restock').value=p.restock||'';
         };
@@ -577,10 +615,13 @@
             const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td>
-                <td>${fmtMoney(s.price)}</td><td>${s.type}</td></tr>`;
+                const profitDisplay = role === 'admin' ? `<span class="text-green">+${fmtMoney(s.profit||0)}</span>` : '***';
+                
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName}</td>
+                <td>${fmtMoney(s.price)}</td><td>${profitDisplay}</td></tr>`;
             });
         }
+
         function renderMovements() {
             const tb = document.querySelector('#table-movements tbody'); tb.innerHTML='';
             movements.slice(0,50).forEach(m => {
@@ -594,13 +635,15 @@
                 <td><button onclick="payPending('${i.id}')" class="btn btn-green btn-sm">Pagado</button></td></tr>`;
             });
         }
-        window.payPending = async (id) => { if(confirm("¿Marcar como cobrado?")) await deleteDoc(doc(db,"pending",id)); }
+        window.payPending = async (id) => { if(confirm("¿Cobrado?")) await deleteDoc(doc(db,"pending",id)); }
 
         function updateDashboard() {
             const todayStart = new Date(); todayStart.setHours(0,0,0,0);
             const todaySales = sales.filter(s => s.timestamp?.toDate() >= todayStart);
             document.getElementById('d-today').textContent = fmtMoney(todaySales.reduce((a,b)=>a+b.price,0));
-            document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
+            // Calculo de rentabilidad (Suma de profit)
+            const totalProfit = todaySales.reduce((a,b)=>a+(b.profit||0),0);
+            document.getElementById('d-profit').textContent = fmtMoney(totalProfit);
         }
 
         // Exports
