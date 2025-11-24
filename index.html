@@ -54,7 +54,7 @@
         
         /* Tablas y Formularios */
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
         th { background: #f9fafb; font-size: 0.85rem; text-transform: uppercase; color: var(--gray); }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
         input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 0.5rem; }
@@ -200,11 +200,11 @@
                             
                             <label>Presentación (Fijo):</label>
                             <select id="sale-presentation" required onchange="updateSaleForm()" style="font-weight:bold; color:var(--primary);">
-                                <option value="1">Unidad</option>
+                                <option value="1">Unidad (1 botella)</option>
                                 <option value="6">Paca de 6</option>
                                 <option value="9">Paca de 9</option>
                                 <option value="12">Paca de 12</option>
-                                <option value="20">Paca de 20</option>
+                                <option value="20">Paca de 20 (300ml)</option>
                             </select>
                             
                             <label>Cantidad de Presentaciones:</label>
@@ -238,7 +238,7 @@
                         <h3>📋 Ventas del Día</h3>
                         <div style="overflow-x:auto">
                             <table id="table-sales">
-                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Total</th><th>Ganancia</th></tr></thead>
+                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Cant.</th><th>P. Unit</th><th>Total</th><th>Ganancia</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -260,7 +260,7 @@
                             <div><label>Nombre del Producto (ÚNICO)</label><input type="text" id="prod-name" required placeholder="Ej: Agua 600ml"></div>
                             <div><label>Fecha Reabastecimiento (Est.)</label><input type="date" id="prod-restock"></div>
                             
-                            <!-- [MODIFICADO] Etiquetas más claras -->
+                            <!-- Etiquetas claras -->
                             <div><label>Precio al Público (Lo que paga el cliente)</label><input type="number" id="prod-price" step="0.01" required></div>
                             <div><label>Costo para Ti (Lo que te cuesta a ti)</label><input type="number" id="prod-cost" step="0.01" required></div>
                             
@@ -413,7 +413,7 @@
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSalesTable(); updateDashboard();
-                if(role === 'admin') renderAdminSalesTable(); // Corrección de ventas
+                if(role === 'admin') renderAdminSalesTable();
             });
             if(role === 'admin') {
                 onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
@@ -649,12 +649,26 @@
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
                 const profitVal = s.profit || 0;
+                // Si la ganancia es positiva, verde. Si es negativa, rojo.
                 const profitClass = profitVal >= 0 ? 'text-green' : 'text-red';
+                // Si es positiva, agregamos un "+", si es negativa el fmtMoney ya pone el "-"
                 const sign = profitVal > 0 ? '+' : '';
+                
                 const profitDisplay = role === 'admin' ? `<span class="${profitClass}">${sign}${fmtMoney(profitVal)}</span>` : '***';
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName}</td><td>${fmtMoney(s.price)}</td><td>${profitDisplay}</td></tr>`;
+                const unitPrice = s.qty_packs > 0 ? (s.price / s.qty_packs) : 0;
+
+                tb.innerHTML += `<tr>
+                    <td>${fmtDate(s.timestamp)}</td>
+                    <td>${s.product}</td>
+                    <td>${presName}</td>
+                    <td>${s.qty_packs}</td>
+                    <td>${fmtMoney(unitPrice)}</td>
+                    <td>${fmtMoney(s.price)}</td>
+                    <td>${profitDisplay}</td>
+                </tr>`;
             });
         }
+
         function renderMovements() {
             const tb = document.querySelector('#table-movements tbody'); tb.innerHTML='';
             movements.slice(0,50).forEach(m => { tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.user}</td><td>${m.type}</td><td>${m.product}</td><td>${m.quantity}</td></tr>`; });
@@ -669,7 +683,8 @@
             const todayStart = new Date(); todayStart.setHours(0,0,0,0);
             const todaySales = sales.filter(s => s.timestamp?.toDate() >= todayStart);
             document.getElementById('d-today').textContent = fmtMoney(todaySales.reduce((a,b)=>a+b.price,0));
-            document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
+            const totalProfit = todaySales.reduce((a,b)=>a+(b.profit||0),0);
+            document.getElementById('d-profit').textContent = fmtMoney(totalProfit);
         }
 
         window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost, ValorTotal:p.stock*p.cost})), "Inventario");
