@@ -25,7 +25,7 @@
         .flex-col { flex-direction: column; }
         .items-center { align-items: center; }
         .justify-between { justify-content: space-between; }
-        .admin-only { display: none; } /* Oculto por defecto */
+        .admin-only { display: none; }
         .text-red { color: var(--danger); font-weight: bold; }
         .text-green { color: var(--secondary); font-weight: bold; }
         .bg-red-100 { background-color: #fee2e2; }
@@ -76,20 +76,21 @@
     <div id="loader" class="hidden"><div class="spin"></div></div>
     <div id="toast" style="position:fixed; bottom:20px; right:20px; padding:1rem; background:#10b981; color:white; border-radius:0.5rem; display:none; z-index:3000;"></div>
 
-    <!-- MODAL DE REABASTECIMIENTO -->
+    <!-- MODAL DE REABASTECIMIENTO (La única forma correcta de sumar stock) -->
     <div id="modal-restock" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 style="margin-bottom: 0.5rem;">📥 Entrada de Inventario</h3>
-            <p style="color:var(--gray); margin-bottom: 1rem;">Estás agregando stock a: <b id="modal-prod-name" style="color:var(--primary)"></b></p>
+            <p style="color:var(--gray); margin-bottom: 1rem;">Producto: <b id="modal-prod-name" style="color:var(--primary); font-size:1.2em;"></b></p>
             
             <form id="form-restock">
                 <input type="hidden" id="restock-prod-id">
-                <label>Cantidad a Ingresar (Unidades sueltas):</label>
-                <input type="number" id="restock-qty" min="1" placeholder="Ej: 100" required style="font-size:1.2rem; padding:1rem;">
+                <label>Cantidad a Ingresar (Unidades/Botellas sueltas):</label>
+                <input type="number" id="restock-qty" min="1" placeholder="Ej: 100" required style="font-size:1.2rem; padding:1rem; border: 2px solid var(--secondary);">
+                <p style="font-size:0.8rem; color:var(--gray); margin-top:0.5rem;">* Esto sumará al inventario actual. No crea un producto nuevo.</p>
                 
-                <div style="display:flex; gap:1rem; margin-top:1rem;">
+                <div style="display:flex; gap:1rem; margin-top:1.5rem;">
                     <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
-                    <button type="submit" class="btn btn-green" style="flex:1">Confirmar Entrada</button>
+                    <button type="submit" class="btn btn-green" style="flex:1">✅ Confirmar Entrada</button>
                 </div>
             </form>
         </div>
@@ -146,7 +147,7 @@
         <main>
             <!-- DASHBOARD -->
             <div id="page-dashboard" class="page">
-                <h1 style="margin-bottom:1.5rem;">Resumen General</h1>
+                <h1 style="margin-bottom:1.5rem;">Tablero de Control</h1>
                 <div class="grid-4">
                     <div class="card">
                         <div class="flex justify-between items-center">
@@ -180,13 +181,13 @@
                 <div class="grid-4" style="grid-template-columns: 1fr 2fr;">
                     <!-- Formulario -->
                     <div class="card">
-                        <h3>🛒 Nueva Venta</h3>
+                        <h3>🛒 Registrar Venta</h3>
                         <form id="form-sale">
                             <label>Producto:</label>
                             <select id="sale-product" required onchange="updateSaleForm()"></select>
                             
-                            <label>Presentación:</label>
-                            <select id="sale-presentation" required onchange="updateSaleForm()">
+                            <label>Presentación (Fijo):</label>
+                            <select id="sale-presentation" required onchange="updateSaleForm()" style="font-weight:bold; color:var(--primary);">
                                 <option value="1">Unidad (1 botella)</option>
                                 <option value="6">Paca de 6</option>
                                 <option value="9">Paca de 9</option>
@@ -206,11 +207,11 @@
                             <textarea id="sale-obs" rows="2"></textarea>
 
                             <div style="background:#f0f9ff; padding:1rem; border-radius:0.5rem; margin:1rem 0;">
-                                <div class="flex justify-between"><small>Precio Base:</small> <b id="sale-price-unit">$0.00</b></div>
-                                <div class="flex justify-between"><small>Descuento Inventario:</small> <b id="sale-deduct">0 un.</b></div>
+                                <div class="flex justify-between"><small>Precio Unitario Base:</small> <b id="sale-price-unit">$0.00</b></div>
+                                <div class="flex justify-between"><small>Se descontarán:</small> <b id="sale-deduct" class="text-red">0 un.</b></div>
                                 <hr style="margin:0.5rem 0; border:0; border-top:1px solid #ddd;">
                                 <div class="flex justify-between items-center">
-                                    <span>TOTAL:</span>
+                                    <span>TOTAL A PAGAR:</span>
                                     <span id="sale-total" style="font-size:1.5rem; font-weight:bold; color:var(--primary);">$0.00</span>
                                 </div>
                             </div>
@@ -221,10 +222,10 @@
 
                     <!-- Historial -->
                     <div class="card">
-                        <h3>📋 Ventas Recientes</h3>
+                        <h3>📋 Ventas del Día</h3>
                         <div style="overflow-x:auto">
                             <table id="table-sales">
-                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Cant.</th><th>Total</th><th>Pago</th><th>Obs.</th></tr></thead>
+                                <thead><tr><th>Hora</th><th>Prod.</th><th>Present.</th><th>Cant.</th><th>Total</th><th>Pago</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -232,40 +233,44 @@
                 </div>
             </div>
 
-            <!-- PRODUCTOS (ADMIN) -->
+            <!-- PRODUCTOS (ADMIN) - CREACIÓN SOLAMENTE -->
             <div id="page-productos" class="page hidden">
                 <div class="card">
-                    <h3>🛠️ Gestión de Catálogo (Crear/Editar)</h3>
-                    <p style="color:var(--gray); font-size:0.9rem; margin-bottom:1rem;">Utiliza este formulario para registrar NUEVOS productos o cambiar precios. <b>NO uses esto para reabastecer stock diario.</b></p>
+                    <h3>🛠️ Catálogo de Productos (Solo Nuevos)</h3>
+                    <div style="background:#fffbeb; padding:1rem; margin-bottom:1rem; border-left:4px solid var(--warning);">
+                        <b>¡ATENCIÓN!</b> No uses este formulario para reabastecer. Si el producto ya existe, ve a la pestaña <b>"INVENTARIO"</b> y usa el botón verde.
+                        <br>Este formulario es <b>SOLO para crear productos que nunca has vendido antes.</b>
+                    </div>
+                    
                     <form id="form-product">
                         <input type="hidden" id="prod-id">
                         <div class="form-grid">
-                            <div><label>Nombre del Producto</label><input type="text" id="prod-name" required></div>
+                            <div><label>Nombre del Producto (ÚNICO)</label><input type="text" id="prod-name" required placeholder="Ej: Agua 600ml"></div>
                             <div><label>Fecha Reabastecimiento (Est.)</label><input type="date" id="prod-restock"></div>
                             <div><label>Precio Venta (Por Botella)</label><input type="number" id="prod-price" step="0.01" required></div>
                             <div><label>Costo Compra (Por Botella)</label><input type="number" id="prod-cost" step="0.01" required></div>
-                            <div><label>Stock Inicial (Solo nuevos)</label><input type="number" id="prod-stock" required></div>
+                            <div><label>Stock Inicial</label><input type="number" id="prod-stock" required></div>
                             <div><label>Alerta Stock Mínimo</label><input type="number" id="prod-min" required></div>
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="btn btn-blue">Guardar Ficha de Producto</button>
-                            <button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar / Cancelar</button>
+                            <button type="submit" class="btn btn-blue">Crear Nuevo Producto</button>
+                            <button type="button" onclick="resetProdForm()" class="btn btn-gray">Cancelar</button>
                         </div>
                     </form>
                 </div>
                 <div class="card">
-                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock Actual</th><th>Min</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock Total</th><th>Min</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </div>
 
-            <!-- INVENTARIO (ADMIN) -->
+            <!-- INVENTARIO (ADMIN) - REABASTECIMIENTO -->
             <div id="page-inventario" class="page hidden">
                 <div class="card">
-                    <h3>📦 Control de Stock y Reabastecimiento</h3>
-                    <p style="margin-bottom:1rem;">Aquí se gestionan las ENTRADAS de mercancía. Usa el botón verde para sumar stock.</p>
+                    <h3>📦 Gestión de Stock y Entradas</h3>
+                    <p style="margin-bottom:1rem;">Usa el botón <b>"➕ Reabastecer"</b> para sumar mercancía a productos existentes.</p>
                     <div style="overflow-x:auto">
                         <table id="table-inventory">
-                            <thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Días Restantes</th><th>Próx. Reabastecimiento</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Producto</th><th>Stock Actual</th><th>Estado</th><th>Días Restantes</th><th>Próx. Reabastecimiento</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -306,17 +311,17 @@
                 <div class="grid-4">
                     <div class="card">
                         <h3>📦 Inventario Valorizado</h3>
-                        <p style="color:var(--gray)">Estado actual con valoración de costos y precios.</p>
+                        <p style="color:var(--gray)">Estado actual con valoración.</p>
                         <button onclick="exportInventory()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                     <div class="card">
                         <h3>💰 Ventas Detalladas</h3>
-                        <p style="color:var(--gray)">Reporte de ventas con cálculo de ganancia neta.</p>
+                        <p style="color:var(--gray)">Ventas con cálculo de ganancia.</p>
                         <button onclick="exportSales()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                     <div class="card">
                         <h3>📉 Auditoría Completa</h3>
-                        <p style="color:var(--gray)">Registro de todas las entradas, salidas y ediciones.</p>
+                        <p style="color:var(--gray)">Entradas, salidas y ediciones.</p>
                         <button onclick="exportMovements()" class="btn btn-green" style="width:100%; margin-top:1rem;">Descargar Excel</button>
                     </div>
                 </div>
@@ -354,21 +359,16 @@
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
 
-        // Auth Listener
         onAuthStateChanged(auth, async (u) => {
             document.getElementById('loader').classList.remove('hidden');
             if (u) {
                 user = u;
                 const docSnap = await getDoc(doc(db, "users", u.uid));
                 role = docSnap.exists() ? docSnap.data().role : 'vendedor';
-                
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
                 document.getElementById('user-display').innerHTML = `${u.email} <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
-                
-                // Control de Permisos
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
-
                 initListeners();
                 document.getElementById('pend-date').value = today();
                 nav('dashboard');
@@ -382,14 +382,11 @@
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => {
                 products = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderProducts();
-                renderInventory();
-                updateSelects();
+                renderProducts(); renderInventory(); updateSelects();
             });
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderSalesTable();
-                updateDashboard();
+                renderSalesTable(); updateDashboard();
             });
             if(role === 'admin') {
                 onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
@@ -405,9 +402,9 @@
             });
         }
 
-        // --- FUNCIONES PRINCIPALES ---
+        // --- LOGICA PRINCIPAL CORREGIDA ---
 
-        // Reabastecimiento Seguro (Modal)
+        // REABASTECIMIENTO (Modal)
         window.openRestock = (id) => {
             const p = products.find(x => x.id === id);
             if(!p) return;
@@ -424,7 +421,6 @@
             const id = document.getElementById('restock-prod-id').value;
             const qty = parseInt(document.getElementById('restock-qty').value);
             const p = products.find(x => x.id === id);
-
             if(qty <= 0) return alert("Cantidad inválida");
 
             try {
@@ -439,20 +435,30 @@
             } catch(err) { alert(err.message); }
         });
 
-        // Gestión Productos (Solo Metadata)
+        // CREACIÓN DE PRODUCTOS (CON BLOQUEO DE DUPLICADOS)
         window.productForm = document.getElementById('form-product');
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if(role !== 'admin') return alert("Solo admin");
+            
             const id = document.getElementById('prod-id').value;
+            const name = document.getElementById('prod-name').value.trim();
+            
+            // VALIDACIÓN DE DUPLICADOS
+            if (!id) {
+                const exists = products.some(p => p.name.toLowerCase() === name.toLowerCase());
+                if(exists) {
+                    return alert("❌ ERROR: El producto '" + name + "' YA EXISTE.\n\nVe a la pestaña 'INVENTARIO' para agregar más stock.");
+                }
+            }
+
             const data = {
-                name: document.getElementById('prod-name').value,
+                name: name,
                 price: parseFloat(document.getElementById('prod-price').value),
                 cost: parseFloat(document.getElementById('prod-cost').value),
                 min: parseInt(document.getElementById('prod-min').value),
                 restock: document.getElementById('prod-restock').value
             };
-            // Solo actualizamos stock si es CREACION. Si es edicion, no tocamos el stock.
             if(!id) data.stock = parseInt(document.getElementById('prod-stock').value);
 
             try {
@@ -468,7 +474,7 @@
             } catch(e) { alert(e.message); }
         });
 
-        // Registrar Venta
+        // REGISTRAR VENTA (LÓGICA DE PACAS CORREGIDA)
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const pid = document.getElementById('sale-product').value;
@@ -478,11 +484,11 @@
             const prod = products.find(p => p.id === pid);
             if(!prod) return;
 
-            const totalUnits = qty * pres; 
+            const totalUnits = qty * pres; // Conversión a unidades
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
             const profit = totalPrice - (totalUnits * (prod.cost || 0));
 
-            if(prod.stock < totalUnits) return alert("❌ Stock insuficiente");
+            if(prod.stock < totalUnits) return alert("❌ Stock insuficiente (" + prod.stock + " disponibles)");
 
             try {
                 await runTransaction(db, async (t) => {
@@ -525,7 +531,6 @@
             const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = '';
             let criticalCount = 0;
             products.forEach(p => {
-                // Calculo dias restantes
                 const last7d = sales.filter(s => s.pid === p.id && (new Date() - s.timestamp?.toDate()) < 604800000);
                 const velocity = last7d.reduce((a,b)=>a+b.qty_total_units,0) / 7;
                 const daysLeft = velocity > 0 ? Math.floor(p.stock/velocity) : "Infinito";
@@ -557,9 +562,8 @@
             document.getElementById('prod-name').value=p.name;
             document.getElementById('prod-price').value=p.price;
             document.getElementById('prod-cost').value=p.cost||0;
-            // Ocultamos stock en edicion para evitar errores, se debe usar Reabastecer
             document.getElementById('prod-stock').value=p.stock; 
-            document.getElementById('prod-stock').disabled = true;
+            document.getElementById('prod-stock').disabled = true; // Bloquear stock al editar
             document.getElementById('prod-min').value=p.min||0;
             document.getElementById('prod-restock').value=p.restock||'';
         };
@@ -574,7 +578,7 @@
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
                 tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td>
-                <td>${fmtMoney(s.price)}</td><td>${s.type}</td><td style="font-size:0.8em; color:gray">${s.obs||''}</td></tr>`;
+                <td>${fmtMoney(s.price)}</td><td>${s.type}</td></tr>`;
             });
         }
         function renderMovements() {
@@ -597,29 +601,12 @@
             const todaySales = sales.filter(s => s.timestamp?.toDate() >= todayStart);
             document.getElementById('d-today').textContent = fmtMoney(todaySales.reduce((a,b)=>a+b.price,0));
             document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
-            
-            // Chart Sales
-            const ctx = document.getElementById('chart-sales');
-            if(window.myChart) window.myChart.destroy();
-            // Agrupar por fecha simple (ultimos 7 dias)
-            const labels = [], data = [];
-            for(let i=6; i>=0; i--) {
-                const d = new Date(); d.setDate(d.getDate()-i);
-                const str = d.toISOString().split('T')[0];
-                labels.push(str);
-                const dayTotal = sales.filter(s => s.timestamp?.toDate().toISOString().startsWith(str)).reduce((a,b)=>a+b.price,0);
-                data.push(dayTotal);
-            }
-            window.myChart = new Chart(ctx, {
-                type: 'line', data: { labels, datasets: [{ label: 'Ventas ($)', data, borderColor: '#0a74da', tension:0.3 }] }
-            });
         }
 
         // Exports
         window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost, ValorTotal:p.stock*p.cost})), "Inventario");
         window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
         window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
-        window.exportCritical = () => saveExcel(products.filter(p=>p.stock<=p.min).map(p=>({Producto:p.name, Stock:p.stock, Minimo:p.min})), "Stock_Critico");
         function saveExcel(json, name) {
             const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
