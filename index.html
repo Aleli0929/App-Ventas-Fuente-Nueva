@@ -372,13 +372,20 @@
                         </div>
                     </div>
 
-                    <div class="card">
-                        <h3><i data-feather="list"></i> Ventas del Día</h3>
-                        <div class="table-container">
-                            <table id="table-sales">
-                                <thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Cant.</th><th>Total</th><th></th></tr></thead>
-                                <tbody></tbody>
-                            </table>
+                    <div>
+                        <div class="card">
+                            <h3><i data-feather="list"></i> Ventas del Día</h3>
+                            <div class="table-container" style="max-height: 400px; overflow-y:auto;">
+                                <table id="table-sales">
+                                    <thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Total</th><th></th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card" style="background:#f8fafc; border: 1px solid #e2e8f0;">
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja (Hoy)</h3>
+                            <div id="daily-summary"></div>
                         </div>
                     </div>
                 </div>
@@ -568,7 +575,7 @@
             });
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderSalesTable(); updateDashboard();
+                renderSalesTable(); updateDashboard(); renderDailySummary();
                 if(role === 'admin') renderAdminSalesTable();
             });
             if(role === 'admin') {
@@ -585,11 +592,11 @@
             });
         }
 
-        // --- ABASTECIMIENTO CAMIÓN (CON BLOQUEO DE BOTON) ---
+        // --- ABASTECIMIENTO CAMIÓN ---
         document.getElementById('form-truck-load').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-truck');
-            btn.disabled = true; // LOCK
+            btn.disabled = true; 
             
             const driver = document.getElementById('truck-driver').value;
             const pid = document.getElementById('truck-product').value;
@@ -613,7 +620,6 @@
 
             try {
                 await runTransaction(db, async (t) => {
-                    // 1. LEER TODO
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
                     if(!pDoc.exists()) throw "Producto no encontrado";
@@ -630,7 +636,6 @@
                         if(currentSupplyStock < supplyDeduct) throw `Falta stock de ${supplyDoc.name}`;
                     }
 
-                    // 2. ESCRIBIR TODO
                     t.update(pRef, { stock: currentProdStock - qty });
                     if(supplyDoc && sRef) t.update(sRef, { stock: currentSupplyStock - supplyDeduct });
 
@@ -647,14 +652,14 @@
                 toast("✅ Carga Registrada");
                 document.getElementById('form-truck-load').reset();
             } catch (err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
-            finally { btn.disabled = false; } // UNLOCK
+            finally { btn.disabled = false; } 
         });
 
-        // --- VENTA (CON BLOQUEO DE BOTON) ---
+        // --- VENTA ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
-            btn.disabled = true; // LOCK
+            btn.disabled = true;
             
             const pid = document.getElementById('sale-product').value;
             const pres = parseInt(document.getElementById('sale-presentation').value);
@@ -679,7 +684,6 @@
 
             try {
                 await runTransaction(db, async (t) => {
-                    // 1. LEER
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
                     if(!pDoc.exists()) throw "Producto no encontrado";
@@ -696,7 +700,6 @@
                         if(currentSStock < supplyDeduct) throw `Falta insumo: ${supplyDoc.name}`;
                     }
 
-                    // 2. ESCRIBIR
                     t.update(pRef, { stock: currentPStock - totalUnits });
                     if(supplyDoc && sRef) t.update(sRef, { stock: currentSStock - supplyDeduct });
 
@@ -714,7 +717,7 @@
                 document.getElementById('form-sale').reset();
                 updateSaleForm();
             } catch(err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
-            finally { btn.disabled = false; } // UNLOCK
+            finally { btn.disabled = false; }
         });
 
         // --- SISTEMA ---
@@ -738,14 +741,12 @@
             showConfirm("⚠️ ¿Anular Venta?", "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        // 1. LEER TODO (READS)
                         let pRef = null, currentPStock = 0;
                         let targetProdId = sale.pid;
                         if (!targetProdId && sale.product) {
                             const foundProd = products.find(p => p.name === sale.product);
                             if (foundProd) targetProdId = foundProd.id;
                         }
-
                         if(targetProdId) {
                             pRef = doc(db, "products", targetProdId);
                             const pDoc = await t.get(pRef);
@@ -762,7 +763,6 @@
                             }
                         }
 
-                        // 2. ESCRIBIR TODO (WRITES)
                         if(pRef) t.update(pRef, { stock: currentPStock + (sale.qty_total_units || 0) });
                         if(sRef) t.update(sRef, { stock: currentSStock + sale.supplyQty });
 
@@ -806,6 +806,55 @@
         });
 
         // --- HELPERS & UI ---
+        function renderDailySummary() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todaySales = sales.filter(s => {
+                if(!s.timestamp) return false;
+                return new Date(s.timestamp.seconds * 1000).toISOString().split('T')[0] === todayStr;
+            });
+
+            let total = 0, cash = 0, transfer = 0;
+            const prodCounts = {};
+
+            todaySales.forEach(s => {
+                total += s.price;
+                if(s.type === 'Efectivo') cash += s.price;
+                else transfer += s.price;
+
+                const key = s.product; 
+                if(!prodCounts[key]) prodCounts[key] = 0;
+                prodCounts[key] += s.qty_packs; // Conteo de Pacas/Unidades vendidas
+            });
+
+            let html = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
+                    <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;">
+                        <div style="font-size:0.8rem; color:var(--gray)">Efectivo</div>
+                        <div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div>
+                    </div>
+                    <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;">
+                        <div style="font-size:0.8rem; color:var(--gray)">Transfer.</div>
+                        <div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div>
+                    </div>
+                </div>
+                <div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;">
+                    <small style="font-weight:600; color:var(--dark); display:block; margin-bottom:5px;">Conteo de Productos:</small>
+                    <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">`;
+            
+            for(const [prod, count] of Object.entries(prodCounts)){
+                html += `<li style="display:flex; justify-content:space-between; padding:2px 0;">
+                            <span style="color:var(--gray)">${prod}</span>
+                            <b>${count}</b>
+                         </li>`;
+            }
+            html += `</ul>
+                    <div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">
+                        Total: ${fmtMoney(total)}
+                    </div>
+                </div>`;
+            document.getElementById('daily-summary').innerHTML = html;
+        }
+
         window.updateSaleForm = () => {
             const pid = document.getElementById('sale-product').value;
             const pres = parseInt(document.getElementById('sale-presentation').value)||1;
@@ -830,10 +879,16 @@
         }
         function renderSalesTable() {
             const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
-            sales.slice(0,30).forEach(s => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            // Mostrar solo ventas de hoy en la tabla lateral
+            const todays = sales.filter(s => {
+                if(!s.timestamp) return false;
+                return new Date(s.timestamp.seconds * 1000).toISOString().split('T')[0] === todayStr;
+            });
+
+            todays.forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unid' : `Paca ${s.presentation_val}`;
-                const profitDisplay = role === 'admin' ? `<span class="${(s.profit||0)>=0?'text-success':'text-danger'}">${fmtMoney(s.profit||0)}</span>` : '';
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.user.split('@')[0]}</td><td>${s.product}</td><td>${s.qty_packs} <small class="text-primary">(${presName})</small></td><td style="font-weight:bold">${fmtMoney(s.price)}</td><td>${profitDisplay}</td></tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp).split(',')[1]}</td><td>${s.user.split('@')[0]}</td><td>${s.product} <small>(${s.qty_packs})</small></td><td>${fmtMoney(s.price)}</td></tr>`;
             });
         }
         function updateSelects() {
