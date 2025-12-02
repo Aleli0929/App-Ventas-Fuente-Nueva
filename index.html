@@ -116,6 +116,7 @@
         }
         .btn:hover { transform: translateY(-1px); filter: brightness(110%); }
         .btn:active { transform: translateY(0); }
+        .btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
         .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px; }
 
         .btn-blue { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
@@ -337,7 +338,7 @@
                                     </div>
                                 </div>
                                 
-                                <button type="submit" class="btn btn-blue" style="width:100%">
+                                <button type="submit" id="btn-submit-sale" class="btn btn-blue" style="width:100%">
                                     <i data-feather="check-circle" style="width:18px;"></i> CONFIRMAR VENTA
                                 </button>
                             </form>
@@ -364,7 +365,7 @@
                                         <input type="number" id="truck-qty" min="1" required placeholder="0">
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-truck" style="width:100%">
+                                <button type="submit" id="btn-submit-truck" class="btn btn-truck" style="width:100%">
                                     <i data-feather="package" style="width:18px;"></i> REGISTRAR SALIDA
                                 </button>
                             </form>
@@ -584,17 +585,20 @@
             });
         }
 
-        // --- ABASTECIMIENTO CAMIÓN (LOGICA SEGURA) ---
+        // --- ABASTECIMIENTO CAMIÓN (CON BLOQUEO DE BOTON) ---
         document.getElementById('form-truck-load').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('btn-submit-truck');
+            btn.disabled = true; // LOCK
+            
             const driver = document.getElementById('truck-driver').value;
             const pid = document.getElementById('truck-product').value;
             const qty = parseInt(document.getElementById('truck-qty').value);
             const prod = products.find(p => p.id === pid);
 
-            if(!prod) return;
-            if(qty <= 0) return toast("❌ Cantidad inválida");
-            if(prod.stock < qty) return showConfirm("Error", "❌ No hay suficiente agua en planta", null);
+            if(!prod) { btn.disabled = false; return; }
+            if(qty <= 0) { toast("❌ Cantidad inválida"); btn.disabled = false; return; }
+            if(prod.stock < qty) { showConfirm("Error", "❌ No hay suficiente agua en planta", null); btn.disabled = false; return; }
 
             let supplyDoc = null;
             let supplyDeduct = 0;
@@ -602,7 +606,7 @@
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 if(s) {
                     supplyDeduct = qty * (prod.supplyQty || 1);
-                    if(s.stock < supplyDeduct) return showConfirm("Error", `❌ Faltan insumos (${s.name}).`, null);
+                    if(s.stock < supplyDeduct) { showConfirm("Error", `❌ Faltan insumos (${s.name}).`, null); btn.disabled = false; return; }
                     supplyDoc = s;
                 }
             }
@@ -643,22 +647,26 @@
                 toast("✅ Carga Registrada");
                 document.getElementById('form-truck-load').reset();
             } catch (err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
+            finally { btn.disabled = false; } // UNLOCK
         });
 
-        // --- VENTA (LOGICA SEGURA) ---
+        // --- VENTA (CON BLOQUEO DE BOTON) ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('btn-submit-sale');
+            btn.disabled = true; // LOCK
+            
             const pid = document.getElementById('sale-product').value;
             const pres = parseInt(document.getElementById('sale-presentation').value);
             const qty = parseInt(document.getElementById('sale-qty').value);
             const prod = products.find(p => p.id === pid);
-            if(!prod) return;
+            if(!prod) { btn.disabled = false; return; }
 
             const totalUnits = qty * pres; 
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
             const profit = totalPrice - (totalUnits * (prod.cost || 0));
 
-            if(prod.stock < totalUnits) return showConfirm("Error", "❌ Stock insuficiente", null);
+            if(prod.stock < totalUnits) { showConfirm("Error", "❌ Stock insuficiente", null); btn.disabled = false; return; }
 
             let supplyDoc = null, supplyDeduct = 0;
             if(prod.supplyLink) {
@@ -706,6 +714,7 @@
                 document.getElementById('form-sale').reset();
                 updateSaleForm();
             } catch(err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
+            finally { btn.disabled = false; } // UNLOCK
         });
 
         // --- SISTEMA ---
@@ -817,7 +826,7 @@
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unid' : `Paca ${s.presentation_val}`;
                 const profitDisplay = role === 'admin' ? `<span class="${(s.profit||0)>=0?'text-success':'text-danger'}">${fmtMoney(s.profit||0)}</span>` : '';
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.user.split('@')[0]}</td><td>${s.product}</td><td>${s.qty_packs} (${presName})</td><td style="font-weight:bold">${fmtMoney(s.price)}</td><td>${profitDisplay}</td></tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.user.split('@')[0]}</td><td>${s.product}</td><td>${s.qty_packs} <small class="text-primary">(${presName})</small></td><td style="font-weight:bold">${fmtMoney(s.price)}</td><td>${profitDisplay}</td></tr>`;
             });
         }
         function updateSelects() {
