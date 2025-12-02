@@ -387,6 +387,16 @@
                             <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja (Hoy)</h3>
                             <div id="daily-summary"></div>
                         </div>
+
+                        <div class="card" style="border-left: 4px solid var(--truck); margin-top: 1.5rem;">
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas Camión</h3>
+                            <div class="table-container" style="max-height: 300px; overflow-y:auto;">
+                                <table id="table-truck-loads">
+                                    <thead><tr><th>Hora</th><th>Chofer</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -578,12 +588,11 @@
                 renderSalesTable(); updateDashboard(); renderDailySummary();
                 if(role === 'admin') renderAdminSalesTable();
             });
-            if(role === 'admin') {
-                onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
-                    movements = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                    renderMovements();
-                });
-            }
+            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
+                movements = sn.docs.map(d => ({id: d.id, ...d.data()}));
+                renderMovements();
+                renderTruckLoads(); // Para el historial de rectificación
+            });
             onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => {
                 const list = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderPending(list);
@@ -645,7 +654,10 @@
                     t.set(moveRef, {
                         type: "SALIDA_CAMION",
                         product: prod.name,
+                        productId: pid, // IMPORTANTE PARA RECTIFICAR
                         quantity: qty,
+                        supplyId: supplyDoc ? supplyDoc.id : null, // IMPORTANTE
+                        supplyQty: supplyDeduct, // IMPORTANTE
                         user: user.email,
                         details: `Chofer: ${driver}`,
                         timestamp: serverTimestamp()
@@ -656,6 +668,63 @@
             } catch (err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
             finally { btn.disabled = false; } // UNLOCK
         });
+
+        // --- RECTIFICAR CARGA CAMION (NUEVO) ---
+        function renderTruckLoads() {
+            const tb = document.querySelector('#table-truck-loads tbody');
+            tb.innerHTML = '';
+            // Filtrar últimos 20 movimientos de tipo SALIDA_CAMION
+            const loads = movements.filter(m => m.type === 'SALIDA_CAMION').slice(0, 20);
+            
+            loads.forEach(m => {
+                const btn = `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px 8px;"><i data-feather="trash-2" style="width:14px"></i></button>`;
+                tb.innerHTML += `<tr>
+                    <td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td>
+                    <td style="font-size:0.8rem">${m.details.replace('Chofer: ', '')}</td>
+                    <td style="font-size:0.8rem">${m.product}</td>
+                    <td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td>
+                    <td>${btn}</td>
+                </tr>`;
+            });
+            feather.replace();
+        }
+
+        window.undoTruckLoad = async (moveId) => {
+            // Permitir rectificar a Admin y Vendedor (según requerimiento)
+            if (role !== 'admin' && role !== 'vendedor') return toast("❌ Sin permiso");
+            
+            const move = movements.find(m => m.id === moveId);
+            if(!move) return toast("Error: Registro no encontrado");
+
+            showConfirm("¿Anular Carga?", `Se devolverán ${move.quantity} ${move.product} al inventario.`, async () => {
+                try {
+                    await runTransaction(db, async (t) => {
+                        // 1. LEER
+                        let pRef = null, currentPStock = 0;
+                        if(move.productId) {
+                            pRef = doc(db, "products", move.productId);
+                            const pDoc = await t.get(pRef);
+                            if(pDoc.exists()) currentPStock = pDoc.data().stock;
+                        }
+
+                        let sRef = null, currentSStock = 0;
+                        if(move.supplyId) {
+                            sRef = doc(db, "supplies", move.supplyId);
+                            const sDoc = await t.get(sRef);
+                            if(sDoc.exists()) currentSStock = sDoc.data().stock;
+                        }
+
+                        // 2. ESCRIBIR (DEVOLVER STOCK)
+                        if(pRef) t.update(pRef, { stock: currentPStock + move.quantity });
+                        if(sRef) t.update(sRef, { stock: currentSStock + (move.supplyQty || 0) });
+
+                        // Eliminar registro
+                        t.delete(doc(db, "movements", moveId));
+                    });
+                    toast("✅ Carga Rectificada");
+                } catch(e) { toast("Error: " + e.message); }
+            });
+        };
 
         // --- VENTA (CON BLOQUEO DE BOTON) ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
@@ -671,12 +740,12 @@
 
             const totalUnits = qty * pres; 
             
-            // CORREGIDO: El precio total se basa SOLO en la cantidad ingresada, ignorando la presentación.
-            // (Si vendo 1 Paca de 12, cobro 1 * Precio, pero descuento 12 * Stock)
+            // CORREGIDO: Precio Total = Cantidad * Precio Producto (Ignora la presentación para el precio)
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
             
-            // Costo se basa en unidades porque el costo es por botella
-            const profit = totalPrice - (totalUnits * (prod.cost || 0));
+            // CORREGIDO: Costo Total = Cantidad de Productos (no unidades) * Costo del Producto
+            const totalCost = qty * prod.cost;
+            const profit = totalPrice - totalCost;
 
             if(prod.stock < totalUnits) { showConfirm("Error", "❌ Stock insuficiente", null); btn.disabled = false; return; }
 
@@ -715,7 +784,7 @@
                     const saleRef = doc(collection(db, "sales"));
                     t.set(saleRef, {
                         product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits,
-                        price: totalPrice, cost: (totalUnits * prod.cost), profit: profit,
+                        price: totalPrice, cost: totalCost, profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
                         user: user.email, timestamp: serverTimestamp(),
@@ -874,7 +943,7 @@
             if(!prod) return;
             
             const totalUnits = qty * pres;
-            // CORREGIDO: Precio Total = Cantidad * Precio Producto (Ignora la presentación para el precio)
+            // Precio Total = Cantidad * Precio Producto
             const total = qty * prod.price;
             
             document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
