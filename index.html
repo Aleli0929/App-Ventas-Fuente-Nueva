@@ -298,7 +298,7 @@
                                 
                                 <div class="form-grid">
                                     <div>
-                                        <label>Presentación</label>
+                                        <label>Presentación (Descuenta Stock)</label>
                                         <select id="sale-presentation" required onchange="updateSaleForm()">
                                             <option value="1">Unidad</option>
                                             <option value="6">Paca de 6</option>
@@ -308,7 +308,7 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label>Cantidad (Packs)</label>
+                                        <label>Cantidad (Unidades)</label>
                                         <input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()">
                                     </div>
                                 </div>
@@ -329,7 +329,7 @@
                                 </div>
 
                                 <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
-                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Base:</small> <b id="sale-price-unit">$0.00</b></div>
+                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Base (Unitario):</small> <b id="sale-price-unit">$0.00</b></div>
                                     <div class="flex justify-between" style="margin-bottom:5px;"><small>Descuento Stock:</small> <b id="sale-deduct" class="text-danger">0 un.</b></div>
                                     <hr style="border-top:1px dashed #cbd5e1; margin:0.5rem 0;">
                                     <div class="flex justify-between items-center">
@@ -592,7 +592,7 @@
             });
         }
 
-        // --- ABASTECIMIENTO CAMIÓN ---
+        // --- ABASTECIMIENTO CAMIÓN (CON BLOQUEO DE BOTON) ---
         document.getElementById('form-truck-load').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-truck');
@@ -620,6 +620,7 @@
 
             try {
                 await runTransaction(db, async (t) => {
+                    // 1. LEER TODO
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
                     if(!pDoc.exists()) throw "Producto no encontrado";
@@ -636,6 +637,7 @@
                         if(currentSupplyStock < supplyDeduct) throw `Falta stock de ${supplyDoc.name}`;
                     }
 
+                    // 2. ESCRIBIR TODO
                     t.update(pRef, { stock: currentProdStock - qty });
                     if(supplyDoc && sRef) t.update(sRef, { stock: currentSupplyStock - supplyDeduct });
 
@@ -652,14 +654,14 @@
                 toast("✅ Carga Registrada");
                 document.getElementById('form-truck-load').reset();
             } catch (err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
-            finally { btn.disabled = false; } 
+            finally { btn.disabled = false; } // UNLOCK
         });
 
-        // --- VENTA ---
+        // --- VENTA (CON BLOQUEO DE BOTON) ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
-            btn.disabled = true;
+            btn.disabled = true; // LOCK
             
             const pid = document.getElementById('sale-product').value;
             const pres = parseInt(document.getElementById('sale-presentation').value);
@@ -668,7 +670,12 @@
             if(!prod) { btn.disabled = false; return; }
 
             const totalUnits = qty * pres; 
+            
+            // CORREGIDO: El precio total se basa SOLO en la cantidad ingresada, ignorando la presentación.
+            // (Si vendo 1 Paca de 12, cobro 1 * Precio, pero descuento 12 * Stock)
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
+            
+            // Costo se basa en unidades porque el costo es por botella
             const profit = totalPrice - (totalUnits * (prod.cost || 0));
 
             if(prod.stock < totalUnits) { showConfirm("Error", "❌ Stock insuficiente", null); btn.disabled = false; return; }
@@ -684,6 +691,7 @@
 
             try {
                 await runTransaction(db, async (t) => {
+                    // 1. LEER
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
                     if(!pDoc.exists()) throw "Producto no encontrado";
@@ -700,6 +708,7 @@
                         if(currentSStock < supplyDeduct) throw `Falta insumo: ${supplyDoc.name}`;
                     }
 
+                    // 2. ESCRIBIR
                     t.update(pRef, { stock: currentPStock - totalUnits });
                     if(supplyDoc && sRef) t.update(sRef, { stock: currentSStock - supplyDeduct });
 
@@ -717,7 +726,7 @@
                 document.getElementById('form-sale').reset();
                 updateSaleForm();
             } catch(err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
-            finally { btn.disabled = false; }
+            finally { btn.disabled = false; } // UNLOCK
         });
 
         // --- SISTEMA ---
@@ -747,6 +756,7 @@
                             const foundProd = products.find(p => p.name === sale.product);
                             if (foundProd) targetProdId = foundProd.id;
                         }
+
                         if(targetProdId) {
                             pRef = doc(db, "products", targetProdId);
                             const pDoc = await t.get(pRef);
@@ -763,6 +773,7 @@
                             }
                         }
 
+                        // WRITES
                         if(pRef) t.update(pRef, { stock: currentPStock + (sale.qty_total_units || 0) });
                         if(sRef) t.update(sRef, { stock: currentSStock + sale.supplyQty });
 
@@ -823,7 +834,7 @@
 
                 const key = s.product; 
                 if(!prodCounts[key]) prodCounts[key] = 0;
-                prodCounts[key] += s.qty_packs; // Conteo de Pacas/Unidades vendidas
+                prodCounts[key] += s.qty_packs; 
             });
 
             let html = `
@@ -861,8 +872,11 @@
             const qty = parseInt(document.getElementById('sale-qty').value)||0;
             const prod = products.find(p => p.id === pid);
             if(!prod) return;
+            
             const totalUnits = qty * pres;
-            const total = totalUnits * prod.price;
+            // CORREGIDO: Precio Total = Cantidad * Precio Producto (Ignora la presentación para el precio)
+            const total = qty * prod.price;
+            
             document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
             document.getElementById('sale-deduct').textContent = totalUnits + " un.";
             document.getElementById('sale-total').textContent = fmtMoney(total);
@@ -880,7 +894,6 @@
         function renderSalesTable() {
             const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
             const todayStr = new Date().toISOString().split('T')[0];
-            // Mostrar solo ventas de hoy en la tabla lateral
             const todays = sales.filter(s => {
                 if(!s.timestamp) return false;
                 return new Date(s.timestamp.seconds * 1000).toISOString().split('T')[0] === todayStr;
