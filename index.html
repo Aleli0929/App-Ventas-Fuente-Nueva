@@ -116,25 +116,18 @@
                 <button id="tab-login" class="btn" style="background:none; color:var(--primary); border-bottom:2px solid var(--primary); width:50%;">Login</button>
                 <button id="tab-register" class="btn" style="background:none; color:var(--gray); width:50%;">Registro</button>
             </div>
-            
-            <!-- LOGIN FORM -->
             <form id="login-form">
                 <input type="email" id="l-email" placeholder="Email" required>
                 <input type="password" id="l-pass" placeholder="Contraseña" required>
                 <button type="submit" class="btn btn-blue" style="width:100%">Ingresar</button>
             </form>
-
-            <!-- REGISTER FORM (NUEVO: CAMPO DE NOMBRE) -->
             <form id="register-form" class="hidden">
                 <label>Nombre del Usuario:</label>
                 <input type="text" id="r-name" placeholder="Ej: Juan Pérez" required style="margin-bottom:1rem;">
-                
                 <label>Email:</label>
                 <input type="email" id="r-email" placeholder="ejemplo@email.com" required>
-                
                 <label>Contraseña:</label>
                 <input type="password" id="r-pass" placeholder="Mínimo 6 caracteres" required>
-                
                 <label>Rol:</label>
                 <select id="r-role">
                     <option value="vendedor">Vendedor</option>
@@ -408,12 +401,11 @@
                 const docSnap = await getDoc(doc(db, "users", u.uid));
                 const userData = docSnap.exists() ? docSnap.data() : {};
                 role = userData.role || 'vendedor';
-                const displayName = userData.name || u.email; // Usar nombre si existe
+                const displayName = userData.name || u.email; 
 
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
                 
-                // Mostrar Nombre en lugar de solo email
                 document.getElementById('user-display').innerHTML = `<b style="color:var(--text)">${displayName}</b><br><span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
                 
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
@@ -619,28 +611,40 @@
             feather.replace();
         }
 
+        // [CORREGIDO] Función de Borrado Blindada
         window.deleteSale = async (saleId) => {
             if (role !== 'admin') return toast("❌ Solo admin.");
             const sale = sales.find(s => s.id === saleId);
-            if (!sale) return;
+            if (!sale) return toast("Error: Venta no encontrada");
             
+            // Nombre seguro del producto
+            const safeProdName = sale.product || "Producto Desconocido";
+            
+            // Intentar recuperar ID del producto
             let targetProdId = sale.pid;
-            if (!targetProdId) {
+            if (!targetProdId && sale.product) {
                 const foundProd = products.find(p => p.name === sale.product);
                 if (foundProd) targetProdId = foundProd.id;
             }
 
-            let msg = `Se devolverán ${sale.qty_total_units || 0} productos.`;
-            if (!targetProdId) msg = "⚠️ Producto original no encontrado. NO SE DEVOLVERÁ STOCK.";
+            const msg = targetProdId ? 
+                `Se devolverán ${sale.qty_total_units || 0} productos al stock.` : 
+                "⚠️ Producto no encontrado. NO SE DEVOLVERÁ STOCK, solo se borrará el registro.";
 
             showConfirm("⚠️ ¿Anular Venta?", msg, async () => {
                 try {
                     await runTransaction(db, async (t) => {
+                        // 1. Devolver Producto (Si existe)
                         if(targetProdId) {
                             const pRef = doc(db, "products", targetProdId);
                             const pDoc = await t.get(pRef);
-                            if (pDoc.exists()) t.update(pRef, { stock: (pDoc.data().stock||0) + sale.qty_total_units });
+                            if (pDoc.exists()) {
+                                const current = pDoc.data().stock || 0;
+                                t.update(pRef, { stock: current + (sale.qty_total_units || 0) });
+                            }
                         }
+                        
+                        // 2. Devolver Insumo (Si existe)
                         if(sale.supplyUsed && sale.supplyQty > 0) {
                             const supp = supplies.find(x => x.name === sale.supplyUsed);
                             if(supp) {
@@ -649,12 +653,24 @@
                                 if(sSnap.exists()) t.update(sRef, { stock: (sSnap.data().stock||0) + sale.supplyQty });
                             }
                         }
+
+                        // 3. Borrar y Auditar (Usando nombre seguro)
                         t.delete(doc(db, "sales", saleId));
+                        
                         const moveRef = doc(collection(db, "movements"));
-                        t.set(moveRef, { type: "ANULACION", product: sale.product, quantity: sale.qty_total_units, user: user.email, timestamp: serverTimestamp() });
+                        t.set(moveRef, { 
+                            type: "ANULACION", 
+                            product: safeProdName, // <-- USO DE VARIABLE SEGURA
+                            quantity: sale.qty_total_units || 0, 
+                            user: user.email || "admin", 
+                            timestamp: serverTimestamp() 
+                        });
                     });
-                    toast("✅ Anulado");
-                } catch (err) { toast("❌ Error: " + err.message); }
+                    toast("✅ Anulado correctamente");
+                } catch (err) { 
+                    console.error(err);
+                    toast("❌ Error: " + err.message); 
+                }
             });
         };
 
@@ -742,12 +758,11 @@
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
                 const profitVal = s.profit || 0;
-                const profitDisplay = role === 'admin' ? `<span class="${profitVal>=0?'text-green':'text-red'}">${profitVal>0?'+':''}${fmtMoney(profitVal)}</span>` : '***';
+                const profitClass = profitVal >= 0 ? 'text-green' : 'text-red';
+                const sign = profitVal > 0 ? '+' : '';
+                const profitDisplay = role === 'admin' ? `<span class="${profitClass}">${sign}${fmtMoney(profitVal)}</span>` : '***';
                 const unitPrice = s.qty_packs > 0 ? (s.price / s.qty_packs) : 0;
-                // Mostrar usuario en la tabla si existe
-                const sellerName = s.user || 'Desc.'; 
-                
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${sellerName}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td><td>${fmtMoney(unitPrice)}</td><td>${fmtMoney(s.price)}</td><td class="admin-only">${profitDisplay}</td></tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.user}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td><td>${fmtMoney(unitPrice)}</td><td>${fmtMoney(s.price)}</td><td class="admin-only">${profitDisplay}</td></tr>`;
             });
         }
 
@@ -768,6 +783,7 @@
             document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
         }
 
+        // Exports
         window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
         window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
         window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
@@ -790,21 +806,14 @@
             products.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`);
         }
 
-        // Event Listeners para Auth
+        // Event Listeners
         document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); };
         document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); };
-        
-        // LOGIN
         document.getElementById('login-form').onsubmit = async(e)=>{ 
             e.preventDefault(); 
-            try{ 
-                await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); 
-            } catch(err){ 
-                document.getElementById('auth-msg').textContent="Error: "+err.message; 
-            } 
+            try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } 
+            catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } 
         };
-
-        // REGISTRO CON NOMBRE
         document.getElementById('register-form').onsubmit = async(e)=>{ 
             e.preventDefault(); 
             try{ 
@@ -818,7 +827,6 @@
                 document.getElementById('auth-msg').textContent="Error: "+err.message; 
             } 
         };
-        
         document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value), date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
 
         feather.replace();
