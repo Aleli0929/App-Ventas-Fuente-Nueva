@@ -19,29 +19,25 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background-color: var(--bg); color: var(--text); }
         
-        /* Utilidades */
         .hidden { display: none !important; }
         .flex { display: flex; }
         .flex-col { flex-direction: column; }
         .items-center { align-items: center; }
         .justify-between { justify-content: space-between; }
-        .admin-only { display: none; } /* Oculto por defecto */
+        .admin-only { display: none; }
         .text-red { color: var(--danger); font-weight: bold; }
         .text-green { color: var(--secondary); font-weight: bold; }
         .text-gray { color: var(--gray); }
         .bg-red-100 { background-color: #fee2e2; }
         
-        /* Spinner */
         #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 2000; }
         .spin { width: 50px; height: 50px; border: 5px solid #ddd; border-top-color: var(--primary); border-radius: 50%; animation: s 1s infinite linear; }
         @keyframes s { to { transform: rotate(360deg); } }
 
-        /* Modales */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; }
         .modal-content { background: white; padding: 2rem; border-radius: 0.5rem; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;}
         .modal-actions { display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; }
 
-        /* Layout */
         .app-container { display: flex; flex-direction: column; min-height: 100vh; }
         header { background: var(--white); padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
         nav { display: flex; gap: 1rem; overflow-x: auto; padding-top: 0.5rem; }
@@ -52,7 +48,6 @@
         .card { background: var(--white); padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
         .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
         
-        /* Tablas y Formularios */
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
         th { background: #f9fafb; font-size: 0.85rem; text-transform: uppercase; color: var(--gray); }
@@ -67,9 +62,7 @@
         .btn-red { background: var(--danger); }
         .btn-gray { background: #e5e7eb; color: var(--text); }
         
-        /* Login */
         .auth-box { max-width: 400px; margin: 10vh auto; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
         @media(max-width: 768px) { .form-grid { grid-template-columns: 1fr; } header > div { flex-direction: column; gap: 1rem; } }
     </style>
 </head>
@@ -90,16 +83,16 @@
         </div>
     </div>
 
-    <!-- MODAL DE REABASTECIMIENTO -->
+    <!-- MODAL DE REABASTECIMIENTO (Productos e Insumos) -->
     <div id="modal-restock" class="modal-overlay hidden">
         <div class="modal-content" style="text-align: left;">
             <h3 style="margin-bottom: 0.5rem;">📥 Entrada de Inventario</h3>
-            <p style="color:var(--gray); margin-bottom: 1rem;">Producto: <b id="modal-prod-name" style="color:var(--primary); font-size:1.2em;"></b></p>
+            <p style="color:var(--gray); margin-bottom: 1rem;">Item: <b id="modal-prod-name" style="color:var(--primary); font-size:1.2em;"></b></p>
             <form id="form-restock">
-                <input type="hidden" id="restock-prod-id">
-                <label>Cantidad a Ingresar (Unidades/Botellas sueltas):</label>
+                <input type="hidden" id="restock-id">
+                <input type="hidden" id="restock-type"> <!-- 'product' o 'supply' -->
+                <label>Cantidad a Ingresar:</label>
                 <input type="number" id="restock-qty" min="1" placeholder="Ej: 100" required style="font-size:1.2rem; padding:1rem; border: 2px solid var(--secondary);">
-                <p style="font-size:0.8rem; color:var(--gray); margin-top:0.5rem;">* Esto sumará al inventario actual. No crea un producto nuevo.</p>
                 <div class="modal-actions">
                     <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
                     <button type="submit" class="btn btn-green" style="flex:1">✅ Confirmar</button>
@@ -200,11 +193,11 @@
                             
                             <label>Presentación (Fijo):</label>
                             <select id="sale-presentation" required onchange="updateSaleForm()" style="font-weight:bold; color:var(--primary);">
-                                <option value="1">Unidad</option>
+                                <option value="1">Unidad (1 botella)</option>
                                 <option value="6">Paca de 6</option>
                                 <option value="9">Paca de 9</option>
                                 <option value="12">Paca de 12</option>
-                                <option value="20">Paca de 20</option>
+                                <option value="20">Paca de 20 (300ml)</option>
                             </select>
                             
                             <label>Cantidad de Presentaciones:</label>
@@ -249,23 +242,34 @@
             <!-- PRODUCTOS (ADMIN) -->
             <div id="page-productos" class="page hidden">
                 <div class="card">
-                    <h3>🛠️ Catálogo de Productos (Solo Nuevos)</h3>
+                    <h3>🛠️ Catálogo de Productos</h3>
                     <div style="background:#fffbeb; padding:1rem; margin-bottom:1rem; border-left:4px solid var(--warning);">
-                        <b>Nota:</b> Este formulario es solo para crear productos nuevos. Para sumar stock, ve a la pestaña "Inventario".
+                        <b>Nota:</b> Crea aquí los productos de venta (Botellones, Paquetes). Configura si consumen tapas u otros insumos.
                     </div>
                     
                     <form id="form-product">
                         <input type="hidden" id="prod-id">
                         <div class="form-grid">
-                            <div><label>Nombre del Producto (ÚNICO)</label><input type="text" id="prod-name" required placeholder="Ej: Agua 600ml"></div>
-                            <div><label>Fecha Reabastecimiento (Est.)</label><input type="date" id="prod-restock"></div>
+                            <div><label>Nombre del Producto</label><input type="text" id="prod-name" required placeholder="Ej: Agua 20L"></div>
+                            <div><label>Fecha Reabastecimiento</label><input type="date" id="prod-restock"></div>
                             
-                            <!-- Etiquetas claras -->
-                            <div><label>Precio al Público (Lo que paga el cliente)</label><input type="number" id="prod-price" step="0.01" required></div>
-                            <div><label>Costo para Ti (Lo que te cuesta a ti)</label><input type="number" id="prod-cost" step="0.01" required></div>
+                            <div><label>Precio al Público</label><input type="number" id="prod-price" step="0.01" required></div>
+                            <div><label>Costo para Ti</label><input type="number" id="prod-cost" step="0.01" required></div>
                             
-                            <div><label>Stock Inicial</label><input type="number" id="prod-stock" required></div>
+                            <div><label>Stock Inicial (Productos)</label><input type="number" id="prod-stock" required></div>
                             <div><label>Alerta Stock Mínimo</label><input type="number" id="prod-min" required></div>
+                            
+                            <!-- NUEVO: Consumo de Insumos -->
+                            <div style="grid-column: span 2; background:#f0f9ff; padding:10px; border-radius:5px;">
+                                <label style="color:var(--primary)">¿Consume Insumo al venderse? (Ej: Tapas)</label>
+                                <div class="flex gap-2">
+                                    <select id="prod-supply-link">
+                                        <option value="">-- No consume insumo --</option>
+                                    </select>
+                                    <input type="number" id="prod-supply-qty" placeholder="Cant." value="1" style="width:80px; margin:0;">
+                                </div>
+                                <small style="color:var(--gray)">Si seleccionas una Tapa, se descontará 1 unidad por cada botella vendida.</small>
+                            </div>
                         </div>
                         <div class="flex gap-2">
                             <button type="submit" class="btn btn-blue">Crear / Guardar</button>
@@ -274,27 +278,51 @@
                     </form>
                 </div>
                 <div class="card">
-                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>P. Público</th><th>Costo Unit.</th><th>Stock Total</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Insumo</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </div>
 
             <!-- INVENTARIO (ADMIN) -->
             <div id="page-inventario" class="page hidden">
-                <div class="card">
-                    <h3>📦 Gestión de Stock y Entradas</h3>
-                    <p style="margin-bottom:1rem;">Usa el botón <b>"➕ Reabastecer"</b> para sumar mercancía a productos existentes.</p>
+                <!-- Seccion 1: Insumos (Tapas, etc) -->
+                <div class="card" style="border-left: 5px solid var(--secondary);">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3>🔩 Gestión de Insumos (Tapas, Sellos)</h3>
+                        <button onclick="showSupplyForm()" class="btn btn-sm btn-green">+ Crear Insumo</button>
+                    </div>
+                    <div id="box-create-supply" class="hidden" style="background:#ecfdf5; padding:1rem; margin-bottom:1rem; border-radius:0.5rem;">
+                        <form id="form-supply" class="flex gap-2 items-end">
+                            <div style="flex:2"><label>Nombre Insumo</label><input type="text" id="supp-name" placeholder="Ej: Tapa Azul" required style="margin:0"></div>
+                            <div style="flex:1"><label>Stock Inicial</label><input type="number" id="supp-stock" required style="margin:0"></div>
+                            <button type="submit" class="btn btn-green" style="margin:0">Guardar</button>
+                            <button type="button" onclick="hideSupplyForm()" class="btn btn-gray" style="margin:0">X</button>
+                        </form>
+                    </div>
                     <div style="overflow-x:auto">
-                        <table id="table-inventory">
-                            <thead><tr><th>Producto</th><th>Stock Actual</th><th>Estado</th><th>Días Restantes</th><th>Acción</th></tr></thead>
+                        <table id="table-supplies">
+                            <thead><tr><th>Insumo</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
                 </div>
+
+                <!-- Seccion 2: Productos -->
+                <div class="card">
+                    <h3>📦 Inventario de Productos (Agua)</h3>
+                    <p style="margin-bottom:1rem;">Usa el botón <b>"➕ Reabastecer"</b> para sumar mercancía.</p>
+                    <div style="overflow-x:auto">
+                        <table id="table-inventory">
+                            <thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Días Restantes</th><th>Acción</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                
                 <div class="card">
                     <h3>📜 Auditoría de Movimientos</h3>
                     <div style="overflow-x:auto; max-height:400px;">
                         <table id="table-movements" style="font-size:0.85rem;">
-                            <thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Producto</th><th>Cant.</th></tr></thead>
+                            <thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Item</th><th>Cant.</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -324,22 +352,17 @@
             <div id="page-reportes" class="page hidden">
                 <h1>Centro de Descargas</h1>
                 
-                <!-- ZONA DE PELIGRO -->
                 <div class="card" style="border: 2px solid var(--danger);">
                     <h3 class="text-red">🚨 ZONA DE PELIGRO</h3>
-                    <p>Borrar TODOS los productos y reiniciar stock a cero.</p>
+                    <p>Borrar TODOS los datos y reiniciar sistema.</p>
                     <button onclick="resetSystem()" class="btn btn-red" style="width:100%; margin-top:1rem;">⚠️ BORRAR TODO</button>
                 </div>
 
-                <!-- Panel de Corrección de Ventas -->
                 <div class="card" style="margin-top: 2rem; border-top: 4px solid var(--warning);">
-                    <h3>🛠️ Gestión de Errores: Anular Ventas</h3>
-                    <p style="color:var(--gray); margin-bottom:1rem;">
-                        Borra una venta para <b>devolver el stock</b> automáticamente.
-                    </p>
+                    <h3>🛠️ Anular Ventas (Corrección)</h3>
                     <div style="overflow-x:auto; max-height: 400px;">
                         <table id="table-sales-admin">
-                            <thead><tr><th>Fecha</th><th>Producto</th><th>Pres.</th><th>Total $</th><th>Usuario</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Fecha</th><th>Producto</th><th>Pres.</th><th>Total</th><th>Acción</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -360,7 +383,6 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CLAVES CONFIGURADAS ---
         const firebaseConfig = {
             apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk",
             authDomain: "fuente-nueva.firebaseapp.com",
@@ -378,6 +400,7 @@
         let user = null;
         let role = 'vendedor';
         let products = [];
+        let supplies = [];
         let sales = [];
         let movements = [];
 
@@ -410,6 +433,10 @@
                 products = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderProducts(); renderInventory(); updateSelects();
             });
+            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => {
+                supplies = sn.docs.map(d => ({id: d.id, ...d.data()}));
+                renderSupplies(); updateSupplySelect();
+            });
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSalesTable(); updateDashboard();
@@ -429,13 +456,45 @@
             });
         }
 
-        // --- LÓGICA PRINCIPAL ---
+        // --- GESTIÓN DE INSUMOS (SUPPLIES) ---
+        window.showSupplyForm = () => document.getElementById('box-create-supply').classList.remove('hidden');
+        window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
+        
+        document.getElementById('form-supply').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('supp-name').value;
+            const stock = parseInt(document.getElementById('supp-stock').value);
+            try {
+                await addDoc(collection(db, "supplies"), { name, stock, createdAt: serverTimestamp() });
+                await addDoc(collection(db, "movements"), { type: "CREACION_INSUMO", product: name, quantity: stock, user: user.email, timestamp: serverTimestamp() });
+                document.getElementById('form-supply').reset();
+                hideSupplyForm();
+                toast("✅ Insumo Creado");
+            } catch(e){ toast("❌ Error: "+e.message); }
+        });
 
-        window.openRestock = (id) => {
-            const p = products.find(x => x.id === id);
-            if(!p) return;
-            document.getElementById('modal-prod-name').textContent = p.name;
-            document.getElementById('restock-prod-id').value = p.id;
+        function renderSupplies() {
+            const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
+            supplies.forEach(s => {
+                // Botón reabastecer insumo
+                const actionBtn = role === 'admin' ? 
+                    `<button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">➕ Entrada</button>` : '-';
+                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<50?'⚠️ BAJO':'OK'}</td><td>${actionBtn}</td></tr>`;
+            });
+        }
+        function updateSupplySelect() {
+            const sel = document.getElementById('prod-supply-link');
+            sel.innerHTML = '<option value="">-- No consume insumo --</option>';
+            supplies.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+        }
+
+        // --- REABASTECIMIENTO GENERAL (Productos e Insumos) ---
+        window.openRestock = (id, type = 'product') => {
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id);
+            if(!item) return;
+            document.getElementById('modal-prod-name').textContent = item.name + (type==='supply' ? ' (INSUMO)' : '');
+            document.getElementById('restock-id').value = item.id;
+            document.getElementById('restock-type').value = type;
             document.getElementById('restock-qty').value = '';
             document.getElementById('modal-restock').classList.remove('hidden');
             document.getElementById('restock-qty').focus();
@@ -444,15 +503,18 @@
 
         document.getElementById('form-restock').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const id = document.getElementById('restock-prod-id').value;
+            const id = document.getElementById('restock-id').value;
+            const type = document.getElementById('restock-type').value;
             const qty = parseInt(document.getElementById('restock-qty').value);
-            const p = products.find(x => x.id === id);
+            const col = type === 'product' ? 'products' : 'supplies';
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id);
+
             if(qty <= 0) return toast("❌ Cantidad inválida");
             try {
-                const newStock = (p.stock || 0) + qty;
-                await updateDoc(doc(db, "products", id), { stock: newStock });
+                const newStock = (item.stock || 0) + qty;
+                await updateDoc(doc(db, col, id), { stock: newStock });
                 await addDoc(collection(db, "movements"), {
-                    type: "ENTRADA", product: p.name, quantity: qty, value: 0,
+                    type: "ENTRADA_"+type.toUpperCase(), product: item.name, quantity: qty,
                     user: user.email, timestamp: serverTimestamp()
                 });
                 toast("✅ Stock Agregado");
@@ -460,36 +522,42 @@
             } catch(err) { toast("❌ Error: " + err.message); }
         });
 
+        // --- PRODUCTOS ---
         window.productForm = document.getElementById('form-product');
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if(role !== 'admin') return toast("❌ Acceso denegado");
             const id = document.getElementById('prod-id').value;
             const name = document.getElementById('prod-name').value.trim();
+            
             if (!id && products.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-                return showConfirm("Error", "El producto ya existe. Ve a inventario para reabastecer.", null);
+                return showConfirm("Error", "El producto ya existe.", null);
             }
+
             const data = {
                 name: name,
                 price: parseFloat(document.getElementById('prod-price').value),
                 cost: parseFloat(document.getElementById('prod-cost').value),
                 min: parseInt(document.getElementById('prod-min').value),
-                restock: document.getElementById('prod-restock').value
+                restock: document.getElementById('prod-restock').value,
+                supplyLink: document.getElementById('prod-supply-link').value || null,
+                supplyQty: parseInt(document.getElementById('prod-supply-qty').value) || 0
             };
             if(!id) data.stock = parseInt(document.getElementById('prod-stock').value);
+
             try {
                 if(id) {
                     await updateDoc(doc(db, "products", id), data);
-                    await addDoc(collection(db, "movements"), { type: "EDICION_FICHA", product: data.name, quantity:0, value:0, user: user.email, timestamp: serverTimestamp() });
                 } else {
                     await addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() });
-                    await addDoc(collection(db, "movements"), { type: "CREACION_PRODUCTO", product: data.name, quantity: data.stock, value:0, user: user.email, timestamp: serverTimestamp() });
+                    await addDoc(collection(db, "movements"), { type: "CREACION_PRODUCTO", product: data.name, quantity: data.stock, user: user.email, timestamp: serverTimestamp() });
                 }
                 resetProdForm();
                 toast("✅ Producto Guardado");
             } catch(e) { toast("❌ Error: " + e.message); }
         });
 
+        // --- VENTA CON DESCUENTO DE INSUMOS ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const pid = document.getElementById('sale-product').value;
@@ -497,23 +565,50 @@
             const qty = parseInt(document.getElementById('sale-qty').value);
             const prod = products.find(p => p.id === pid);
             if(!prod) return;
+
             const totalUnits = qty * pres; 
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
             const profit = totalPrice - (totalUnits * (prod.cost || 0));
-            if(prod.stock < totalUnits) return showConfirm("Error", "❌ Stock insuficiente (" + prod.stock + " disponibles)", null);
+
+            if(prod.stock < totalUnits) return showConfirm("Error", "❌ Stock insuficiente", null);
+
+            // Validar Insumo (Tapas)
+            let supplyDoc = null;
+            let supplyDeduct = 0;
+            if(prod.supplyLink) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) {
+                    supplyDeduct = totalUnits * (prod.supplyQty || 1);
+                    if(s.stock < supplyDeduct) return showConfirm("Error", `❌ No hay suficientes ${s.name} (Faltan tapas)`, null);
+                    supplyDoc = s;
+                }
+            }
+
             try {
                 await runTransaction(db, async (t) => {
+                    // 1. Descontar Producto
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
-                    const newStock = pDoc.data().stock - totalUnits;
-                    if(newStock < 0) throw "Stock insuficiente";
-                    t.update(pRef, { stock: newStock });
+                    if(pDoc.data().stock < totalUnits) throw "Stock insuficiente Prod";
+                    t.update(pRef, { stock: pDoc.data().stock - totalUnits });
+
+                    // 2. Descontar Insumo (si aplica)
+                    if(supplyDoc) {
+                        const sRef = doc(db, "supplies", supplyDoc.id);
+                        const sSnap = await t.get(sRef);
+                        if(sSnap.data().stock < supplyDeduct) throw "Stock insuficiente Insumo";
+                        t.update(sRef, { stock: sSnap.data().stock - supplyDeduct });
+                    }
+
+                    // 3. Registrar Venta
                     t.set(doc(collection(db, "sales")), {
                         product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits,
                         price: totalPrice, cost: (totalUnits * prod.cost), profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
-                        user: user.email, timestamp: serverTimestamp()
+                        user: user.email, timestamp: serverTimestamp(),
+                        supplyUsed: supplyDoc ? supplyDoc.name : null,
+                        supplyQty: supplyDeduct
                     });
                 });
                 toast("✅ Venta Exitosa");
@@ -522,47 +617,54 @@
             } catch(err) { toast("❌ Error: " + err.message); }
         });
 
-        // --- GESTIÓN DE ERRORES (ANULAR VENTA) ---
+        // --- SISTEMA ---
         function renderAdminSalesTable() {
-            const tb = document.querySelector('#table-sales-admin tbody');
-            if (!tb) return;
+            const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return;
             tb.innerHTML = '';
             sales.slice(0, 50).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
-                tb.innerHTML += `<tr>
-                    <td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName} (${s.qty_total_units} un.)</td>
-                    <td style="font-weight:bold;">${fmtMoney(s.price)}</td><td style="font-size:0.8rem;">${s.user}</td>
-                    <td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i> Anular</button></td>
-                </tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName} (${s.qty_total_units})</td>
+                <td style="font-weight:bold;">${fmtMoney(s.price)}</td>
+                <td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i> Anular</button></td></tr>`;
             });
             feather.replace();
         }
 
         window.deleteSale = async (saleId) => {
-            if (role !== 'admin') return toast("❌ Solo admin puede borrar.");
+            if (role !== 'admin') return toast("❌ Solo admin.");
             const sale = sales.find(s => s.id === saleId);
             if (!sale) return;
-            showConfirm("⚠️ ¿Anular Venta?", `Se devolverán ${sale.qty_total_units} unidades al inventario.`, async () => {
+            showConfirm("⚠️ ¿Anular Venta?", `Se devolverán ${sale.qty_total_units} productos.`, async () => {
                 try {
                     await runTransaction(db, async (t) => {
+                        // Devolver Producto
                         const pRef = doc(db, "products", sale.pid);
                         const pDoc = await t.get(pRef);
-                        if (pDoc.exists()) {
-                            const current = pDoc.data().stock || 0;
-                            t.update(pRef, { stock: current + sale.qty_total_units });
+                        if (pDoc.exists()) t.update(pRef, { stock: (pDoc.data().stock||0) + sale.qty_total_units });
+                        
+                        // Devolver Insumo (si hubo)
+                        if(sale.supplyUsed && sale.supplyQty > 0) {
+                            // Buscar ID del insumo por nombre (un poco hacky pero funcional si no guardamos ID)
+                            // Idealmente guardar ID, pero buscaremos en array local
+                            const supp = supplies.find(x => x.name === sale.supplyUsed);
+                            if(supp) {
+                                const sRef = doc(db, "supplies", supp.id);
+                                const sSnap = await t.get(sRef);
+                                if(sSnap.exists()) t.update(sRef, { stock: (sSnap.data().stock||0) + sale.supplyQty });
+                            }
                         }
+
                         t.delete(doc(db, "sales", saleId));
-                        const moveRef = doc(collection(db, "movements"));
-                        t.set(moveRef, { type: "ANULACION_VENTA", product: sale.product, quantity: sale.qty_total_units, value: -sale.price, user: user.email, timestamp: serverTimestamp() });
+                        t.set(doc(collection(db, "movements")), { type: "ANULACION", product: sale.product, quantity: sale.qty_total_units, user: user.email, timestamp: serverTimestamp() });
                     });
-                    toast("✅ Venta anulada y stock restaurado.");
+                    toast("✅ Anulado y stock devuelto.");
                 } catch (err) { toast("❌ Error: " + err.message); }
             });
         };
 
         window.resetSystem = async () => {
             if(role !== 'admin') return;
-            showConfirm("¡PELIGRO!", "¿BORRAR TODO y reiniciar sistema?", () => {
+            showConfirm("¡PELIGRO!", "¿BORRAR TODO?", () => {
                 document.getElementById('loader').classList.remove('hidden');
                 const batchDelete = async (col) => {
                     const q = query(collection(db, col));
@@ -571,13 +673,10 @@
                     snap.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
                 };
-                Promise.all([batchDelete("products"), batchDelete("sales"), batchDelete("movements"), batchDelete("pending")]).then(() => {
-                    toast("♻️ Sistema Reiniciado");
+                Promise.all([batchDelete("products"), batchDelete("sales"), batchDelete("movements"), batchDelete("pending"), batchDelete("supplies")]).then(() => {
+                    toast("♻️ Reiniciado");
                     document.getElementById('loader').classList.add('hidden');
-                }).catch(e => {
-                    toast("Error: " + e.message);
-                    document.getElementById('loader').classList.add('hidden');
-                });
+                }).catch(e => { toast("Error: " + e.message); document.getElementById('loader').classList.add('hidden'); });
             });
         };
 
@@ -589,10 +688,8 @@
             const btn = document.getElementById('confirm-yes-btn');
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
-            if(callback) {
-                newBtn.style.display = 'inline-flex';
-                newBtn.onclick = () => { callback(); document.getElementById('modal-confirm').classList.add('hidden'); };
-            } else newBtn.style.display = 'none';
+            if(callback) { newBtn.style.display = 'inline-flex'; newBtn.onclick = () => { callback(); document.getElementById('modal-confirm').classList.add('hidden'); }; } 
+            else newBtn.style.display = 'none';
         };
         window.closeConfirm = () => document.getElementById('modal-confirm').classList.add('hidden');
 
@@ -613,13 +710,10 @@
             const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = '';
             let criticalCount = 0;
             products.forEach(p => {
-                const last7d = sales.filter(s => s.pid === p.id && (new Date() - s.timestamp?.toDate()) < 604800000);
-                const velocity = last7d.reduce((a,b)=>a+b.qty_total_units,0) / 7;
-                const daysLeft = velocity > 0 ? Math.floor(p.stock/velocity) : "Infinito";
                 const isLow = p.stock <= p.min;
                 if(isLow) criticalCount++;
-                const actionBtn = role === 'admin' ? `<button onclick="openRestock('${p.id}')" class="btn btn-green btn-sm">➕ Reabastecer</button>` : `<span style="color:#999">-</span>`;
-                tb.innerHTML += `<tr><td style="font-weight:bold">${p.name}</td><td class="${isLow?'text-red':''}">${p.stock}</td><td>${isLow?'⚠️ BAJO':'OK'}</td><td>${daysLeft} días</td><td>${actionBtn}</td></tr>`;
+                const actionBtn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">➕ Reabastecer</button>` : '-';
+                tb.innerHTML += `<tr><td style="font-weight:bold">${p.name}</td><td class="${isLow?'text-red':''}">${p.stock}</td><td>${isLow?'⚠️ BAJO':'OK'}</td><td>--</td><td>${actionBtn}</td></tr>`;
             });
             document.getElementById('d-critical').textContent = criticalCount;
         }
@@ -627,8 +721,9 @@
         function renderProducts() {
             const tb = document.querySelector('#table-products tbody'); tb.innerHTML='';
             products.forEach(p => {
-                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Editar</button>` : `<span style="color:#999">Solo lectura</span>`;
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${editBtn}</td></tr>`;
+                const supplyName = p.supplyLink ? (supplies.find(s=>s.id==p.supplyLink)?.name || 'Desc.') : 'N/A';
+                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Editar</button>` : '-';
+                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${supplyName}</td><td>${editBtn}</td></tr>`;
             });
         }
         window.editProd = (id) => {
@@ -641,6 +736,8 @@
             document.getElementById('prod-stock').disabled = true; 
             document.getElementById('prod-min').value=p.min||0;
             document.getElementById('prod-restock').value=p.restock||'';
+            document.getElementById('prod-supply-link').value=p.supplyLink||'';
+            document.getElementById('prod-supply-qty').value=p.supplyQty||1;
         };
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; }
 
@@ -649,23 +746,9 @@
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
                 const profitVal = s.profit || 0;
-                // Si la ganancia es positiva, verde. Si es negativa, rojo.
-                const profitClass = profitVal >= 0 ? 'text-green' : 'text-red';
-                // Si es positiva, agregamos un "+", si es negativa el fmtMoney ya pone el "-"
-                const sign = profitVal > 0 ? '+' : '';
-                
-                const profitDisplay = role === 'admin' ? `<span class="${profitClass}">${sign}${fmtMoney(profitVal)}</span>` : '***';
+                const profitDisplay = role === 'admin' ? `<span class="${profitVal>=0?'text-green':'text-red'}">${profitVal>0?'+':''}${fmtMoney(profitVal)}</span>` : '***';
                 const unitPrice = s.qty_packs > 0 ? (s.price / s.qty_packs) : 0;
-
-                tb.innerHTML += `<tr>
-                    <td>${fmtDate(s.timestamp)}</td>
-                    <td>${s.product}</td>
-                    <td>${presName}</td>
-                    <td>${s.qty_packs}</td>
-                    <td>${fmtMoney(unitPrice)}</td>
-                    <td>${fmtMoney(s.price)}</td>
-                    <td>${profitDisplay}</td>
-                </tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td><td>${fmtMoney(unitPrice)}</td><td>${fmtMoney(s.price)}</td><td>${profitDisplay}</td></tr>`;
             });
         }
 
@@ -677,17 +760,16 @@
             const tb = document.querySelector('#table-pending tbody'); tb.innerHTML='';
             list.forEach(i => { tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-green btn-sm">Pagado</button></td></tr>`; });
         }
-        window.payPending = async (id) => { showConfirm("Cobro", "¿Marcar como pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Marcado como pagado"); }); }
+        window.payPending = async (id) => { showConfirm("Cobro", "¿Marcar como pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); }
 
         function updateDashboard() {
             const todayStart = new Date(); todayStart.setHours(0,0,0,0);
             const todaySales = sales.filter(s => s.timestamp?.toDate() >= todayStart);
             document.getElementById('d-today').textContent = fmtMoney(todaySales.reduce((a,b)=>a+b.price,0));
-            const totalProfit = todaySales.reduce((a,b)=>a+(b.profit||0),0);
-            document.getElementById('d-profit').textContent = fmtMoney(totalProfit);
+            document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
         }
 
-        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost, ValorTotal:p.stock*p.cost})), "Inventario");
+        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
         window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
         window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
         function saveExcel(json, name) {
@@ -719,4 +801,3 @@
     </script>
 </body>
 </html>
-
