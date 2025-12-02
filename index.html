@@ -738,6 +738,8 @@
             showConfirm("⚠️ ¿Anular Venta?", "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
+                        // 1. LEER TODO (READS)
+                        let pRef = null, currentPStock = 0;
                         let targetProdId = sale.pid;
                         if (!targetProdId && sale.product) {
                             const foundProd = products.find(p => p.name === sale.product);
@@ -745,19 +747,24 @@
                         }
 
                         if(targetProdId) {
-                            const pRef = doc(db, "products", targetProdId);
+                            pRef = doc(db, "products", targetProdId);
                             const pDoc = await t.get(pRef);
-                            if (pDoc.exists()) t.update(pRef, { stock: (pDoc.data().stock || 0) + (sale.qty_total_units || 0) });
+                            if(pDoc.exists()) currentPStock = pDoc.data().stock || 0;
                         }
-                        
+
+                        let sRef = null, currentSStock = 0;
                         if(sale.supplyUsed && sale.supplyQty > 0) {
                             const supp = supplies.find(x => x.name === sale.supplyUsed);
                             if(supp) {
-                                const sRef = doc(db, "supplies", supp.id);
+                                sRef = doc(db, "supplies", supp.id);
                                 const sDoc = await t.get(sRef);
-                                if(sDoc.exists()) t.update(sRef, { stock: (sDoc.data().stock||0) + sale.supplyQty });
+                                if(sDoc.exists()) currentSStock = sDoc.data().stock || 0;
                             }
                         }
+
+                        // 2. ESCRIBIR TODO (WRITES)
+                        if(pRef) t.update(pRef, { stock: currentPStock + (sale.qty_total_units || 0) });
+                        if(sRef) t.update(sRef, { stock: currentSStock + sale.supplyQty });
 
                         t.delete(doc(db, "sales", saleId));
                         
