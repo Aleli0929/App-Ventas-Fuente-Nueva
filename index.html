@@ -466,7 +466,7 @@
                     </div>
                     <div class="card">
                         <h3><i data-feather="activity"></i> Movimientos Recientes</h3>
-                        <div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th></tr></thead><tbody></tbody></table></div>
+                        <div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div>
                     </div>
                 </div>
             </div>
@@ -510,10 +510,6 @@
                         <button onclick="exportSales()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="dollar-sign"></i> Ventas Excel</button>
                         <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría Excel</button>
                     </div>
-                </div>
-                
-                <div style="margin-top:2rem; text-align:right;">
-                    <button onclick="resetSystem()" class="btn btn-red btn-sm"><i data-feather="trash-2"></i> RESETEAR SISTEMA (PELIGRO)</button>
                 </div>
             </div>
 
@@ -677,7 +673,10 @@
             const loads = movements.filter(m => m.type === 'SALIDA_CAMION').slice(0, 20);
             
             loads.forEach(m => {
-                const btn = `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px 8px;"><i data-feather="trash-2" style="width:14px"></i></button>`;
+                // Permitir botón de borrado a Admin y Vendedor
+                const btn = (role === 'admin' || role === 'vendedor') ? 
+                    `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px 8px;"><i data-feather="trash-2" style="width:14px"></i></button>` : '';
+                
                 tb.innerHTML += `<tr>
                     <td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td>
                     <td style="font-size:0.8rem">${m.details.replace('Chofer: ', '')}</td>
@@ -690,9 +689,6 @@
         }
 
         window.undoTruckLoad = async (moveId) => {
-            // Permitir rectificar a Admin y Vendedor (según requerimiento)
-            if (role !== 'admin' && role !== 'vendedor') return toast("❌ Sin permiso");
-            
             const move = movements.find(m => m.id === moveId);
             if(!move) return toast("Error: Registro no encontrado");
 
@@ -740,10 +736,10 @@
 
             const totalUnits = qty * pres; 
             
-            // CORREGIDO: Precio Total = Cantidad * Precio Producto (Ignora la presentación para el precio)
+            // CORREGIDO: Precio Total = Cantidad * Precio Producto
             const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
             
-            // CORREGIDO: Costo Total = Cantidad de Productos (no unidades) * Costo del Producto
+            // CORREGIDO: Costo Total = Cantidad de Productos * Costo del Producto
             const totalCost = qty * prod.cost;
             const profit = totalPrice - totalCost;
 
@@ -1007,8 +1003,20 @@
         }
         function renderMovements() {
             const tb = document.querySelector('#table-movements tbody'); tb.innerHTML='';
-            movements.slice(0,50).forEach(m => { tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product} ${m.details||''}</td><td>${m.quantity}</td></tr>`; });
+            movements.slice(0,50).forEach(m => { 
+                const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px 6px;"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
+                tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product} ${m.details||''}</td><td>${m.quantity}</td><td>${btn}</td></tr>`; 
+            });
+            feather.replace();
         }
+        window.deleteLog = async (id) => {
+             if(role !== 'admin') return;
+             showConfirm("Borrar Registro", "Esto eliminará la línea del historial pero NO afectará el stock. ¿Continuar?", async () => {
+                 await deleteDoc(doc(db, "movements", id));
+                 toast("Registro eliminado");
+             });
+        }
+
         function renderPending(list) {
             const tb = document.querySelector('#table-pending tbody'); tb.innerHTML='';
             list.forEach(i => { tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td></tr>`; });
@@ -1062,7 +1070,6 @@
         window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
         window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
         function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
-        window.resetSystem = async () => { if(role !== 'admin') return; showConfirm("¡PELIGRO!", "¿BORRAR TODO?", () => { toast("Función desactivada por seguridad."); }); };
 
         // Utils
         window.showConfirm = (t, m, c) => { document.getElementById('confirm-title').innerText=t; document.getElementById('confirm-msg').innerText=m; document.getElementById('modal-confirm').classList.remove('hidden'); const b=document.getElementById('confirm-yes-btn'); const n=b.cloneNode(true); b.parentNode.replaceChild(n, b); if(c){ n.onclick=()=>{ c(); document.getElementById('modal-confirm').classList.add('hidden'); }; } };
