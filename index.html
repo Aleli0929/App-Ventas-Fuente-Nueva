@@ -611,16 +611,12 @@
             feather.replace();
         }
 
-        // [CORREGIDO] Función de Borrado Blindada
         window.deleteSale = async (saleId) => {
             if (role !== 'admin') return toast("❌ Solo admin.");
             const sale = sales.find(s => s.id === saleId);
             if (!sale) return toast("Error: Venta no encontrada");
             
-            // Nombre seguro del producto
             const safeProdName = sale.product || "Producto Desconocido";
-            
-            // Intentar recuperar ID del producto
             let targetProdId = sale.pid;
             if (!targetProdId && sale.product) {
                 const foundProd = products.find(p => p.name === sale.product);
@@ -634,7 +630,6 @@
             showConfirm("⚠️ ¿Anular Venta?", msg, async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        // 1. Devolver Producto (Si existe)
                         if(targetProdId) {
                             const pRef = doc(db, "products", targetProdId);
                             const pDoc = await t.get(pRef);
@@ -644,7 +639,6 @@
                             }
                         }
                         
-                        // 2. Devolver Insumo (Si existe)
                         if(sale.supplyUsed && sale.supplyQty > 0) {
                             const supp = supplies.find(x => x.name === sale.supplyUsed);
                             if(supp) {
@@ -654,13 +648,12 @@
                             }
                         }
 
-                        // 3. Borrar y Auditar (Usando nombre seguro)
                         t.delete(doc(db, "sales", saleId));
                         
                         const moveRef = doc(collection(db, "movements"));
                         t.set(moveRef, { 
                             type: "ANULACION", 
-                            product: safeProdName, // <-- USO DE VARIABLE SEGURA
+                            product: safeProdName, 
                             quantity: sale.qty_total_units || 0, 
                             user: user.email || "admin", 
                             timestamp: serverTimestamp() 
@@ -753,16 +746,30 @@
         };
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; }
 
+        // RENDER SALES TABLE (CORREGIDA PARA MOSTRAR '***' A VENDEDORES)
         function renderSalesTable() {
             const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
             sales.slice(0,30).forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
+                
+                // Lógica de Privacidad de Ganancias
                 const profitVal = s.profit || 0;
                 const profitClass = profitVal >= 0 ? 'text-green' : 'text-red';
                 const sign = profitVal > 0 ? '+' : '';
                 const profitDisplay = role === 'admin' ? `<span class="${profitClass}">${sign}${fmtMoney(profitVal)}</span>` : '***';
+                
                 const unitPrice = s.qty_packs > 0 ? (s.price / s.qty_packs) : 0;
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.user}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td><td>${fmtMoney(unitPrice)}</td><td>${fmtMoney(s.price)}</td><td class="admin-only">${profitDisplay}</td></tr>`;
+                
+                tb.innerHTML += `<tr>
+                    <td>${fmtDate(s.timestamp)}</td>
+                    <td>${s.user || 'Desc.'}</td>
+                    <td>${s.product}</td>
+                    <td>${presName}</td>
+                    <td>${s.qty_packs}</td>
+                    <td>${fmtMoney(unitPrice)}</td>
+                    <td>${fmtMoney(s.price)}</td>
+                    <td>${profitDisplay}</td>
+                </tr>`;
             });
         }
 
@@ -806,7 +813,6 @@
             products.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`);
         }
 
-        // Event Listeners
         document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); };
         document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); };
         document.getElementById('login-form').onsubmit = async(e)=>{ 
