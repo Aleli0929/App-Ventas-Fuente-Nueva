@@ -25,7 +25,7 @@
         .flex-col { flex-direction: column; }
         .items-center { align-items: center; }
         .justify-between { justify-content: space-between; }
-        .admin-only { display: none; } /* Elementos ocultos para vendedores */
+        .admin-only { display: none; } 
         .text-red { color: var(--danger); font-weight: bold; }
         .text-green { color: var(--secondary); font-weight: bold; }
         .text-gray { color: var(--gray); }
@@ -116,14 +116,25 @@
                 <button id="tab-login" class="btn" style="background:none; color:var(--primary); border-bottom:2px solid var(--primary); width:50%;">Login</button>
                 <button id="tab-register" class="btn" style="background:none; color:var(--gray); width:50%;">Registro</button>
             </div>
+            
+            <!-- LOGIN FORM -->
             <form id="login-form">
                 <input type="email" id="l-email" placeholder="Email" required>
                 <input type="password" id="l-pass" placeholder="Contraseña" required>
                 <button type="submit" class="btn btn-blue" style="width:100%">Ingresar</button>
             </form>
+
+            <!-- REGISTER FORM (NUEVO: CAMPO DE NOMBRE) -->
             <form id="register-form" class="hidden">
-                <input type="email" id="r-email" placeholder="Email" required>
-                <input type="password" id="r-pass" placeholder="Contraseña (min 6 chars)" required>
+                <label>Nombre del Usuario:</label>
+                <input type="text" id="r-name" placeholder="Ej: Juan Pérez" required style="margin-bottom:1rem;">
+                
+                <label>Email:</label>
+                <input type="email" id="r-email" placeholder="ejemplo@email.com" required>
+                
+                <label>Contraseña:</label>
+                <input type="password" id="r-pass" placeholder="Mínimo 6 caracteres" required>
+                
                 <label>Rol:</label>
                 <select id="r-role">
                     <option value="vendedor">Vendedor</option>
@@ -141,8 +152,8 @@
             <div class="flex justify-between items-center">
                 <div style="font-weight:bold; font-size:1.5rem; color:var(--primary);">Fuente Nueva</div>
                 <div>
-                    <small id="user-display" style="color:var(--gray); display:block; text-align:right;"></small>
-                    <button onclick="logout()" style="border:none; background:none; color:var(--danger); cursor:pointer; float:right; font-size:0.9rem;">Cerrar Sesión</button>
+                    <small id="user-display" style="color:var(--gray); display:block; text-align:right; font-size:0.9rem;"></small>
+                    <button onclick="logout()" style="border:none; background:none; color:var(--danger); cursor:pointer; float:right; font-size:0.8rem; margin-top:2px;">Cerrar Sesión</button>
                 </div>
             </div>
             <nav>
@@ -166,7 +177,6 @@
                             <div class="stat-icon bg-blue" style="padding:10px; background:#ebf8ff; border-radius:50%; color:var(--primary);"><i data-feather="dollar-sign"></i></div>
                         </div>
                     </div>
-                    <!-- TARJETA GANANCIA (SOLO ADMIN) -->
                     <div class="card admin-only">
                         <div class="flex justify-between items-center">
                             <div><h4 style="color:var(--gray)">Ganancia Hoy</h4><h2 id="d-profit" class="text-green">$0.00</h2></div>
@@ -248,17 +258,24 @@
             <div id="page-productos" class="page hidden">
                 <div class="card">
                     <h3>🛠️ Catálogo de Productos</h3>
+                    <div style="background:#fffbeb; padding:1rem; margin-bottom:1rem; border-left:4px solid var(--warning);">
+                        <b>Nota:</b> Crea aquí los productos de venta.
+                    </div>
+                    
                     <form id="form-product">
                         <input type="hidden" id="prod-id">
                         <div class="form-grid">
                             <div><label>Nombre del Producto</label><input type="text" id="prod-name" required></div>
                             <div><label>Fecha Reabastecimiento</label><input type="date" id="prod-restock"></div>
+                            
                             <div><label>Precio al Público</label><input type="number" id="prod-price" step="0.01" required></div>
                             <div><label>Costo para Ti</label><input type="number" id="prod-cost" step="0.01" required></div>
+                            
                             <div><label>Stock Inicial</label><input type="number" id="prod-stock" required></div>
                             <div><label>Alerta Stock Mínimo</label><input type="number" id="prod-min" required></div>
+                            
                             <div style="grid-column: span 2; background:#f0f9ff; padding:10px; border-radius:5px;">
-                                <label style="color:var(--primary)">¿Consume Insumo al venderse?</label>
+                                <label style="color:var(--primary)">¿Consume Insumo al venderse? (Ej: Tapas)</label>
                                 <div class="flex gap-2">
                                     <select id="prod-supply-link"><option value="">-- No consume insumo --</option></select>
                                     <input type="number" id="prod-supply-qty" placeholder="Cant." value="1" style="width:80px; margin:0;">
@@ -266,7 +283,7 @@
                             </div>
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="btn btn-blue">Guardar</button>
+                            <button type="submit" class="btn btn-blue">Crear / Guardar</button>
                             <button type="button" onclick="resetProdForm()" class="btn btn-gray">Cancelar</button>
                         </div>
                     </form>
@@ -359,7 +376,6 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CLAVES (Ya configuradas)
         const firebaseConfig = {
             apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk",
             authDomain: "fuente-nueva.firebaseapp.com",
@@ -390,10 +406,16 @@
             if (u) {
                 user = u;
                 const docSnap = await getDoc(doc(db, "users", u.uid));
-                role = docSnap.exists() ? docSnap.data().role : 'vendedor';
+                const userData = docSnap.exists() ? docSnap.data() : {};
+                role = userData.role || 'vendedor';
+                const displayName = userData.name || u.email; // Usar nombre si existe
+
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
-                document.getElementById('user-display').innerHTML = `${u.email} <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
+                
+                // Mostrar Nombre en lugar de solo email
+                document.getElementById('user-display').innerHTML = `<b style="color:var(--text)">${displayName}</b><br><span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
+                
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
                 initListeners();
                 document.getElementById('pend-date').value = today();
@@ -505,9 +527,11 @@
             if(role !== 'admin') return toast("❌ Acceso denegado");
             const id = document.getElementById('prod-id').value;
             const name = document.getElementById('prod-name').value.trim();
+            
             if (!id && products.some(p => p.name.toLowerCase() === name.toLowerCase())) {
                 return showConfirm("Error", "El producto ya existe.", null);
             }
+
             const data = {
                 name: name,
                 price: parseFloat(document.getElementById('prod-price').value),
@@ -582,7 +606,7 @@
             } catch(err) { toast("❌ Error: " + err.message); }
         });
 
-        // --- SISTEMA Y CORRECCIONES ---
+        // --- SISTEMA ---
         function renderAdminSalesTable() {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return;
             tb.innerHTML = '';
@@ -606,7 +630,7 @@
                 if (foundProd) targetProdId = foundProd.id;
             }
 
-            let msg = `Se devolverán ${sale.qty_total_units} productos.`;
+            let msg = `Se devolverán ${sale.qty_total_units || 0} productos.`;
             if (!targetProdId) msg = "⚠️ Producto original no encontrado. NO SE DEVOLVERÁ STOCK.";
 
             showConfirm("⚠️ ¿Anular Venta?", msg, async () => {
@@ -626,7 +650,8 @@
                             }
                         }
                         t.delete(doc(db, "sales", saleId));
-                        t.set(doc(collection(db, "movements")), { type: "ANULACION", product: sale.product, quantity: sale.qty_total_units, user: user.email, timestamp: serverTimestamp() });
+                        const moveRef = doc(collection(db, "movements"));
+                        t.set(moveRef, { type: "ANULACION", product: sale.product, quantity: sale.qty_total_units, user: user.email, timestamp: serverTimestamp() });
                     });
                     toast("✅ Anulado");
                 } catch (err) { toast("❌ Error: " + err.message); }
@@ -651,7 +676,19 @@
             });
         };
 
-        // --- RENDER ---
+        // --- UI & UTILS ---
+        window.showConfirm = (title, msg, callback) => {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-msg').innerText = msg;
+            document.getElementById('modal-confirm').classList.remove('hidden');
+            const btn = document.getElementById('confirm-yes-btn');
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            if(callback) { newBtn.style.display = 'inline-flex'; newBtn.onclick = () => { callback(); document.getElementById('modal-confirm').classList.add('hidden'); }; } 
+            else newBtn.style.display = 'none';
+        };
+        window.closeConfirm = () => document.getElementById('modal-confirm').classList.add('hidden');
+
         window.updateSaleForm = () => {
             const pid = document.getElementById('sale-product').value;
             const pres = parseInt(document.getElementById('sale-presentation').value)||1;
@@ -707,7 +744,10 @@
                 const profitVal = s.profit || 0;
                 const profitDisplay = role === 'admin' ? `<span class="${profitVal>=0?'text-green':'text-red'}">${profitVal>0?'+':''}${fmtMoney(profitVal)}</span>` : '***';
                 const unitPrice = s.qty_packs > 0 ? (s.price / s.qty_packs) : 0;
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.user}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td><td>${fmtMoney(unitPrice)}</td><td>${fmtMoney(s.price)}</td><td class="admin-only">${profitDisplay}</td></tr>`;
+                // Mostrar usuario en la tabla si existe
+                const sellerName = s.user || 'Desc.'; 
+                
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${sellerName}</td><td>${s.product}</td><td>${presName}</td><td>${s.qty_packs}</td><td>${fmtMoney(unitPrice)}</td><td>${fmtMoney(s.price)}</td><td class="admin-only">${profitDisplay}</td></tr>`;
             });
         }
 
@@ -728,18 +768,13 @@
             document.getElementById('d-profit').textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
         }
 
-        // UI Helpers
-        window.showConfirm = (title, msg, callback) => {
-            document.getElementById('confirm-title').innerText = title;
-            document.getElementById('confirm-msg').innerText = msg;
-            document.getElementById('modal-confirm').classList.remove('hidden');
-            const btn = document.getElementById('confirm-yes-btn');
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            if(callback) { newBtn.style.display = 'inline-flex'; newBtn.onclick = () => { callback(); document.getElementById('modal-confirm').classList.add('hidden'); }; } 
-            else newBtn.style.display = 'none';
-        };
-        window.closeConfirm = () => document.getElementById('modal-confirm').classList.add('hidden');
+        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
+        window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
+        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
+        function saveExcel(json, name) {
+            const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
+        }
 
         window.nav = (id) => {
             document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -755,10 +790,35 @@
             products.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`);
         }
 
+        // Event Listeners para Auth
         document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); };
         document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); };
-        document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
-        document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c=await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{email:c.user.email,role:document.getElementById('r-role').value}); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
+        
+        // LOGIN
+        document.getElementById('login-form').onsubmit = async(e)=>{ 
+            e.preventDefault(); 
+            try{ 
+                await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); 
+            } catch(err){ 
+                document.getElementById('auth-msg').textContent="Error: "+err.message; 
+            } 
+        };
+
+        // REGISTRO CON NOMBRE
+        document.getElementById('register-form').onsubmit = async(e)=>{ 
+            e.preventDefault(); 
+            try{ 
+                const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); 
+                await setDoc(doc(db,"users",c.user.uid),{
+                    email:c.user.email,
+                    role:document.getElementById('r-role').value,
+                    name:document.getElementById('r-name').value // Guardar nombre
+                }); 
+            } catch(err){ 
+                document.getElementById('auth-msg').textContent="Error: "+err.message; 
+            } 
+        };
+        
         document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value), date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
 
         feather.replace();
