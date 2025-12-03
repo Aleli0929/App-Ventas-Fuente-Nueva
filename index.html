@@ -245,11 +245,16 @@
                     <i data-feather="droplet" style="fill:white;"></i>
                     <div class="app-title">Fuente Nueva</div>
                 </div>
-                <div style="text-align:right;">
-                    <div id="user-display" style="font-size:0.9rem; font-weight:600;">Usuario</div>
-                    <button onclick="logout()" style="background:none; border:none; color:rgba(255,255,255,0.8); cursor:pointer; font-size:0.8rem; margin-top:2px; display:flex; align-items:center; justify-content:end; gap:4px;">
-                        Cerrar Sesión <i data-feather="log-out" style="width:12px; height:12px;"></i>
+                <div style="display:flex; align-items:center; gap:15px; text-align:right;">
+                    <button onclick="window.location.reload()" class="btn btn-sm" style="background:rgba(255,255,255,0.2); color:white; border:none;" title="Actualizar Sistema">
+                        <i data-feather="refresh-cw" style="width:14px;"></i>
                     </button>
+                    <div>
+                        <div id="user-display" style="font-size:0.9rem; font-weight:600;">Usuario</div>
+                        <button onclick="logout()" style="background:none; border:none; color:rgba(255,255,255,0.8); cursor:pointer; font-size:0.8rem; margin-top:2px; display:flex; align-items:center; justify-content:end; gap:4px;">
+                            Cerrar Sesión <i data-feather="log-out" style="width:12px; height:12px;"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <nav>
@@ -358,11 +363,12 @@
                                 <div class="form-grid">
                                     <div>
                                         <label>Producto</label>
-                                        <select id="truck-product" required></select>
+                                        <select id="truck-product" required onchange="updateTruckInfo()"></select>
+                                        <small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small>
                                     </div>
                                     <div>
                                         <label>Cantidad (Unid.)</label>
-                                        <input type="number" id="truck-qty" min="1" required placeholder="0">
+                                        <input type="number" id="truck-qty" min="1" required placeholder="0" oninput="updateTruckInfo()">
                                     </div>
                                 </div>
                                 <button type="submit" id="btn-submit-truck" class="btn btn-truck" style="width:100%">
@@ -389,7 +395,7 @@
                         </div>
 
                         <div class="card" style="border-left: 4px solid var(--truck); margin-top: 1.5rem;">
-                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas Camión</h3>
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas Camión (HOY)</h3>
                             <div class="table-container" style="max-height: 300px; overflow-y:auto;">
                                 <table id="table-truck-loads">
                                     <thead><tr><th>Hora</th><th>Chofer</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead>
@@ -450,9 +456,10 @@
                     
                     <div id="box-create-supply" class="hidden" style="background:#f0fdfa; padding:1rem; margin-bottom:1rem; border-radius:8px;">
                         <form id="form-supply" class="flex gap-2 items-end">
+                            <input type="hidden" id="supp-id">
                             <div style="flex:2"><label>Nombre Insumo</label><input type="text" id="supp-name" placeholder="Ej: Tapa 20L" required style="margin:0"></div>
-                            <div style="flex:1"><label>Stock Inicial</label><input type="number" id="supp-stock" required style="margin:0"></div>
-                            <button type="submit" class="btn btn-green" style="margin:0">Guardar</button>
+                            <div style="flex:1"><label>Stock</label><input type="number" id="supp-stock" required style="margin:0"></div>
+                            <button type="submit" id="btn-save-supply" class="btn btn-green" style="margin:0">Guardar</button>
                             <button type="button" onclick="hideSupplyForm()" class="btn btn-gray" style="margin:0">Cancelar</button>
                         </form>
                     </div>
@@ -506,8 +513,9 @@
                 <div class="card">
                     <h3><i data-feather="download-cloud"></i> Descarga de Datos</h3>
                     <div class="grid-4">
+                        <button onclick="exportSales()" class="btn btn-blue" style="flex-direction:column; padding:1.5rem;"><i data-feather="calendar"></i> Ventas Hoy (Excel)</button>
+                        <button onclick="exportSalesMonthly()" class="btn btn-green" style="flex-direction:column; padding:1.5rem;"><i data-feather="grid"></i> Ventas Mes (Excel)</button>
                         <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario Excel</button>
-                        <button onclick="exportSales()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="dollar-sign"></i> Ventas Excel</button>
                         <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría Excel</button>
                     </div>
                 </div>
@@ -546,7 +554,6 @@
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
         
-        // CORRECCIÓN: isToday usando la fecha local
         const isToday = (ts) => {
             if (!ts) return false;
             const date = new Date(ts.seconds * 1000);
@@ -554,6 +561,13 @@
             return date.getDate() === now.getDate() &&
                    date.getMonth() === now.getMonth() &&
                    date.getFullYear() === now.getFullYear();
+        };
+
+        const isCurrentMonth = (ts) => {
+            if (!ts) return false;
+            const date = new Date(ts.seconds * 1000);
+            const now = new Date();
+            return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
         };
 
         onAuthStateChanged(auth, async (u) => {
@@ -608,6 +622,23 @@
         }
 
         // --- ABASTECIMIENTO CAMIÓN ---
+        // Nueva función para mostrar info visual del insumo
+        window.updateTruckInfo = () => {
+            const pid = document.getElementById('truck-product').value;
+            const qty = parseInt(document.getElementById('truck-qty').value) || 0;
+            const info = document.getElementById('truck-supply-info');
+            info.innerHTML = '';
+
+            const prod = products.find(p => p.id === pid);
+            if(prod && prod.supplyLink && qty > 0) {
+                const supp = supplies.find(s => s.id === prod.supplyLink);
+                if(supp) {
+                    const totalDeduct = qty * (prod.supplyQty || 1);
+                    info.innerHTML = `⚠️ Usa Insumo: ${supp.name} <br> (Se descontarán ${totalDeduct} del inventario)`;
+                }
+            }
+        };
+
         document.getElementById('form-truck-load').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-truck');
@@ -669,15 +700,24 @@
                 });
                 toast("✅ Carga Registrada");
                 document.getElementById('form-truck-load').reset();
+                document.getElementById('truck-supply-info').innerHTML = '';
             } catch (err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
             finally { btn.disabled = false; }
         });
 
+        // CAMBIO: FILTRO DE SOLO HOY
         function renderTruckLoads() {
             const tb = document.querySelector('#table-truck-loads tbody');
             tb.innerHTML = '';
-            const loads = movements.filter(m => m.type === 'SALIDA_CAMION').slice(0, 20);
             
+            // FILTRO SOLO DEL DÍA
+            const loads = movements.filter(m => m.type === 'SALIDA_CAMION' && isToday(m.timestamp));
+            
+            if(loads.length === 0) {
+                tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">No hay cargas hoy.</td></tr>';
+                return;
+            }
+
             loads.forEach(m => {
                 const btn = (role === 'admin' || role === 'vendedor') ? 
                     `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px 8px;"><i data-feather="trash-2" style="width:14px"></i></button>` : '';
@@ -791,14 +831,17 @@
             finally { btn.disabled = false; }
         });
 
-        // --- EXPORTAR EXCEL ROBUSTO ---
-        window.exportSales = () => {
+        // --- EXPORTAR EXCEL ---
+        window.exportSales = () => generateSalesExcel(sales.filter(s => isToday(s.timestamp)), "Ventas_Hoy");
+        window.exportSalesMonthly = () => generateSalesExcel(sales.filter(s => isCurrentMonth(s.timestamp)), "Ventas_Mes");
+
+        function generateSalesExcel(dataList, fileName) {
             if(typeof XLSX === 'undefined') return toast("Error: Librería Excel no cargada.");
-            if(sales.length === 0) return toast("⚠️ No hay ventas.");
+            if(dataList.length === 0) return toast("⚠️ No hay ventas en este periodo.");
 
             try {
                 // 1. Mapear datos
-                const data = sales.map(s => ({
+                const data = dataList.map(s => ({
                     Fecha: fmtDate(s.timestamp),
                     Producto: s.product,
                     Presentacion: s.presentation_val === 1 ? 'Unidad' : `Paca ${s.presentation_val}`,
@@ -809,23 +852,22 @@
                     Usuario: s.user ? s.user.split('@')[0] : 'N/A'
                 }));
 
-                // 2. Calcular Resumen Hoy
-                const todayS = sales.filter(s => isToday(s.timestamp));
-                const cash = todayS.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
-                const transf = todayS.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
+                // 2. Calcular Resumen
+                const cash = dataList.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
+                const transf = dataList.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
 
                 // 3. Agregar filas de resumen
                 data.push({}); 
-                data.push({Fecha: "--- RESUMEN HOY ---"});
+                data.push({Fecha: "--- RESUMEN ---"});
                 data.push({Fecha: "EFECTIVO", Precio_Venta: cash});
                 data.push({Fecha: "TRANSFERENCIA", Precio_Venta: transf});
-                data.push({Fecha: "TOTAL DÍA", Precio_Venta: cash + transf});
+                data.push({Fecha: "TOTAL", Precio_Venta: cash + transf});
 
                 // 4. Generar archivo
                 const ws = XLSX.utils.json_to_sheet(data);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Ventas");
-                XLSX.writeFile(wb, `Ventas_${today()}.xlsx`);
+                XLSX.writeFile(wb, `${fileName}_${today()}.xlsx`);
                 
                 toast("✅ Excel Descargado");
             } catch (e) {
@@ -921,7 +963,6 @@
 
         // --- HELPERS & UI ---
         function renderDailySummary() {
-            // Filtro por fecha local para evitar errores de zona horaria
             const todayS = sales.filter(s => isToday(s.timestamp));
 
             let total = 0, cash = 0, transfer = 0;
@@ -974,7 +1015,6 @@
             if(!prod) return;
             
             const totalUnits = qty * pres;
-            // Precio Total = Cantidad * Precio Producto
             const total = qty * prod.price;
             
             document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
@@ -1003,24 +1043,54 @@
         function updateSelects() {
             const selSale = document.getElementById('sale-product');
             const selTruck = document.getElementById('truck-product');
+            const selProdLink = document.getElementById('prod-supply-link');
+            
             selSale.innerHTML = '<option value="">Seleccionar...</option>';
             if(selTruck) selTruck.innerHTML = '<option value="">Seleccionar...</option>';
+            
             products.forEach(p => {
                 const opt = `<option value="${p.id}">${p.name} (Disp: ${p.stock})</option>`;
                 selSale.innerHTML += opt;
                 if(selTruck) selTruck.innerHTML += opt;
             });
         }
+        function updateSupplySelect() {
+            const sel = document.getElementById('prod-supply-link');
+            const currentVal = sel.value; // Keep current val if re-rendering
+            sel.innerHTML = '<option value="">-- Ninguno --</option>';
+            supplies.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+            sel.value = currentVal;
+        }
+
         function renderSupplies() {
             const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
             supplies.forEach(s => {
-                const actionBtn = role === 'admin' ? `<button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+ Entrada</button>` : '-';
-                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️ BAJO':'OK'}</td><td>${actionBtn}</td></tr>`;
+                let btns = '-';
+                if(role === 'admin') {
+                    // BOTONES DE EDICIÓN Y ENTRADA
+                    btns = `<div style="display:flex; gap:5px;">
+                                <button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm" title="Agregar Stock">+</button>
+                                <button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm" title="Editar"><i data-feather="edit-2" style="width:12px;"></i></button>
+                            </div>`;
+                }
+                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️ BAJO':'OK'}</td><td>${btns}</td></tr>`;
             });
-            const sel = document.getElementById('prod-supply-link');
-            sel.innerHTML = '<option value="">-- Ninguno --</option>';
-            supplies.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+            feather.replace();
         }
+
+        // FUNCIONES DE EDICIÓN DE INSUMOS
+        window.editSupply = (id) => {
+            const s = supplies.find(x => x.id === id);
+            if(!s) return;
+            window.showSupplyForm();
+            document.getElementById('supp-id').value = s.id;
+            document.getElementById('supp-name').value = s.name;
+            document.getElementById('supp-stock').value = s.stock;
+            document.getElementById('btn-save-supply').innerText = "Actualizar";
+            document.getElementById('btn-save-supply').classList.remove('btn-green');
+            document.getElementById('btn-save-supply').classList.add('btn-blue');
+        };
+
         function renderInventory() {
             const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = '';
             let criticalCount = 0;
@@ -1058,9 +1128,37 @@
             document.getElementById('d-profit').textContent = fmtMoney(todays.reduce((a,b)=>a+(b.profit||0),0));
         }
 
-        window.showSupplyForm = () => document.getElementById('box-create-supply').classList.remove('hidden');
+        window.showSupplyForm = () => {
+            document.getElementById('box-create-supply').classList.remove('hidden');
+            document.getElementById('form-supply').reset();
+            document.getElementById('supp-id').value = '';
+            document.getElementById('btn-save-supply').innerText = "Guardar";
+            document.getElementById('btn-save-supply').classList.add('btn-green');
+            document.getElementById('btn-save-supply').classList.remove('btn-blue');
+        };
         window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
-        document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); try { await addDoc(collection(db, "supplies"), { name:document.getElementById('supp-name').value, stock:parseInt(document.getElementById('supp-stock').value), createdAt: serverTimestamp() }); document.getElementById('form-supply').reset(); hideSupplyForm(); toast("✅ Insumo Creado"); } catch(e){ toast("Error"); }});
+        
+        // MODIFICADO: GUARDAR O EDITAR INSUMO
+        document.getElementById('form-supply').addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const id = document.getElementById('supp-id').value;
+            const name = document.getElementById('supp-name').value;
+            const stock = parseInt(document.getElementById('supp-stock').value);
+
+            try { 
+                if(id) {
+                    // Editar
+                    await updateDoc(doc(db, "supplies", id), { name, stock });
+                    toast("✅ Insumo Actualizado");
+                } else {
+                    // Crear
+                    await addDoc(collection(db, "supplies"), { name, stock, createdAt: serverTimestamp() }); 
+                    toast("✅ Insumo Creado");
+                }
+                document.getElementById('form-supply').reset(); 
+                hideSupplyForm(); 
+            } catch(e){ toast("Error"); }
+        });
         
         window.editProd = (id) => {
             const p = products.find(x=>x.id==id);
