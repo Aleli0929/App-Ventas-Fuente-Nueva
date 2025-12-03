@@ -2,325 +2,369 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fuente Nueva ERP</title>
-    
-    <!-- Tailwind CSS para diseño rápido y limpio -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Iconos -->
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <!-- Excel -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Ventas Planta Fuente Nueva</title>
+
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; }
-        .page { display: none; }
-        .active-page { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Ocultar por rol */
-        .role-admin, .role-plant, .role-driver { display: none; }
+        :root {
+            --primary: #0a74da; --primary-dark: #085dab;
+            --secondary: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f3f4f6; --white: #ffffff; --text: #1f2937; --gray: #6b7280;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); }
+        
+        /* Utilidades */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .admin-only { display: none; } 
+        .text-red { color: var(--danger); font-weight: bold; }
+        .text-green { color: var(--secondary); font-weight: bold; }
+        .text-gray { color: var(--gray); }
+        .bg-red-100 { background-color: #fee2e2; }
+        
+        /* Spinner */
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .spin { width: 50px; height: 50px; border: 5px solid #ddd; border-top-color: var(--primary); border-radius: 50%; animation: s 1s infinite linear; }
+        @keyframes s { to { transform: rotate(360deg); } }
+
+        /* Modales */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+        .modal-content { background: white; padding: 2rem; border-radius: 0.5rem; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;}
+        .modal-actions { display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; }
+
+        /* Layout */
+        .app-container { display: flex; flex-direction: column; min-height: 100vh; }
+        header { background: var(--white); padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        nav { display: flex; gap: 1rem; overflow-x: auto; padding-top: 0.5rem; }
+        nav a { text-decoration: none; color: var(--gray); font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: 0.2s; white-space: nowrap; }
+        nav a.active, nav a:hover { background: var(--primary); color: var(--white); }
+        
+        main { padding: 2rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+        .card { background: var(--white); padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+        
+        /* Tablas y Formularios */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        th { background: #f9fafb; font-size: 0.85rem; text-transform: uppercase; color: var(--gray); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 0.5rem; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--gray); margin-bottom: 0.25rem; display: block; text-align: left;}
+        
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; color: white; display: inline-flex; gap: 0.5rem; align-items: center; justify-content: center; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .btn-blue { background: var(--primary); }
+        .btn-green { background: var(--secondary); }
+        .btn-red { background: var(--danger); }
+        .btn-gray { background: #e5e7eb; color: var(--text); }
+        
+        /* Login */
+        .auth-box { max-width: 400px; margin: 10vh auto; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        @media(max-width: 768px) { .form-grid { grid-template-columns: 1fr; } header > div { flex-direction: column; gap: 1rem; } }
     </style>
 </head>
-<body class="text-gray-800">
+<body>
 
-    <!-- NOTIFICACIONES -->
-    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg hidden z-50"></div>
-    <div id="loader" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>
+    <div id="loader" class="hidden"><div class="spin"></div></div>
+    <div id="toast" style="position:fixed; bottom:20px; right:20px; padding:1rem; background:#333; color:white; border-radius:0.5rem; display:none; z-index:3000;"></div>
 
-    <!-- ================= PANTALLA DE LOGIN ================= -->
-    <div id="view-login" class="min-h-screen flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-            <div class="text-center mb-6">
-                <h1 class="text-3xl font-bold text-blue-600">💧 Fuente Nueva</h1>
-                <p class="text-gray-500">Sistema Integral v1.0</p>
+    <!-- MODAL DE CONFIRMACIÓN -->
+    <div id="modal-confirm" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="confirm-title" style="margin-bottom:1rem;">Confirmar</h3>
+            <p id="confirm-msg" style="color:var(--gray); margin-bottom:1.5rem;"></p>
+            <div class="modal-actions">
+                <button onclick="closeConfirm()" class="btn btn-gray">Cancelar</button>
+                <button id="confirm-yes-btn" class="btn btn-blue">Aceptar</button>
             </div>
-            
-            <div class="flex gap-2 mb-4 bg-gray-100 p-1 rounded-lg">
-                <button onclick="toggleAuth('login')" id="tab-login" class="flex-1 py-2 rounded-md bg-white shadow text-blue-600 font-bold">Entrar</button>
-                <button onclick="toggleAuth('register')" id="tab-register" class="flex-1 py-2 rounded-md text-gray-500">Registrar</button>
-            </div>
-
-            <form id="form-login" class="space-y-4">
-                <input type="email" id="l-email" placeholder="Correo electrónico" class="w-full p-3 border rounded-lg" required>
-                <input type="password" id="l-pass" placeholder="Contraseña" class="w-full p-3 border rounded-lg" required>
-                <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">INICIAR SESIÓN</button>
-            </form>
-
-            <form id="form-register" class="space-y-4 hidden">
-                <input type="text" id="r-name" placeholder="Nombre y Apellido" class="w-full p-3 border rounded-lg" required>
-                <input type="email" id="r-email" placeholder="Correo electrónico" class="w-full p-3 border rounded-lg" required>
-                <input type="password" id="r-pass" placeholder="Contraseña (mín 6)" class="w-full p-3 border rounded-lg" required>
-                <div>
-                    <label class="text-sm font-bold text-gray-600">Puesto:</label>
-                    <select id="r-role" class="w-full p-3 border rounded-lg bg-white">
-                        <option value="vendedor">🏠 Vendedor de Planta</option>
-                        <option value="repartidor">🚚 Repartidor (Chofer)</option>
-                        <option value="admin">🔑 Administrador</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700">CREAR CUENTA</button>
-            </form>
-            <p id="auth-error" class="text-red-500 text-center mt-4 text-sm"></p>
         </div>
     </div>
 
-    <!-- ================= PANTALLA PRINCIPAL ================= -->
-    <div id="view-app" class="hidden min-h-screen pb-20">
-        <!-- Header -->
-        <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-40">
-            <div class="flex justify-between items-center max-w-5xl mx-auto">
-                <div>
-                    <h2 class="font-bold text-lg" id="header-title">Panel de Control</h2>
-                    <p class="text-xs opacity-80" id="user-info">Cargando...</p>
+    <!-- MODAL DE REABASTECIMIENTO -->
+    <div id="modal-restock" class="modal-overlay hidden">
+        <div class="modal-content" style="text-align: left;">
+            <h3 style="margin-bottom: 0.5rem;">📥 Entrada de Inventario</h3>
+            <p style="color:var(--gray); margin-bottom: 1rem;">Item: <b id="modal-prod-name" style="color:var(--primary); font-size:1.2em;"></b></p>
+            <form id="form-restock">
+                <input type="hidden" id="restock-id">
+                <input type="hidden" id="restock-type">
+                <label>Cantidad a Ingresar:</label>
+                <input type="number" id="restock-qty" min="1" placeholder="Ej: 100" required style="font-size:1.2rem; padding:1rem; border: 2px solid var(--secondary);">
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
+                    <button type="submit" class="btn btn-green" style="flex:1">✅ Confirmar</button>
                 </div>
-                <button onclick="logout()" class="text-xs bg-blue-800 px-3 py-1 rounded hover:bg-blue-700">Salir</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="auth-view">
+        <div class="auth-box">
+            <h2 style="text-align:center; margin-bottom:1.5rem; color:var(--primary);">Fuente Nueva ERP</h2>
+            <div style="display:flex; gap:1rem; margin-bottom:1rem; border-bottom:1px solid #eee;">
+                <button id="tab-login" class="btn" style="background:none; color:var(--primary); border-bottom:2px solid var(--primary); width:50%;">Login</button>
+                <button id="tab-register" class="btn" style="background:none; color:var(--gray); width:50%;">Registro</button>
             </div>
+            <form id="login-form">
+                <input type="email" id="l-email" placeholder="Email" required>
+                <input type="password" id="l-pass" placeholder="Contraseña" required>
+                <button type="submit" class="btn btn-blue" style="width:100%">Ingresar</button>
+            </form>
+            <form id="register-form" class="hidden">
+                <label>Nombre del Usuario:</label>
+                <input type="text" id="r-name" placeholder="Ej: Juan Pérez" required style="margin-bottom:1rem;">
+                <label>Email:</label>
+                <input type="email" id="r-email" placeholder="ejemplo@email.com" required>
+                <label>Contraseña:</label>
+                <input type="password" id="r-pass" placeholder="Mínimo 6 caracteres" required>
+                <label>Rol:</label>
+                <select id="r-role">
+                    <option value="vendedor">Vendedor</option>
+                    <option value="admin">Administrador</option>
+                </select>
+                <button type="submit" class="btn btn-blue" style="width:100%">Registrar Usuario</button>
+            </form>
+            <p id="auth-msg" style="color:var(--danger); text-align:center; margin-top:1rem;"></p>
+        </div>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div id="app-view" class="app-container hidden">
+        <header>
+            <div class="flex justify-between items-center">
+                <div style="font-weight:bold; font-size:1.5rem; color:var(--primary);">Fuente Nueva</div>
+                <div>
+                    <small id="user-display" style="color:var(--gray); display:block; text-align:right;"></small>
+                    <button onclick="logout()" style="border:none; background:none; color:var(--danger); cursor:pointer; float:right; font-size:0.8rem; margin-top:2px;">Cerrar Sesión</button>
+                </div>
+            </div>
+            <nav>
+                <a href="#dashboard" class="nav-link active" onclick="nav('dashboard')">Dashboard</a>
+                <a href="#ventas" class="nav-link" onclick="nav('ventas')">Ventas</a>
+                <a href="#cobros" class="nav-link" onclick="nav('cobros')">Por Cobrar</a>
+                <!-- Admin Only Links -->
+                <a href="#productos" class="nav-link admin-only" onclick="nav('productos')">Productos</a>
+                <a href="#inventario" class="nav-link admin-only" onclick="nav('inventario')">Inventario</a>
+                <a href="#reportes" class="nav-link admin-only" onclick="nav('reportes')">Reportes</a>
+            </nav>
         </header>
 
-        <!-- Navegación Inferior (Móvil) / Superior (PC) -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg flex justify-around p-2 z-40 md:static md:shadow-none md:border-b md:justify-center md:gap-8">
-            <button onclick="nav('home')" class="nav-btn flex flex-col items-center text-blue-600 p-2">
-                <i data-feather="home"></i> <span class="text-xs">Inicio</span>
-            </button>
-            <button onclick="nav('sales')" class="nav-btn flex flex-col items-center text-gray-500 p-2">
-                <i data-feather="shopping-cart"></i> <span class="text-xs">Vender</span>
-            </button>
-            <button onclick="nav('inventory')" class="nav-btn flex flex-col items-center text-gray-500 p-2 role-plant role-admin" style="display:none">
-                <i data-feather="box"></i> <span class="text-xs">Inventario</span>
-            </button>
-            <button onclick="nav('truck')" class="nav-btn flex flex-col items-center text-gray-500 p-2 role-driver role-admin" style="display:none">
-                <i data-feather="truck"></i> <span class="text-xs">Camión</span>
-            </button>
-            <button onclick="nav('admin')" class="nav-btn flex flex-col items-center text-gray-500 p-2 role-admin" style="display:none">
-                <i data-feather="settings"></i> <span class="text-xs">Admin</span>
-            </button>
-        </nav>
-
-        <main class="max-w-5xl mx-auto p-4">
-            
-            <!-- 1. INICIO (DASHBOARD) -->
-            <div id="page-home" class="page active-page">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-lg shadow">
-                        <h3 class="text-gray-500 text-sm">Ventas Hoy</h3>
-                        <p class="text-2xl font-bold" id="kpi-sales">$0.00</p>
+        <main>
+            <!-- DASHBOARD -->
+            <div id="page-dashboard" class="page">
+                <h1 style="margin-bottom:1.5rem;">Tablero de Control</h1>
+                <div class="grid-4">
+                    <div class="card">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Ventas Hoy</h4><h2 id="d-today">$0.00</h2></div>
+                            <div class="stat-icon bg-blue" style="padding:10px; background:#ebf8ff; border-radius:50%; color:var(--primary);"><i data-feather="dollar-sign"></i></div>
+                        </div>
                     </div>
-                    <!-- Solo Admin ve Ganancias -->
-                    <div class="bg-white p-4 rounded-lg shadow role-admin" style="display:none">
-                        <h3 class="text-gray-500 text-sm">Ganancia</h3>
-                        <p class="text-2xl font-bold text-green-600" id="kpi-profit">$0.00</p>
+                    <div class="card admin-only">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Ganancia Hoy</h4><h2 id="d-profit" class="text-green">$0.00</h2></div>
+                            <div class="stat-icon" style="padding:10px; background:#ecfdf5; border-radius:50%; color:var(--secondary);"><i data-feather="trending-up"></i></div>
+                        </div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow role-driver" style="display:none">
-                        <h3 class="text-gray-500 text-sm">Stock en Camión</h3>
-                        <p class="text-xl font-bold text-orange-600" id="kpi-truck-stock">0 un.</p>
+                    <div class="card admin-only">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Stock Bajo</h4><h2 id="d-critical" class="text-red">0</h2></div>
+                            <div class="stat-icon" style="padding:10px; background:#fef2f2; border-radius:50%; color:var(--danger);"><i data-feather="alert-triangle"></i></div>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Listado de Clientes (Ruta) -->
-                <div class="role-driver" style="display:none">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold">📍 Mi Ruta</h2>
-                        <button onclick="toggleModal('modal-client')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">+ Cliente</button>
+                    <div class="card">
+                        <div class="flex justify-between items-center">
+                            <div><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending">$0.00</h2></div>
+                            <div class="stat-icon" style="padding:10px; background:#fffbeb; border-radius:50%; color:var(--warning);"><i data-feather="clock"></i></div>
+                        </div>
                     </div>
-                    <div id="list-customers" class="space-y-3"></div>
                 </div>
             </div>
 
-            <!-- 2. VENDER (POS) -->
-            <div id="page-sales" class="page">
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div class="p-4 bg-gray-50 border-b flex justify-between">
-                        <h2 class="font-bold text-lg">🛒 Nueva Venta</h2>
-                        <span id="sale-origin-badge" class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">...</span>
+            <!-- VENTAS -->
+            <div id="page-ventas" class="page hidden">
+                <div class="grid-4" style="grid-template-columns: 1fr 2fr;">
+                    <!-- Formulario -->
+                    <div class="card">
+                        <h3>🛒 Registrar Venta</h3>
+                        <form id="form-sale">
+                            <label>Producto:</label>
+                            <select id="sale-product" required onchange="updateSaleForm()"></select>
+                            
+                            <label>Presentación (Fijo):</label>
+                            <select id="sale-presentation" required onchange="updateSaleForm()" style="font-weight:bold; color:var(--primary);">
+                                <option value="1">Unidad (1 botella)</option>
+                                <option value="6">Paca de 6</option>
+                                <option value="9">Paca de 9</option>
+                                <option value="12">Paca de 12</option>
+                                <option value="20">Paca de 20 (300ml)</option>
+                            </select>
+                            
+                            <label>Cantidad de Presentaciones:</label>
+                            <input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()">
+                            
+                            <label>Tipo de Pago:</label>
+                            <select id="sale-type">
+                                <option>Efectivo</option>
+                                <option>Transferencia</option>
+                            </select>
+
+                            <label>Observaciones:</label>
+                            <textarea id="sale-obs" rows="2"></textarea>
+
+                            <div style="background:#f0f9ff; padding:1rem; border-radius:0.5rem; margin:1rem 0;">
+                                <div class="flex justify-between"><small>Precio Unitario Base:</small> <b id="sale-price-unit">$0.00</b></div>
+                                <div class="flex justify-between"><small>Se descontarán:</small> <b id="sale-deduct" class="text-red">0 un.</b></div>
+                                <hr style="margin:0.5rem 0; border:0; border-top:1px solid #ddd;">
+                                <div class="flex justify-between items-center">
+                                    <span>TOTAL A PAGAR:</span>
+                                    <span id="sale-total" style="font-size:1.5rem; font-weight:bold; color:var(--primary);">$0.00</span>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-blue" style="width:100%">CONFIRMAR VENTA</button>
+                        </form>
                     </div>
-                    <form id="form-sale" class="p-4 space-y-4">
-                        <!-- Selección Producto -->
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700">Producto</label>
-                            <select id="s-prod" class="w-full p-3 border rounded-lg bg-white" required onchange="calcTotal()"></select>
-                        </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700">Cliente</label>
-                                <select id="s-type" class="w-full p-3 border rounded-lg bg-white" onchange="calcTotal()">
-                                    <option value="home">Casa</option>
-                                    <option value="shop">Tienda</option>
-                                    <option value="wholesale">Mayorista</option>
-                                </select>
+                    <!-- Historial -->
+                    <div class="card">
+                        <h3>📋 Ventas del Día</h3>
+                        <div style="overflow-x:auto">
+                            <table id="table-sales">
+                                <thead><tr><th>Hora</th><th>Vendedor</th><th>Prod.</th><th>Pres.</th><th>Cant.</th><th>P. Unit</th><th>Total</th><th>Ganancia</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRODUCTOS (ADMIN) -->
+            <div id="page-productos" class="page hidden">
+                <div class="card">
+                    <h3>🛠️ Catálogo de Productos</h3>
+                    <div style="background:#fffbeb; padding:1rem; margin-bottom:1rem; border-left:4px solid var(--warning);">
+                        <b>Nota:</b> Crea aquí los productos de venta.
+                    </div>
+                    
+                    <form id="form-product">
+                        <input type="hidden" id="prod-id">
+                        <div class="form-grid">
+                            <div><label>Nombre del Producto</label><input type="text" id="prod-name" required></div>
+                            <div><label>Fecha Reabastecimiento</label><input type="date" id="prod-restock"></div>
+                            
+                            <div><label>Precio al Público</label><input type="number" id="prod-price" step="0.01" required></div>
+                            <div><label>Costo para Ti</label><input type="number" id="prod-cost" step="0.01" required></div>
+                            
+                            <div><label>Stock Inicial</label><input type="number" id="prod-stock" required></div>
+                            <div><label>Alerta Stock Mínimo</label><input type="number" id="prod-min" required></div>
+                            
+                            <div style="grid-column: span 2; background:#f0f9ff; padding:10px; border-radius:5px;">
+                                <label style="color:var(--primary)">¿Consume Insumo al venderse? (Ej: Tapas)</label>
+                                <div class="flex gap-2">
+                                    <select id="prod-supply-link"><option value="">-- No consume insumo --</option></select>
+                                    <input type="number" id="prod-supply-qty" placeholder="Cant." value="1" style="width:80px; margin:0;">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700">Presentación</label>
-                                <select id="s-pres" class="w-full p-3 border rounded-lg bg-white" onchange="calcTotal()">
-                                    <option value="1">Unidad</option>
-                                    <option value="6">Paca 6</option>
-                                    <option value="12">Paca 12</option>
-                                    <option value="20">Paca 20</option>
-                                </select>
-                            </div>
                         </div>
-
-                        <!-- Cantidad -->
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700">Cantidad</label>
-                            <div class="flex items-center border rounded-lg overflow-hidden">
-                                <button type="button" onclick="adjQty(-1)" class="px-4 py-3 bg-gray-200 font-bold">-</button>
-                                <input type="number" id="s-qty" value="1" min="1" class="flex-1 text-center p-3 border-none outline-none font-bold text-xl" readonly>
-                                <button type="button" onclick="adjQty(1)" class="px-4 py-3 bg-gray-200 font-bold">+</button>
-                            </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="btn btn-blue">Crear / Guardar</button>
+                            <button type="button" onclick="resetProdForm()" class="btn btn-gray">Cancelar</button>
                         </div>
-
-                        <!-- Total -->
-                        <div class="bg-blue-50 p-4 rounded-lg text-center">
-                            <p class="text-sm text-blue-800">Total a Cobrar</p>
-                            <p class="text-3xl font-bold text-blue-900" id="s-total">$0.00</p>
-                        </div>
-
-                        <button type="submit" class="w-full py-4 bg-green-600 text-white rounded-lg font-bold text-lg shadow-lg hover:bg-green-700">✅ COBRAR</button>
                     </form>
                 </div>
+                <div class="card">
+                    <div style="overflow-x:auto"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Insumo</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- INVENTARIO (ADMIN) -->
+            <div id="page-inventario" class="page hidden">
+                <div class="card" style="border-left: 5px solid var(--secondary);">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3>🔩 Gestión de Insumos</h3>
+                        <button onclick="showSupplyForm()" class="btn btn-sm btn-green">+ Crear Insumo</button>
+                    </div>
+                    <div id="box-create-supply" class="hidden" style="background:#ecfdf5; padding:1rem; margin-bottom:1rem; border-radius:0.5rem;">
+                        <form id="form-supply" class="flex gap-2 items-end">
+                            <div style="flex:2"><label>Nombre Insumo</label><input type="text" id="supp-name" placeholder="Ej: Tapa Azul" required style="margin:0"></div>
+                            <div style="flex:1"><label>Stock Inicial</label><input type="number" id="supp-stock" required style="margin:0"></div>
+                            <button type="submit" class="btn btn-green" style="margin:0">Guardar</button>
+                            <button type="button" onclick="hideSupplyForm()" class="btn btn-gray" style="margin:0">X</button>
+                        </form>
+                    </div>
+                    <div style="overflow-x:auto"><table id="table-supplies"><thead><tr><th>Insumo</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                </div>
+
+                <div class="card">
+                    <h3>📦 Inventario de Productos</h3>
+                    <div style="overflow-x:auto"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                </div>
                 
-                <!-- Historial Reciente -->
-                <div class="mt-6">
-                    <h3 class="font-bold text-gray-600 mb-2">Ventas Recientes</h3>
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">Prod</th><th class="p-3">Total</th><th class="p-3 text-right">Hora</th></tr></thead>
-                            <tbody id="list-sales-recent"></tbody>
+                <div class="card">
+                    <h3>📜 Auditoría</h3>
+                    <div style="overflow-x:auto; max-height:400px;"><table id="table-movements" style="font-size:0.85rem;"><thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Item</th><th>Cant.</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- POR COBRAR -->
+            <div id="page-cobros" class="page hidden">
+                <div class="grid-4" style="grid-template-columns: 1fr 2fr;">
+                    <div class="card">
+                        <h3>📒 Registrar Deuda</h3>
+                        <form id="form-pending">
+                            <label>Cliente:</label><input type="text" id="pend-client" required>
+                            <label>Monto Total ($):</label><input type="number" id="pend-total" step="0.01" required>
+                            <label>Fecha:</label><input type="date" id="pend-date" required>
+                            <button type="submit" class="btn btn-blue" style="width:100%; margin-top:1rem;">Guardar</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>Listado de Pendientes</h3>
+                        <div style="overflow-x:auto"><table id="table-pending"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPORTES (ADMIN) -->
+            <div id="page-reportes" class="page hidden">
+                <h1>Centro de Descargas</h1>
+                
+                <div class="card" style="border: 2px solid var(--danger);">
+                    <h3 class="text-red">🚨 ZONA DE PELIGRO</h3>
+                    <p>Borrar TODOS los datos y reiniciar sistema.</p>
+                    <button onclick="resetSystem()" class="btn btn-red" style="width:100%; margin-top:1rem;">⚠️ BORRAR TODO</button>
+                </div>
+
+                <div class="card" style="margin-top: 2rem; border-top: 4px solid var(--warning);">
+                    <h3>🛠️ Anular Ventas</h3>
+                    <div style="overflow-x:auto; max-height: 400px;">
+                        <table id="table-sales-admin">
+                            <thead><tr><th>Fecha</th><th>Producto</th><th>Pres.</th><th>Total</th><th>Usuario</th><th>Acción</th></tr></thead>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
-            </div>
 
-            <!-- 3. INVENTARIO (PLANTA) -->
-            <div id="page-inventory" class="page">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">🏭 Stock en Planta</h2>
-                    <button onclick="toggleModal('modal-product')" class="bg-green-600 text-white px-3 py-2 rounded text-sm admin-only" style="display:none">+ Nuevo Producto</button>
-                </div>
-                
-                <div class="bg-white rounded-lg shadow overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">Producto</th><th class="p-3">Stock Planta</th><th class="p-3">Acción</th></tr></thead>
-                        <tbody id="list-inventory"></tbody>
-                    </table>
-                </div>
-
-                <!-- Panel de Carga de Camión -->
-                <div class="mt-8 bg-blue-50 p-4 rounded-xl border border-blue-200">
-                    <h3 class="font-bold text-blue-800 mb-2">🚚 Cargar Camión (Salida de Planta)</h3>
-                    <form id="form-load-truck" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
-                        <div class="md:col-span-1">
-                            <label class="text-xs font-bold text-gray-500">Chofer</label>
-                            <select id="load-driver" class="w-full p-2 border rounded bg-white"></select>
-                        </div>
-                        <div class="md:col-span-1">
-                            <label class="text-xs font-bold text-gray-500">Producto</label>
-                            <select id="load-prod" class="w-full p-2 border rounded bg-white"></select>
-                        </div>
-                        <div class="md:col-span-1">
-                            <label class="text-xs font-bold text-gray-500">Cantidad</label>
-                            <input type="number" id="load-qty" class="w-full p-2 border rounded" placeholder="0">
-                        </div>
-                        <button type="submit" class="w-full py-2 bg-blue-600 text-white rounded font-bold">TRANSFERIR</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- 4. CAMIÓN (REPARTIDOR) -->
-            <div id="page-truck" class="page">
-                <h2 class="text-xl font-bold mb-4">📦 Mi Inventario a Bordo</h2>
-                <div class="bg-white rounded-lg shadow">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">Producto</th><th class="p-3 text-right">Cantidad</th></tr></thead>
-                        <tbody id="list-truck-stock"></tbody>
-                    </table>
-                </div>
-                <p class="text-center text-gray-400 text-xs mt-4">Este stock se descuenta cuando vendes en ruta.</p>
-            </div>
-
-            <!-- 5. ADMIN -->
-            <div id="page-admin" class="page">
-                <h2 class="text-xl font-bold mb-4">🛠️ Administración</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onclick="exportExcel()" class="p-4 bg-green-600 text-white rounded-lg shadow font-bold flex items-center justify-center gap-2">
-                        <i data-feather="download"></i> Descargar Excel Total
-                    </button>
-                    <button onclick="resetSystem()" class="p-4 bg-red-600 text-white rounded-lg shadow font-bold flex items-center justify-center gap-2">
-                        <i data-feather="trash-2"></i> REINICIO DE FÁBRICA
-                    </button>
-                </div>
-                
-                <div class="mt-8">
-                    <h3 class="font-bold text-gray-600 mb-2">Corrección de Ventas (Anular)</h3>
-                    <div class="bg-white rounded-lg shadow overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">Fecha</th><th class="p-3">Producto</th><th class="p-3">Usuario</th><th class="p-3">Acción</th></tr></thead>
-                            <tbody id="list-sales-admin"></tbody>
-                        </table>
-                    </div>
+                <div class="grid-4" style="margin-top:2rem;">
+                    <div class="card"><h3>📦 Inventario</h3><button onclick="exportInventory()" class="btn btn-green" style="width:100%;">Excel</button></div>
+                    <div class="card"><h3>💰 Ventas</h3><button onclick="exportSales()" class="btn btn-green" style="width:100%;">Excel</button></div>
+                    <div class="card"><h3>📉 Auditoría</h3><button onclick="exportMovements()" class="btn btn-green" style="width:100%;">Excel</button></div>
                 </div>
             </div>
 
         </main>
-    </div>
-
-    <!-- MODALES -->
-    <!-- Nuevo Producto -->
-    <div id="modal-product" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-xl w-full max-w-md">
-            <h3 class="font-bold text-lg mb-4">Nuevo Producto</h3>
-            <form id="form-product" class="space-y-3">
-                <input type="text" id="np-name" placeholder="Nombre (ej: Agua 20L)" class="w-full p-2 border rounded" required>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="np-price" placeholder="$ Precio Casa" step="0.01" class="w-full p-2 border rounded" required>
-                    <input type="number" id="np-price2" placeholder="$ Precio Tienda" step="0.01" class="w-full p-2 border rounded">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="np-cost" placeholder="$ Costo" step="0.01" class="w-full p-2 border rounded" required>
-                    <input type="number" id="np-stock" placeholder="Stock Inicial" class="w-full p-2 border rounded" required>
-                </div>
-                <div class="flex gap-2 mt-4">
-                    <button type="button" onclick="toggleModal('modal-product')" class="flex-1 py-2 bg-gray-200 rounded">Cancelar</button>
-                    <button type="submit" class="flex-1 py-2 bg-blue-600 text-white rounded font-bold">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Nuevo Cliente -->
-    <div id="modal-client" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-xl w-full max-w-md">
-            <h3 class="font-bold text-lg mb-4">Nuevo Cliente (Ruta)</h3>
-            <form id="form-client" class="space-y-3">
-                <input type="text" id="nc-name" placeholder="Nombre Cliente" class="w-full p-2 border rounded" required>
-                <input type="text" id="nc-phone" placeholder="Teléfono" class="w-full p-2 border rounded">
-                <input type="text" id="nc-ref" placeholder="Referencia (Casa azul...)" class="w-full p-2 border rounded">
-                <div id="gps-status" class="text-xs text-gray-500">📍 Buscando GPS...</div>
-                <input type="hidden" id="nc-lat"><input type="hidden" id="nc-lng">
-                <div class="flex gap-2 mt-4">
-                    <button type="button" onclick="toggleModal('modal-client')" class="flex-1 py-2 bg-gray-200 rounded">Cancelar</button>
-                    <button type="submit" class="flex-1 py-2 bg-blue-600 text-white rounded font-bold">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Reabastecer -->
-    <div id="modal-restock" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-xl w-full max-w-sm text-center">
-            <h3 class="font-bold text-lg mb-2">Entrada de Inventario</h3>
-            <p id="restock-name" class="text-blue-600 font-bold mb-4"></p>
-            <form id="form-restock">
-                <input type="hidden" id="restock-id">
-                <input type="number" id="restock-qty" placeholder="Cantidad a sumar" class="w-full p-3 border rounded text-center text-xl mb-4" required>
-                <div class="flex gap-2">
-                    <button type="button" onclick="toggleModal('modal-restock')" class="flex-1 py-2 bg-gray-200 rounded">Cancelar</button>
-                    <button type="submit" class="flex-1 py-2 bg-green-600 text-white rounded font-bold">Confirmar</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <script type="module">
@@ -328,426 +372,495 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CONFIGURACIÓN (TUS CLAVES)
-        const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47" };
-        
+        const firebaseConfig = {
+            apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk",
+            authDomain: "fuente-nueva.firebaseapp.com",
+            projectId: "fuente-nueva",
+            storageBucket: "fuente-nueva.firebasestorage.app",
+            messagingSenderId: "256396830278",
+            appId: "1:256396830278:web:0d9cff310705e52bb20c47",
+            measurementId: "G-8NGS5XH8K6"
+        };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // ESTADO GLOBAL
         let user = null;
         let role = 'vendedor';
         let products = [];
+        let supplies = [];
         let sales = [];
-        let truckStock = [];
-        let drivers = [];
-        let customers = [];
+        let movements = [];
 
-        // UTILIDADES
-        const $ = (id) => document.getElementById(id);
-        const money = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
-        const toast = (msg) => { const t=$('toast'); t.innerText=msg; t.style.display='block'; setTimeout(()=>t.style.display='none', 3000); };
-        window.toggleModal = (id) => { const el=$(id); if(el) el.classList.toggle('hidden'); };
-        window.logout = () => signOut(auth);
+        const today = () => new Date().toISOString().split('T')[0];
+        const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
+        const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
 
-        // AUTENTICACIÓN
+        // SAFETY WRAPPER FOR DOM ACCESS
+        const safeClassList = (id, action, className) => {
+            const el = document.getElementById(id);
+            if (el) el.classList[action](className);
+        };
+
         onAuthStateChanged(auth, async (u) => {
-            $('loader').classList.remove('hidden');
+            safeClassList('loader', 'remove', 'hidden');
             if (u) {
                 user = u;
-                // Obtener rol
-                const snap = await getDoc(doc(db, "users", u.uid));
-                const userData = snap.exists() ? snap.data() : {};
+                const docSnap = await getDoc(doc(db, "users", u.uid));
+                const userData = docSnap.exists() ? docSnap.data() : {};
                 role = userData.role || 'vendedor';
-                
-                // Configurar UI
-                $('auth-error').innerText = "";
-                $('view-login').classList.add('hidden');
-                $('view-app').classList.remove('hidden');
-                $('user-info').innerText = `${userData.name || u.email} (${role.toUpperCase()})`;
-                
-                // Visibilidad por Rol
-                document.querySelectorAll('.admin-only').forEach(e => e.style.display = role === 'admin' ? 'block' : 'none');
-                document.querySelectorAll('.plant-only').forEach(e => e.style.display = (role === 'admin' || role === 'vendedor') ? 'block' : 'none');
-                document.querySelectorAll('.driver-only').forEach(e => e.style.display = (role === 'admin' || role === 'repartidor') ? 'block' : 'none');
+                const displayName = userData.name || u.email; 
 
-                // Mensaje de Origen
-                const origin = role === 'repartidor' ? 'CAMIÓN' : 'PLANTA';
-                $('sale-origin-badge').innerText = origin;
-                $('sale-origin-badge').className = role === 'repartidor' ? 'px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full' : 'px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full';
-
-                // Iniciar Datos
-                initData();
-                nav('home');
+                safeClassList('auth-view', 'add', 'hidden');
+                safeClassList('app-view', 'remove', 'hidden');
+                
+                const userDisplay = document.getElementById('user-display');
+                if(userDisplay) userDisplay.innerHTML = `<b style="color:var(--text)">${displayName}</b><br><span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.7em;">${role.toUpperCase()}</span>`;
+                
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+                initListeners();
+                const pendDate = document.getElementById('pend-date');
+                if(pendDate) pendDate.value = today();
+                nav('dashboard');
             } else {
-                $('view-login').classList.remove('hidden');
-                $('view-app').classList.add('hidden');
+                safeClassList('auth-view', 'remove', 'hidden');
+                safeClassList('app-view', 'add', 'hidden');
             }
-            $('loader').classList.add('hidden');
+            safeClassList('loader', 'add', 'hidden');
         });
 
-        // CARGA DE DATOS
-        function initData() {
-            // Productos (Todos)
-            onSnapshot(query(collection(db, "products"), orderBy("name")), sn => {
+        function initListeners() {
+            onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => {
                 products = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderProducts(); 
-                renderInventory(); // Tabla planta
-                fillSelects();
+                renderProducts(); renderInventory(); updateSelects();
             });
-
-            // Ventas (Todos ven historial reciente, Admin ve todo)
-            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), sn => {
+            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => {
+                supplies = sn.docs.map(d => ({id: d.id, ...d.data()}));
+                renderSupplies(); updateSupplySelect();
+            });
+            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderSalesHistory();
-                updateKPIs();
-                if(role === 'admin') renderAdminSales();
+                renderSalesTable(); updateDashboard();
+                if(role === 'admin') renderAdminSalesTable();
             });
-
-            // Específico Repartidor
-            if (role === 'repartidor' || role === 'admin') {
-                // Stock del Camión (Solo mi stock si soy chofer)
-                let q = role === 'repartidor' ? query(collection(db, "truck_stock"), where("driverId", "==", user.uid)) : collection(db, "truck_stock");
-                onSnapshot(q, sn => {
-                    truckStock = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                    renderTruckStock();
-                });
-
-                // Clientes (Solo mis clientes si soy chofer)
-                let qC = role === 'repartidor' ? query(collection(db, "customers"), where("driverId", "==", user.uid)) : collection(db, "customers");
-                onSnapshot(qC, sn => {
-                    customers = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                    renderCustomers();
+            if(role === 'admin') {
+                onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
+                    movements = sn.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderMovements();
                 });
             }
-
-            // Lista de Choferes (Para cargar camión)
-            if (role === 'admin' || role === 'vendedor') {
-                getDocs(query(collection(db, "users"), where("role", "==", "repartidor"))).then(sn => {
-                    drivers = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                    const sel = $('load-driver'); sel.innerHTML = '';
-                    drivers.forEach(d => sel.innerHTML += `<option value="${d.id}">${d.name}</option>`);
-                });
-            }
+            onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => {
+                const list = sn.docs.map(d => ({id: d.id, ...d.data()}));
+                renderPending(list);
+                const total = list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0);
+                const pendingEl = document.getElementById('d-pending');
+                if(pendingEl) pendingEl.textContent = fmtMoney(total);
+            });
         }
 
-        // --- LÓGICA DE NEGOCIO ---
-
-        // 1. VENTA (CORE)
-        window.calcTotal = () => {
-            const pid = $('s-prod').value;
-            const type = $('s-type').value;
-            const pres = parseInt($('s-pres').value);
-            const qty = parseInt($('s-qty').value);
-            const prod = products.find(p => p.id === pid);
-            
-            if (!prod) return;
-
-            let price = prod.price; // Base (Casa)
-            if (type === 'shop') price = prod.priceShop || price; // Tienda
-            if (type === 'wholesale') price = prod.priceWholesale || price; // Mayorista
-
-            const total = price * pres * qty;
-            $('s-total').innerText = money(total);
-        };
-
-        $('form-sale').addEventListener('submit', async (e) => {
+        // --- GESTIÓN DE INSUMOS ---
+        window.showSupplyForm = () => safeClassList('box-create-supply', 'remove', 'hidden');
+        window.hideSupplyForm = () => safeClassList('box-create-supply', 'add', 'hidden');
+        
+        document.getElementById('form-supply')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const pid = $('s-prod').value;
-            const pres = parseInt($('s-pres').value);
-            const qty = parseInt($('s-qty').value);
-            const prod = products.find(p => p.id === pid);
-            if (!prod) return;
-
-            const totalUnits = pres * qty;
-            const totalMoney = parseFloat($('s-total').innerText.replace(/[^0-9.-]+/g,""));
-            const cost = totalUnits * (prod.cost || 0);
-
-            // VALIDAR STOCK (Planta o Camión)
-            if (role === 'repartidor') {
-                const stockItem = truckStock.find(s => s.productId === pid && s.driverId === user.uid);
-                if (!stockItem || stockItem.qty < totalUnits) return toast("❌ No tienes suficiente stock en el camión.");
-            } else {
-                if (prod.stock < totalUnits) return toast("❌ Stock insuficiente en planta.");
-            }
-
+            const name = document.getElementById('supp-name').value;
+            const stock = parseInt(document.getElementById('supp-stock').value);
             try {
-                await runTransaction(db, async (t) => {
-                    // Descontar Stock
-                    if (role === 'repartidor') {
-                        // Buscar doc de stock camión
-                        const qS = query(collection(db, "truck_stock"), where("driverId", "==", user.uid), where("productId", "==", pid));
-                        const snap = await getDocs(qS);
-                        if(snap.empty) throw "Error de stock";
-                        const sDoc = snap.docs[0];
-                        t.update(sDoc.ref, { qty: sDoc.data().qty - totalUnits });
-                    } else {
-                        // Descontar de Planta
-                        const ref = doc(db, "products", pid);
-                        const snap = await t.get(ref);
-                        t.update(ref, { stock: snap.data().stock - totalUnits });
-                    }
-
-                    // Registrar Venta
-                    t.set(doc(collection(db, "sales")), {
-                        product: prod.name, pid, pres, qty, totalUnits,
-                        price: totalMoney, cost, profit: totalMoney - cost,
-                        user: user.email, timestamp: serverTimestamp(),
-                        source: role === 'repartidor' ? 'ruta' : 'planta'
-                    });
-                });
-                toast("✅ Venta Registrada");
-                $('form-sale').reset();
-                $('s-qty').value = 1;
-                calcTotal();
-            } catch (err) { toast("Error: " + err.message); }
+                await addDoc(collection(db, "supplies"), { name, stock, createdAt: serverTimestamp() });
+                await addDoc(collection(db, "movements"), { type: "CREACION_INSUMO", product: name, quantity: stock, user: user.email, timestamp: serverTimestamp() });
+                document.getElementById('form-supply').reset();
+                hideSupplyForm();
+                toast("✅ Insumo Creado");
+            } catch(e){ toast("❌ Error: "+e.message); }
         });
 
-        window.adjQty = (n) => {
-            const el = $('s-qty');
-            let v = parseInt(el.value) + n;
-            if(v < 1) v = 1;
-            el.value = v;
-            calcTotal();
-        };
+        function renderSupplies() {
+            const tb = document.querySelector('#table-supplies tbody');
+            if(!tb) return;
+            tb.innerHTML = '';
+            supplies.forEach(s => {
+                const actionBtn = role === 'admin' ? 
+                    `<button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">➕ Entrada</button>` : '-';
+                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<50?'⚠️ BAJO':'OK'}</td><td>${actionBtn}</td></tr>`;
+            });
+        }
+        function updateSupplySelect() {
+            const sel = document.getElementById('prod-supply-link');
+            if(!sel) return;
+            sel.innerHTML = '<option value="">-- No consume insumo --</option>';
+            supplies.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+        }
 
-        // 2. CARGA DE CAMIÓN (Planta -> Repartidor)
-        $('form-load-truck').addEventListener('submit', async (e) => {
+        // --- REABASTECIMIENTO ---
+        window.openRestock = (id, type = 'product') => {
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id);
+            if(!item) return;
+            const label = document.getElementById('modal-prod-name');
+            if(label) label.textContent = item.name + (type==='supply' ? ' (INSUMO)' : '');
+            document.getElementById('restock-id').value = item.id;
+            document.getElementById('restock-type').value = type;
+            document.getElementById('restock-qty').value = '';
+            safeClassList('modal-restock', 'remove', 'hidden');
+            document.getElementById('restock-qty').focus();
+        };
+        window.closeModal = () => safeClassList('modal-restock', 'add', 'hidden');
+
+        document.getElementById('form-restock')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const did = $('load-driver').value;
-            const pid = $('load-prod').value;
-            const qty = parseInt($('load-qty').value);
+            const id = document.getElementById('restock-id').value;
+            const type = document.getElementById('restock-type').value;
+            const qty = parseInt(document.getElementById('restock-qty').value);
+            const col = type === 'product' ? 'products' : 'supplies';
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id);
+
+            if(qty <= 0) return toast("❌ Cantidad inválida");
+            try {
+                const newStock = (item.stock || 0) + qty;
+                await updateDoc(doc(db, col, id), { stock: newStock });
+                await addDoc(collection(db, "movements"), {
+                    type: "ENTRADA_"+type.toUpperCase(), product: item.name, quantity: qty,
+                    user: user.email, timestamp: serverTimestamp()
+                });
+                toast("✅ Stock Agregado");
+                closeModal();
+            } catch(err) { toast("❌ Error: " + err.message); }
+        });
+
+        // --- PRODUCTOS ---
+        window.productForm = document.getElementById('form-product');
+        window.productForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(role !== 'admin') return toast("❌ Acceso denegado");
+            const id = document.getElementById('prod-id').value;
+            const name = document.getElementById('prod-name').value.trim();
+            
+            if (!id && products.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+                return showConfirm("Error", "El producto ya existe.", null);
+            }
+
+            const data = {
+                name: name,
+                price: parseFloat(document.getElementById('prod-price').value),
+                cost: parseFloat(document.getElementById('prod-cost').value),
+                min: parseInt(document.getElementById('prod-min').value),
+                restock: document.getElementById('prod-restock').value,
+                supplyLink: document.getElementById('prod-supply-link').value || null,
+                supplyQty: parseInt(document.getElementById('prod-supply-qty').value) || 0
+            };
+            if(!id) data.stock = parseInt(document.getElementById('prod-stock').value);
+            try {
+                if(id) { await updateDoc(doc(db, "products", id), data); } 
+                else { 
+                    await addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() });
+                    await addDoc(collection(db, "movements"), { type: "CREACION_PRODUCTO", product: data.name, quantity: data.stock, user: user.email, timestamp: serverTimestamp() });
+                }
+                resetProdForm();
+                toast("✅ Producto Guardado");
+            } catch(e) { toast("❌ Error: " + e.message); }
+        });
+
+        // --- VENTA ---
+        document.getElementById('form-sale')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pid = document.getElementById('sale-product').value;
+            const pres = parseInt(document.getElementById('sale-presentation').value);
+            const qty = parseInt(document.getElementById('sale-qty').value);
+            const prod = products.find(p => p.id === pid);
+            if(!prod) return;
+
+            const totalUnits = qty * pres; 
+            const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
+            const profit = totalPrice - (totalUnits * (prod.cost || 0));
+
+            if(prod.stock < totalUnits) return showConfirm("Error", "❌ Stock insuficiente", null);
+
+            let supplyDoc = null, supplyDeduct = 0;
+            if(prod.supplyLink) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) {
+                    supplyDeduct = totalUnits * (prod.supplyQty || 1);
+                    if(s.stock < supplyDeduct) return showConfirm("Error", `❌ Faltan insumos (${s.name})`, null);
+                    supplyDoc = s;
+                }
+            }
 
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid);
                     const pDoc = await t.get(pRef);
-                    if (pDoc.data().stock < qty) throw "Stock planta insuficiente";
-                    
-                    // Restar Planta
-                    t.update(pRef, { stock: pDoc.data().stock - qty });
+                    if(pDoc.data().stock < totalUnits) throw "Stock insuficiente";
+                    t.update(pRef, { stock: pDoc.data().stock - totalUnits });
 
-                    // Sumar Camión
-                    const q = query(collection(db, "truck_stock"), where("driverId", "==", did), where("productId", "==", pid));
-                    const snap = await getDocs(q);
-                    
-                    if (snap.empty) {
-                        t.set(doc(collection(db, "truck_stock")), { driverId: did, productId: pid, qty });
-                    } else {
-                        const sDoc = snap.docs[0];
-                        t.update(sDoc.ref, { qty: sDoc.data().qty + qty });
+                    if(supplyDoc) {
+                        const sRef = doc(db, "supplies", supplyDoc.id);
+                        const sSnap = await t.get(sRef);
+                        t.update(sRef, { stock: sSnap.data().stock - supplyDeduct });
                     }
+
+                    t.set(doc(collection(db, "sales")), {
+                        product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits,
+                        price: totalPrice, cost: (totalUnits * prod.cost), profit: profit,
+                        type: document.getElementById('sale-type').value,
+                        obs: document.getElementById('sale-obs').value,
+                        user: user.email, timestamp: serverTimestamp(),
+                        supplyUsed: supplyDoc ? supplyDoc.name : null, supplyQty: supplyDeduct
+                    });
                 });
-                toast("✅ Camión Cargado");
-                $('form-load-truck').reset();
-            } catch (err) { toast("Error: " + err); }
+                toast("✅ Venta Exitosa");
+                document.getElementById('form-sale').reset();
+                updateSaleForm();
+            } catch(err) { toast("❌ Error: " + err.message); }
         });
 
-        // 3. REABASTECER PLANTA
-        window.openRestock = (id) => {
-            const p = products.find(x => x.id === id);
-            $('restock-id').value = id;
-            $('restock-name').innerText = p.name;
-            toggleModal('modal-restock');
-        };
-        $('form-restock').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = $('restock-id').value;
-            const qty = parseInt($('restock-qty').value);
-            const ref = doc(db, "products", id);
-            const snap = await getDoc(ref);
-            await updateDoc(ref, { stock: (snap.data().stock || 0) + qty });
-            toast("✅ Stock Actualizado");
-            toggleModal('modal-restock');
-            $('form-restock').reset();
-        });
-
-        // 4. NUEVO CLIENTE (GPS)
-        window.getGPS = () => {
-            if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p => {
-                $('nc-lat').value=p.coords.latitude; $('nc-lng').value=p.coords.longitude;
-                $('gps-status').innerText="✅ Ubicación capturada";
-            });
-        };
-        $('form-client').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await addDoc(collection(db, "customers"), {
-                name: $('nc-name').value, phone: $('nc-phone').value, ref: $('nc-ref').value,
-                lat: $('nc-lat').value, lng: $('nc-lng').value, driverId: user.uid, loans: 0
-            });
-            toast("Cliente Guardado");
-            toggleModal('modal-client');
-        });
-
-        // 5. PRÉSTAMO DE ENVASES
-        window.loanAction = async (cid, n) => {
-            const ref = doc(db, "customers", cid);
-            const snap = await getDoc(ref);
-            await updateDoc(ref, { loans: (snap.data().loans || 0) + n });
-            toast(n > 0 ? "Prestado" : "Devuelto");
-        };
-
-        // --- RENDERS ---
-        function fillSelects() {
-            const f = (id) => { $(id).innerHTML = ''; products.forEach(p => $(id).innerHTML += `<option value="${p.id}">${p.name}</option>`); };
-            f('s-prod'); f('load-prod');
-        }
-
-        function renderSalesHistory() {
-            const tb = $('list-sales-recent'); tb.innerHTML = '';
-            sales.slice(0, 15).forEach(s => {
-                const ts = new Date(s.timestamp.seconds * 1000);
-                tb.innerHTML += `<tr class="border-b"><td class="p-3">${s.product} <span class="text-xs text-gray-400">(${s.pres}x${s.qty})</span></td><td class="p-3 font-bold">${money(s.price)}</td><td class="p-3 text-right text-xs">${ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td></tr>`;
-            });
-        }
-
-        function renderInventory() {
-            const tb = $('list-inventory'); tb.innerHTML = '';
-            products.forEach(p => {
-                tb.innerHTML += `<tr class="border-b"><td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.stock}</td><td class="p-3"><button onclick="openRestock('${p.id}')" class="text-xs bg-green-600 text-white px-2 py-1 rounded">+ Stock</button></td></tr>`;
-            });
-        }
-
-        function renderTruckStock() {
-            const tb = $('list-truck-stock'); tb.innerHTML = '';
-            let total = 0;
-            truckStock.forEach(s => {
-                const p = products.find(x => x.id === s.productId);
-                if (p && s.qty > 0) {
-                    tb.innerHTML += `<tr class="border-b"><td class="p-3">${p.name}</td><td class="p-3 text-right font-bold">${s.qty}</td></tr>`;
-                    total += s.qty;
-                }
-            });
-            $('kpi-truck-stock').innerText = total + " un.";
-        }
-
-        function renderCustomers() {
-            const list = $('list-customers'); list.innerHTML = '';
-            customers.forEach(c => {
-                list.innerHTML += `
-                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-                    <div class="flex justify-between">
-                        <h4 class="font-bold">${c.name}</h4>
-                        <a href="https://maps.google.com/?q=${c.lat},${c.lng}" target="_blank" class="text-blue-600 text-xs flex items-center gap-1"><i data-feather="map-pin" width="12"></i> Mapa</a>
-                    </div>
-                    <p class="text-xs text-gray-500">${c.ref || ''}</p>
-                    <div class="flex justify-between items-center mt-3 bg-gray-50 p-2 rounded">
-                        <span class="text-xs font-bold">Envases: ${c.loans || 0}</span>
-                        <div class="flex gap-2">
-                            <button onclick="loanAction('${c.id}', 1)" class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">Prestar</button>
-                            <button onclick="loanAction('${c.id}', -1)" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Devolver</button>
-                        </div>
-                    </div>
-                </div>`;
+        // --- SISTEMA ---
+        function renderAdminSalesTable() {
+            const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return;
+            tb.innerHTML = '';
+            sales.slice(0, 50).forEach(s => {
+                const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td>${presName} (${s.qty_total_units})</td>
+                <td style="font-weight:bold;">${fmtMoney(s.price)}</td><td>${s.user}</td>
+                <td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i> Anular</button></td></tr>`;
             });
             feather.replace();
         }
 
-        function updateKPIs() {
-            const today = new Date().setHours(0,0,0,0);
-            const todaySales = sales.filter(s => s.timestamp.seconds * 1000 > today);
-            const total = todaySales.reduce((a, b) => a + b.price, 0);
-            const cost = todaySales.reduce((a, b) => a + (b.cost || 0), 0);
+        window.deleteSale = async (saleId) => {
+            if (role !== 'admin') return toast("❌ Solo admin.");
+            const sale = sales.find(s => s.id === saleId);
+            if (!sale) return toast("Error: Venta no encontrada");
             
-            $('kpi-sales').innerText = money(total);
-            $('kpi-profit').innerText = money(total - cost);
+            const safeProdName = sale.product || "Producto Desconocido";
+            let targetProdId = sale.pid;
+            if (!targetProdId && sale.product) {
+                const foundProd = products.find(p => p.name === sale.product);
+                if (foundProd) targetProdId = foundProd.id;
+            }
+
+            const msg = targetProdId ? 
+                `Se devolverán ${sale.qty_total_units || 0} productos al stock.` : 
+                "⚠️ Producto no encontrado. NO SE DEVOLVERÁ STOCK, solo se borrará el registro.";
+
+            showConfirm("⚠️ ¿Anular Venta?", msg, async () => {
+                try {
+                    await runTransaction(db, async (t) => {
+                        if(targetProdId) {
+                            const pRef = doc(db, "products", targetProdId);
+                            const pDoc = await t.get(pRef);
+                            if (pDoc.exists()) {
+                                const current = pDoc.data().stock || 0;
+                                t.update(pRef, { stock: current + (sale.qty_total_units || 0) });
+                            }
+                        }
+                        
+                        if(sale.supplyUsed && sale.supplyQty > 0) {
+                            const supp = supplies.find(x => x.name === sale.supplyUsed);
+                            if(supp) {
+                                const sRef = doc(db, "supplies", supp.id);
+                                const sSnap = await t.get(sRef);
+                                if(sSnap.exists()) t.update(sRef, { stock: (sSnap.data().stock||0) + sale.supplyQty });
+                            }
+                        }
+
+                        t.delete(doc(db, "sales", saleId));
+                        
+                        const moveRef = doc(collection(db, "movements"));
+                        t.set(moveRef, { 
+                            type: "ANULACION", 
+                            product: safeProdName, 
+                            quantity: sale.qty_total_units || 0, 
+                            user: user.email || "admin", 
+                            timestamp: serverTimestamp() 
+                        });
+                    });
+                    toast("✅ Anulado correctamente");
+                } catch (err) { 
+                    console.error(err);
+                    toast("❌ Error: " + err.message); 
+                }
+            });
+        };
+
+        window.resetSystem = async () => {
+            if(role !== 'admin') return;
+            showConfirm("¡PELIGRO!", "¿BORRAR TODO?", () => {
+                document.getElementById('loader').classList.remove('hidden');
+                const batchDelete = async (col) => {
+                    const q = query(collection(db, col));
+                    const snap = await getDocs(q);
+                    const batch = writeBatch(db);
+                    snap.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                };
+                Promise.all([batchDelete("products"), batchDelete("sales"), batchDelete("movements"), batchDelete("pending"), batchDelete("supplies")]).then(() => {
+                    toast("♻️ Reiniciado");
+                    document.getElementById('loader').classList.add('hidden');
+                }).catch(e => { toast("Error: " + e.message); document.getElementById('loader').classList.add('hidden'); });
+            });
+        };
+
+        // --- UI & UTILS ---
+        window.showConfirm = (title, msg, callback) => {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-msg').innerText = msg;
+            safeClassList('modal-confirm', 'remove', 'hidden');
+            const btn = document.getElementById('confirm-yes-btn');
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            if(callback) { newBtn.style.display = 'inline-flex'; newBtn.onclick = () => { callback(); safeClassList('modal-confirm', 'add', 'hidden'); }; } 
+            else newBtn.style.display = 'none';
+        };
+        window.closeConfirm = () => safeClassList('modal-confirm', 'add', 'hidden');
+
+        window.updateSaleForm = () => {
+            const pid = document.getElementById('sale-product').value;
+            const pres = parseInt(document.getElementById('sale-presentation').value)||1;
+            const qty = parseInt(document.getElementById('sale-qty').value)||0;
+            const prod = products.find(p => p.id === pid);
+            if(!prod) return;
+            const totalUnits = qty * pres;
+            const total = totalUnits * prod.price;
+            document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
+            document.getElementById('sale-deduct').textContent = totalUnits + " un.";
+            document.getElementById('sale-total').textContent = fmtMoney(total);
+        };
+
+        function renderInventory() {
+            const tb = document.querySelector('#table-inventory tbody'); if(!tb) return;
+            tb.innerHTML = '';
+            let criticalCount = 0;
+            products.forEach(p => {
+                const isLow = p.stock <= p.min;
+                if(isLow) criticalCount++;
+                const actionBtn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">➕ Reabastecer</button>` : '-';
+                tb.innerHTML += `<tr><td style="font-weight:bold">${p.name||'--'}</td><td class="${isLow?'text-red':''}">${p.stock}</td><td>${isLow?'⚠️ BAJO':'OK'}</td><td>${actionBtn}</td></tr>`;
+            });
+            const critEl = document.getElementById('d-critical');
+            if(critEl) critEl.textContent = criticalCount;
         }
 
-        // NAV
-        window.nav = (id) => {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-            document.getElementById('page-' + id).classList.add('active-page');
-            
-            // Activar boton nav visualmente
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('text-blue-600'));
-            const btn = document.querySelector(`button[onclick="nav('${id}')"]`);
-            if(btn) btn.classList.add('text-blue-600');
-            
-            // Refrescar si es necesario
-            if (id === 'truck' || id === 'home') initData();
+        function renderProducts() {
+            const tb = document.querySelector('#table-products tbody'); if(!tb) return;
+            tb.innerHTML='';
+            products.forEach(p => {
+                const supplyName = p.supplyLink ? (supplies.find(s=>s.id==p.supplyLink)?.name || 'Desc.') : 'N/A';
+                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-blue btn-sm">Editar</button>` : '-';
+                tb.innerHTML += `<tr><td>${p.name||'--'}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${supplyName}</td><td>${editBtn}</td></tr>`;
+            });
+        }
+        window.editProd = (id) => {
+            const p = products.find(x=>x.id==id);
+            document.getElementById('prod-id').value=p.id;
+            document.getElementById('prod-name').value=p.name;
+            document.getElementById('prod-price').value=p.price;
+            document.getElementById('prod-cost').value=p.cost||0;
+            document.getElementById('prod-stock').value=p.stock; 
+            document.getElementById('prod-stock').disabled = true; 
+            document.getElementById('prod-min').value=p.min||0;
+            document.getElementById('prod-restock').value=p.restock||'';
+            document.getElementById('prod-supply-link').value=p.supplyLink||'';
+            document.getElementById('prod-supply-qty').value=p.supplyQty||1;
         };
+        window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; }
 
-        // LOGIN TABS
-        window.toggleAuth = (mode) => {
-            if (mode === 'login') {
-                $('form-login').classList.remove('hidden');
-                $('form-register').classList.add('hidden');
-                $('tab-login').classList.add('bg-white', 'shadow', 'text-blue-600', 'font-bold');
-                $('tab-login').classList.remove('text-gray-500');
-                $('tab-register').classList.remove('bg-white', 'shadow', 'text-blue-600', 'font-bold');
-                $('tab-register').classList.add('text-gray-500');
-            } else {
-                $('form-register').classList.remove('hidden');
-                $('form-login').classList.add('hidden');
-                $('tab-register').classList.add('bg-white', 'shadow', 'text-blue-600', 'font-bold');
-                $('tab-register').classList.remove('text-gray-500');
-                $('tab-login').classList.remove('bg-white', 'shadow', 'text-blue-600', 'font-bold');
-                $('tab-login').classList.add('text-gray-500');
-            }
-        };
-
-        // HANDLERS AUTH
-        $('form-login').onsubmit = async (e) => {
-            e.preventDefault();
-            try { await signInWithEmailAndPassword(auth, $('l-email').value, $('l-pass').value); }
-            catch (e) { $('auth-error').innerText = e.message; }
-        };
-        $('form-register').onsubmit = async (e) => {
-            e.preventDefault();
-            try {
-                const c = await createUserWithEmailAndPassword(auth, $('r-email').value, $('r-pass').value);
-                await setDoc(doc(db, "users", c.user.uid), {
-                    name: $('r-name').value,
-                    email: $('r-email').value,
-                    role: $('r-role').value
-                });
-            } catch (e) { $('auth-error').innerText = e.message; }
-        };
-
-        // Admin Stuff
-        function renderAdminSales() {
-            const tb = $('list-sales-admin'); if(!tb) return;
-            tb.innerHTML = '';
-            sales.forEach(s => {
-                tb.innerHTML += `<tr class="border-b">
-                    <td class="p-3">${fmtDate(s.timestamp)}</td>
-                    <td class="p-3">${s.product}</td>
-                    <td class="p-3">${s.user}</td>
-                    <td class="p-3"><button onclick="delSale('${s.id}')" class="text-red-600 font-bold">X</button></td>
+        // RENDER SALES TABLE (CORREGIDA PARA MOSTRAR '***' A VENDEDORES)
+        function renderSalesTable() {
+            const tb = document.querySelector('#table-sales tbody'); if(!tb) return;
+            tb.innerHTML='';
+            sales.slice(0,30).forEach(s => {
+                const presName = s.presentation_val == 1 ? 'Unidad' : `Paca ${s.presentation_val}`;
+                
+                // Lógica de Privacidad de Ganancias
+                const profitVal = s.profit || 0;
+                const profitClass = profitVal >= 0 ? 'text-green' : 'text-red';
+                const sign = profitVal > 0 ? '+' : '';
+                const profitDisplay = role === 'admin' ? `<span class="${profitClass}">${sign}${fmtMoney(profitVal)}</span>` : '***';
+                
+                const unitPrice = s.qty_packs > 0 ? (s.price / s.qty_packs) : 0;
+                
+                tb.innerHTML += `<tr>
+                    <td>${fmtDate(s.timestamp)}</td>
+                    <td>${s.user || 'Desc.'}</td>
+                    <td>${s.product}</td>
+                    <td>${presName}</td>
+                    <td>${s.qty_packs}</td>
+                    <td>${fmtMoney(unitPrice)}</td>
+                    <td>${fmtMoney(s.price)}</td>
+                    <td>${profitDisplay}</td>
                 </tr>`;
             });
         }
-        window.delSale = async(id) => {
-            if(!confirm("¿Borrar y devolver stock?")) return;
-            const s = sales.find(x=>x.id===id);
-            try {
-                await runTransaction(db, async(t)=>{
-                    // Devolver a planta (simplificado, idealmente saber source)
-                    if(s.pid) {
-                        const ref = doc(db,"products",s.pid);
-                        const snap = await t.get(ref);
-                        if(snap.exists()) t.update(ref, {stock: snap.data().stock + (s.totalUnits||0)});
-                    }
-                    t.delete(doc(db,"sales",id));
-                });
-                toast("Borrado");
-            } catch(e){ toast(e.message); }
+
+        function renderMovements() {
+            const tb = document.querySelector('#table-movements tbody'); if(!tb) return;
+            tb.innerHTML='';
+            movements.slice(0,50).forEach(m => { tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.user}</td><td>${m.type}</td><td>${m.product}</td><td>${m.quantity}</td></tr>`; });
         }
-        window.resetSystem = async() => {
-            if(!confirm("¿BORRAR TODO?")) return;
-            $('loader').classList.remove('hidden');
-            // Simplificado: Borra colecciones una por una en consola real, aquí recargamos.
-            // En producción se requiere Cloud Function para borrado masivo.
-            alert("Contacta al soporte para borrado masivo o borra desde consola Firebase.");
-            $('loader').classList.add('hidden');
+        function renderPending(list) {
+            const tb = document.querySelector('#table-pending tbody'); if(!tb) return;
+            tb.innerHTML='';
+            list.forEach(i => { tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-green btn-sm">Pagado</button></td></tr>`; });
         }
-        window.exportExcel = () => {
-            const ws = XLSX.utils.json_to_sheet(sales);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Ventas");
-            XLSX.writeFile(wb, "Reporte.xlsx");
+        window.payPending = async (id) => { showConfirm("Cobro", "¿Marcar como pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); }
+
+        function updateDashboard() {
+            const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+            const todaySales = sales.filter(s => s.timestamp?.toDate() >= todayStart);
+            
+            const salesEl = document.getElementById('d-today');
+            if(salesEl) salesEl.textContent = fmtMoney(todaySales.reduce((a,b)=>a+b.price,0));
+            
+            const profitEl = document.getElementById('d-profit');
+            if(profitEl) profitEl.textContent = fmtMoney(todaySales.reduce((a,b)=>a+(b.profit||0),0));
         }
+
+        // Exports
+        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
+        window.exportSales = () => saveExcel(sales.map(s=>({Fecha:fmtDate(s.timestamp), Producto:s.product, Venta:s.price, Ganancia:s.profit})), "Ventas");
+        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
+        function saveExcel(json, name) {
+            const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
+        }
+
+        window.nav = (id) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-'+id).classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector(`a[href="#${id}"]`)?.classList.add('active');
+        };
+        window.toast = (msg) => { const t=document.getElementById('toast'); if(t) { t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); } };
+        window.logout = () => signOut(auth);
+        function updateSelects() {
+            const sel = document.getElementById('sale-product');
+            if(!sel) return;
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            products.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`);
+        }
+
+        document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); safeClassList('login-form', 'remove', 'hidden'); safeClassList('register-form', 'add', 'hidden'); };
+        document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); safeClassList('register-form', 'remove', 'hidden'); safeClassList('login-form', 'add', 'hidden'); };
+        document.getElementById('login-form').onsubmit = async(e)=>{ 
+            e.preventDefault(); 
+            try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } 
+            catch(err){ const el = document.getElementById('auth-msg'); if(el) el.textContent="Error: "+err.message; } 
+        };
+        document.getElementById('register-form').onsubmit = async(e)=>{ 
+            e.preventDefault(); 
+            try{ 
+                const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); 
+                await setDoc(doc(db,"users",c.user.uid),{
+                    email:c.user.email,
+                    role:document.getElementById('r-role').value,
+                    name:document.getElementById('r-name').value // Guardar nombre
+                }); 
+            } catch(err){ 
+                const el = document.getElementById('auth-msg'); if(el) el.textContent="Error: "+err.message; 
+            } 
+        };
+        document.getElementById('form-pending')?.addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value), date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
 
         feather.replace();
     </script>
