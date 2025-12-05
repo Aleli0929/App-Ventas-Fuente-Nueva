@@ -15,8 +15,7 @@
             --primary: #1e40af; --primary-light: #3b82f6; --dark: #0f172a; --gray: #64748b;
             --bg: #f1f5f9; --white: #ffffff;
             --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --truck: #0891b2;
-            --radius: 12px;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px; --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg); color: var(--dark); padding-bottom: 40px; }
@@ -24,8 +23,6 @@
         .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
         .gap-2 { gap: 0.75rem; } .text-primary { color: var(--primary); }
         .text-success { color: var(--success); font-weight: 700; } .text-danger { color: var(--danger); font-weight: 700; }
-        
-        /* CLASE CLAVE PARA OCULTAR COSAS AL VENDEDOR */
         .admin-only { display: none; }
 
         header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
@@ -36,7 +33,6 @@
         
         .card { background: var(--white); padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1.5rem; }
         .card h3 { color: var(--dark); margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-        
         .main-container { max-width: 1400px; margin: 2rem auto; padding: 0 1rem; }
         .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
         .grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; }
@@ -201,7 +197,7 @@
                         <div class="card">
                             <div class="flex justify-between items-center mb-2">
                                 <h3><i data-feather="list"></i> Ventas</h3>
-                                <input type="date" id="sales-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem;" onchange="renderSalesTable(); renderDailySummary();">
+                                <input type="date" id="sales-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem;" oninput="refreshSalesView()">
                             </div>
                             <div class="table-container" style="max-height: 400px; overflow-y:auto;">
                                 <table id="table-sales"><thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Obs.</th><th>Total</th></tr></thead><tbody></tbody></table>
@@ -307,27 +303,23 @@
 
         let user = null, role = 'vendedor', products = [], supplies = [], sales = [], movements = [];
         
-        // --- FECHA ROBUSTA LOCAL ---
-        const today = () => {
-            const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
+        // Función fecha local "YYYY-MM-DD" que no falla por zona horaria
+        const getLocalYMD = (dateObj) => {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         };
+        const today = () => getLocalYMD(new Date());
 
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
         
-        // --- FILTRO DE FECHAS CORREGIDO ---
-        const isDateMatch = (ts, dateStr) => {
+        // COMPARACIÓN DE FECHA SEGURA (STRING vs STRING)
+        const isDateMatch = (ts, dateStrInput) => {
             if (!ts) return false;
             const d = new Date(ts.seconds * 1000);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const tsYMD = `${year}-${month}-${day}`;
-            return tsYMD === dateStr;
+            return getLocalYMD(d) === dateStrInput;
         };
 
         const isToday = (ts) => isDateMatch(ts, today());
@@ -347,10 +339,9 @@
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
                 
-                // Mostrar solo elementos admin
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
                 
-                // Setear fecha por defecto hoy
+                // Fecha por defecto hoy
                 document.getElementById('sales-date-filter').value = today();
                 document.getElementById('pend-date').value = today();
 
@@ -366,16 +357,27 @@
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
             onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); renderSupplies(); updateSupplySelect(); });
+            
+            // ESCUCHA VENTAS Y ACTUALIZA TODO DE GOLPE
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
-                renderSalesTable(); updateDashboard(); renderDailySummary(); if(role === 'admin') renderAdminSalesTable(); 
+                refreshSalesView(); // Actualiza tabla y resumen con filtro actual
+                updateDashboard();
+                if(role === 'admin') renderAdminSalesTable(); 
             });
+            
             onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => { movements = sn.docs.map(d => ({id: d.id, ...d.data()})); renderMovements(); renderTruckLoads(); });
             onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => { 
                 const list = sn.docs.map(d => ({id: d.id, ...d.data()})); renderPending(list);
                 document.getElementById('d-pending').textContent = fmtMoney(list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0));
             });
         }
+
+        // FUNCIÓN MAESTRA PARA REFRESCAR VENTAS AL CAMBIAR FECHA O BORRAR
+        window.refreshSalesView = () => {
+            renderSalesTable();
+            renderDailySummary();
+        };
 
         window.updateTruckInfo = () => {
             const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
@@ -479,7 +481,7 @@
                 tb.innerHTML += `<tr>
                     <td>${fmtDate(s.timestamp)}</td>
                     <td>${s.product}</td>
-                    <td style="font-size:0.8rem; color:var(--gray); font-style:italic;">${s.obs || '-'}</td>
+                    <td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td>
                     <td style="font-weight:bold;">${fmtMoney(s.price)}</td>
                     <td>${s.user}</td>
                     <td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td>
@@ -496,7 +498,6 @@
                         // Reponer producto
                         let pRef = null, pStock = 0;
                         let targetProdId = s.pid;
-                        // Si no hay ID (ventas viejas), buscar por nombre
                         if(!targetProdId) { const found = products.find(p => p.name === s.product); if(found) targetProdId = found.id; }
                         
                         if(targetProdId) { pRef = doc(db, "products", targetProdId); const d = await t.get(pRef); if(d.exists()) pStock = d.data().stock; }
@@ -528,7 +529,6 @@
 
         // --- FILTRO Y RENDER VENTAS ---
         function renderDailySummary() {
-            // Usar la fecha del filtro, no solo hoy
             const filterDate = document.getElementById('sales-date-filter').value;
             const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
 
@@ -572,12 +572,11 @@
             if(filteredSales.length === 0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin ventas esta fecha.</td></tr>'; return; }
             
             filteredSales.forEach(s => {
-                const presName = s.presentation_val == 1 ? 'Unid' : `Paca ${s.presentation_val}`;
                 tb.innerHTML += `<tr>
                     <td>${fmtDate(s.timestamp).split(',')[1]}</td>
                     <td>${s.user.split('@')[0]}</td>
                     <td>${s.product} <small>(${s.qty_packs})</small></td>
-                    <td><small style="color:var(--gray)">${s.obs || '-'}</small></td>
+                    <td><small style="color:var(--gray); font-style:italic;">${s.obs || '-'}</small></td>
                     <td>${fmtMoney(s.price)}</td>
                 </tr>`;
             });
