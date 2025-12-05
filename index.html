@@ -12,141 +12,60 @@
 
     <style>
         :root {
-            /* Paleta de Colores Elegante - Fuente Nueva */
-            --primary: #1e40af;       /* Azul Rey Profundo */
-            --primary-light: #3b82f6; /* Azul Agua Brillante */
-            --dark: #0f172a;          /* Texto Oscuro */
-            --gray: #64748b;          /* Texto Secundario */
-            --bg: #f1f5f9;            /* Fondo Gris Azulado Muy Claro */
-            --white: #ffffff;
-            
-            /* Colores de Estado */
-            --success: #10b981;       /* Verde Esmeralda (Dinero/Éxito) */
-            --danger: #ef4444;        /* Rojo Suave (Error/Borrar) */
-            --warning: #f59e0b;       /* Ámbar (Alertas) */
-            --truck: #0891b2;         /* Cian Oscuro (Logística) */
-
-            /* UI */
+            --primary: #1e40af; --primary-light: #3b82f6; --dark: #0f172a; --gray: #64748b;
+            --bg: #f1f5f9; --white: #ffffff;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --truck: #0891b2;
             --radius: 12px;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --transition: all 0.2s ease-in-out;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg); color: var(--dark); padding-bottom: 40px; }
-
-        /* --- UTILIDADES --- */
         .hidden { display: none !important; }
-        .flex { display: flex; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-2 { gap: 0.75rem; }
-        .text-primary { color: var(--primary); }
-        .text-success { color: var(--success); font-weight: 700; }
-        .text-danger { color: var(--danger); font-weight: 700; }
+        .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.75rem; } .text-primary { color: var(--primary); }
+        .text-success { color: var(--success); font-weight: 700; } .text-danger { color: var(--danger); font-weight: 700; }
+        
+        /* CLASE CLAVE PARA OCULTAR COSAS AL VENDEDOR */
         .admin-only { display: none; }
 
-        /* --- COMPONENTES UI --- */
+        header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+        .app-title { font-size: 1.5rem; font-weight: 700; }
+        nav { display: flex; gap: 0.5rem; margin-top: 1rem; overflow-x: auto; padding-bottom: 5px; }
+        nav a { text-decoration: none; color: rgba(255,255,255,0.7); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 500; white-space: nowrap; }
+        nav a.active { background: var(--white); color: var(--primary); font-weight: 700; }
         
-        /* Header */
-        header { 
-            background: linear-gradient(135deg, var(--primary), var(--dark)); 
-            color: white; 
-            padding: 1rem 2rem; 
-            box-shadow: var(--shadow); 
-            position: sticky; top: 0; z-index: 100;
-        }
-        .app-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+        .card { background: var(--white); padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1.5rem; }
+        .card h3 { color: var(--dark); margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
         
-        /* Navegación */
-        nav { 
-            display: flex; gap: 0.5rem; margin-top: 1rem; overflow-x: auto; padding-bottom: 5px;
-        }
-        nav::-webkit-scrollbar { height: 0px; }
-        nav a { 
-            text-decoration: none; color: rgba(255,255,255,0.7); 
-            padding: 0.5rem 1rem; border-radius: 20px; 
-            font-size: 0.9rem; font-weight: 500; transition: var(--transition);
-            white-space: nowrap;
-        }
-        nav a:hover { background: rgba(255,255,255,0.1); color: white; }
-        nav a.active { background: var(--white); color: var(--primary); font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-
-        /* Cards */
-        .card { 
-            background: var(--white); 
-            padding: 1.5rem; 
-            border-radius: var(--radius); 
-            box-shadow: var(--shadow); 
-            margin-bottom: 1.5rem; 
-            border: 1px solid rgba(255,255,255,0.5);
-        }
-        .card h3 { 
-            color: var(--dark); margin-bottom: 1rem; font-size: 1.1rem; 
-            border-bottom: 2px solid var(--bg); padding-bottom: 0.5rem;
-            display: flex; align-items: center; gap: 0.5rem;
-        }
-
-        /* Grids */
         .main-container { max-width: 1400px; margin: 2rem auto; padding: 0 1rem; }
         .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
         .grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; }
         @media(max-width: 900px) { .grid-split { grid-template-columns: 1fr; } }
 
-        /* Formularios */
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
         label { font-size: 0.85rem; font-weight: 600; color: var(--gray); margin-bottom: 0.3rem; display: block; }
-        input, select, textarea { 
-            width: 100%; padding: 0.75rem; 
-            border: 1px solid #cbd5e1; border-radius: 8px; 
-            font-size: 0.95rem; transition: var(--transition);
-            background: #f8fafc;
-        }
-        input:focus, select:focus { 
-            outline: none; border-color: var(--primary-light); 
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); background: white;
-        }
-
-        /* Botones */
-        .btn { 
-            padding: 0.75rem 1.5rem; border: none; border-radius: 8px; 
-            cursor: pointer; font-weight: 600; font-size: 0.95rem; 
-            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-            transition: var(--transition); color: white;
-        }
-        .btn:hover { transform: translateY(-1px); filter: brightness(110%); }
-        .btn:active { transform: translateY(0); }
-        .btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background: #f8fafc; }
+        
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; }
+        .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
         .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px; }
-
         .btn-blue { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
         .btn-green { background: linear-gradient(135deg, #059669, var(--success)); }
         .btn-truck { background: linear-gradient(135deg, #0e7490, var(--truck)); }
         .btn-red { background: linear-gradient(135deg, #b91c1c, var(--danger)); }
         .btn-gray { background: #e2e8f0; color: var(--dark); }
-        .btn-gray:hover { background: #cbd5e1; }
 
-        /* Tablas */
         .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #f8fafc; color: var(--gray); font-size: 0.75rem; text-transform: uppercase; padding: 1rem; text-align: left; font-weight: 700; letter-spacing: 0.05em; }
+        th { background: #f8fafc; color: var(--gray); font-size: 0.75rem; text-transform: uppercase; padding: 1rem; text-align: left; font-weight: 700; }
         td { padding: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; white-space: nowrap; }
-        tr:hover td { background: #f1f5f9; }
 
-        /* Login */
         .auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
         .auth-box { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; }
-
-        /* Loader & Toast */
-        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; justify-content: center; align-items: center; z-index: 2000; backdrop-filter: blur(2px); }
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; justify-content: center; align-items: center; z-index: 2000; }
         #toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--dark); color: white; border-radius: 8px; display: none; z-index: 3000; box-shadow: var(--shadow); font-weight: 500;}
-
-        /* Modal */
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(2px); }
-        .modal-content { background: white; padding: 2rem; border-radius: 16px; width: 90%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Stat Cards */
+        .modal-content { background: white; padding: 2rem; border-radius: 16px; width: 90%; max-width: 450px; }
         .stat-card { display: flex; justify-content: space-between; align-items: center; }
         .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     </style>
@@ -158,9 +77,7 @@
 
     <div id="modal-confirm" class="modal-overlay hidden">
         <div class="modal-content" style="text-align: center;">
-            <div style="background:#fee2e2; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem auto; color:var(--danger)">
-                <i data-feather="alert-circle"></i>
-            </div>
+            <div style="background:#fee2e2; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem auto; color:var(--danger)"><i data-feather="alert-circle"></i></div>
             <h3 id="confirm-title" style="margin-bottom:0.5rem; font-size:1.25rem;">Confirmar</h3>
             <p id="confirm-msg" style="color:var(--gray); margin-bottom:1.5rem;"></p>
             <div class="modal-actions" style="display:flex; gap:1rem; justify-content:center;">
@@ -175,13 +92,12 @@
             <h3 style="color:var(--primary); margin-bottom:0.5rem;">📥 Entrada de Inventario</h3>
             <p style="color:var(--gray); margin-bottom: 1.5rem;">Producto: <b id="modal-prod-name" class="text-primary"></b></p>
             <form id="form-restock">
-                <input type="hidden" id="restock-id">
-                <input type="hidden" id="restock-type">
+                <input type="hidden" id="restock-id"><input type="hidden" id="restock-type">
                 <label>Cantidad a Ingresar:</label>
                 <input type="number" id="restock-qty" min="1" placeholder="0" required style="font-size:1.5rem; padding:1rem; text-align:center; font-weight:bold; color:var(--primary); border: 2px solid var(--primary-light);">
                 <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
                     <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
-                    <button type="submit" class="btn btn-green" style="flex:1">Guardar Entrada</button>
+                    <button type="submit" class="btn btn-green" style="flex:1">Guardar</button>
                 </div>
             </form>
         </div>
@@ -194,44 +110,20 @@
                 <h2 style="color:var(--primary); margin-top:0.5rem;">Fuente Nueva</h2>
                 <p style="color:var(--gray); font-size:0.9rem;">Sistema de Control ERP</p>
             </div>
-            
             <div style="display:flex; background:var(--bg); padding:4px; border-radius:8px; margin-bottom:1.5rem;">
                 <button id="tab-login" class="btn" style="flex:1; background:white; color:var(--primary); box-shadow:0 1px 3px rgba(0,0,0,0.1); padding:0.5rem;">Login</button>
                 <button id="tab-register" class="btn" style="flex:1; background:transparent; color:var(--gray); padding:0.5rem; box-shadow:none;">Registro</button>
             </div>
-
             <form id="login-form">
-                <div style="text-align:left; margin-bottom:1rem;">
-                    <label>Correo Electrónico</label>
-                    <input type="email" id="l-email" placeholder="usuario@fuentenueva.com" required>
-                </div>
-                <div style="text-align:left; margin-bottom:1.5rem;">
-                    <label>Contraseña</label>
-                    <input type="password" id="l-pass" placeholder="••••••••" required>
-                </div>
+                <div style="text-align:left; margin-bottom:1rem;"><label>Correo</label><input type="email" id="l-email" required></div>
+                <div style="text-align:left; margin-bottom:1.5rem;"><label>Contraseña</label><input type="password" id="l-pass" required></div>
                 <button type="submit" class="btn btn-blue" style="width:100%">Iniciar Sesión</button>
             </form>
-
             <form id="register-form" class="hidden">
-                <div style="text-align:left; margin-bottom:1rem;">
-                    <label>Nombre Completo</label>
-                    <input type="text" id="r-name" placeholder="Ej: Juan Pérez" required>
-                </div>
-                <div style="text-align:left; margin-bottom:1rem;">
-                    <label>Correo Electrónico</label>
-                    <input type="email" id="r-email" required>
-                </div>
-                <div style="text-align:left; margin-bottom:1rem;">
-                    <label>Contraseña (Min 6)</label>
-                    <input type="password" id="r-pass" required>
-                </div>
-                <div style="text-align:left; margin-bottom:1.5rem;">
-                    <label>Rol</label>
-                    <select id="r-role">
-                        <option value="vendedor">Vendedor</option>
-                        <option value="admin">Administrador</option>
-                    </select>
-                </div>
+                <div style="text-align:left; margin-bottom:1rem;"><label>Nombre</label><input type="text" id="r-name" required></div>
+                <div style="text-align:left; margin-bottom:1rem;"><label>Correo</label><input type="email" id="r-email" required></div>
+                <div style="text-align:left; margin-bottom:1rem;"><label>Contraseña</label><input type="password" id="r-pass" required></div>
+                <div style="text-align:left; margin-bottom:1.5rem;"><label>Rol</label><select id="r-role"><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div>
                 <button type="submit" class="btn btn-blue" style="width:100%">Crear Cuenta</button>
             </form>
             <p id="auth-msg" style="color:var(--danger); margin-top:1rem; font-size:0.9rem; font-weight:600;"></p>
@@ -246,24 +138,17 @@
                     <div class="app-title">Fuente Nueva</div>
                 </div>
                 <div style="display:flex; align-items:center; gap:15px; text-align:right;">
-                    <button onclick="window.location.reload()" class="btn btn-sm" style="background:rgba(255,255,255,0.2); color:white; border:none;" title="Actualizar Sistema">
-                        <i data-feather="refresh-cw" style="width:14px;"></i>
-                    </button>
-                    <div>
-                        <div id="user-display" style="font-size:0.9rem; font-weight:600;">Usuario</div>
-                        <button onclick="logout()" style="background:none; border:none; color:rgba(255,255,255,0.8); cursor:pointer; font-size:0.8rem; margin-top:2px; display:flex; align-items:center; justify-content:end; gap:4px;">
-                            Cerrar Sesión <i data-feather="log-out" style="width:12px; height:12px;"></i>
-                        </button>
-                    </div>
+                    <button onclick="window.location.reload()" class="btn btn-sm" style="background:rgba(255,255,255,0.2); color:white;" title="Actualizar"><i data-feather="refresh-cw" style="width:14px;"></i></button>
+                    <div><div id="user-display" style="font-size:0.9rem; font-weight:600;">Usuario</div><button onclick="logout()" style="background:none; border:none; color:rgba(255,255,255,0.8); cursor:pointer; font-size:0.8rem; display:flex; align-items:center; justify-content:end; gap:4px;">Cerrar Sesión <i data-feather="log-out" style="width:12px;"></i></button></div>
                 </div>
             </div>
             <nav>
-                <a href="#dashboard" class="nav-link active" onclick="nav('dashboard')"><i data-feather="pie-chart" style="width:16px; margin-bottom:-2px;"></i> Dashboard</a>
-                <a href="#ventas" class="nav-link" onclick="nav('ventas')"><i data-feather="shopping-cart" style="width:16px; margin-bottom:-2px;"></i> Ventas</a>
-                <a href="#cobros" class="nav-link" onclick="nav('cobros')"><i data-feather="clock" style="width:16px; margin-bottom:-2px;"></i> Por Cobrar</a>
-                <a href="#productos" class="nav-link admin-only" onclick="nav('productos')"><i data-feather="package" style="width:16px; margin-bottom:-2px;"></i> Productos</a>
-                <a href="#inventario" class="nav-link admin-only" onclick="nav('inventario')"><i data-feather="clipboard" style="width:16px; margin-bottom:-2px;"></i> Inventario</a>
-                <a href="#reportes" class="nav-link admin-only" onclick="nav('reportes')"><i data-feather="file-text" style="width:16px; margin-bottom:-2px;"></i> Reportes</a>
+                <a href="#dashboard" class="nav-link active" onclick="nav('dashboard')"><i data-feather="pie-chart" style="width:16px;"></i> Dashboard</a>
+                <a href="#ventas" class="nav-link" onclick="nav('ventas')"><i data-feather="shopping-cart" style="width:16px;"></i> Ventas</a>
+                <a href="#cobros" class="nav-link" onclick="nav('cobros')"><i data-feather="clock" style="width:16px;"></i> Por Cobrar</a>
+                <a href="#productos" class="nav-link admin-only" onclick="nav('productos')"><i data-feather="package" style="width:16px;"></i> Productos</a>
+                <a href="#inventario" class="nav-link admin-only" onclick="nav('inventario')"><i data-feather="clipboard" style="width:16px;"></i> Inventario</a>
+                <a href="#reportes" class="nav-link admin-only" onclick="nav('reportes')"><i data-feather="file-text" style="width:16px;"></i> Reportes</a>
             </nav>
         </header>
 
@@ -271,22 +156,10 @@
             <div id="page-dashboard" class="page">
                 <h2 style="margin-bottom:1.5rem; color:var(--primary);">Resumen General</h2>
                 <div class="grid-4">
-                    <div class="card stat-card">
-                        <div><h4 style="color:var(--gray)">Ventas Hoy</h4><h2 id="d-today" style="font-size:1.8rem; color:var(--dark)">$0.00</h2></div>
-                        <div class="stat-icon" style="background:#dbeafe; color:var(--primary);"><i data-feather="dollar-sign"></i></div>
-                    </div>
-                    <div class="card stat-card admin-only">
-                        <div><h4 style="color:var(--gray)">Ganancia Hoy</h4><h2 id="d-profit" class="text-success" style="font-size:1.8rem;">$0.00</h2></div>
-                        <div class="stat-icon" style="background:#d1fae5; color:var(--success);"><i data-feather="trending-up"></i></div>
-                    </div>
-                    <div class="card stat-card admin-only">
-                        <div><h4 style="color:var(--gray)">Stock Crítico</h4><h2 id="d-critical" class="text-danger" style="font-size:1.8rem;">0</h2></div>
-                        <div class="stat-icon" style="background:#fee2e2; color:var(--danger);"><i data-feather="alert-triangle"></i></div>
-                    </div>
-                    <div class="card stat-card">
-                        <div><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending" style="font-size:1.8rem; color:var(--warning)">$0.00</h2></div>
-                        <div class="stat-icon" style="background:#fef3c7; color:var(--warning);"><i data-feather="clock"></i></div>
-                    </div>
+                    <div class="card stat-card"><div><h4 style="color:var(--gray)">Ventas Hoy</h4><h2 id="d-today" style="font-size:1.8rem; color:var(--dark)">$0.00</h2></div><div class="stat-icon" style="background:#dbeafe; color:var(--primary);"><i data-feather="dollar-sign"></i></div></div>
+                    <div class="card stat-card admin-only"><div><h4 style="color:var(--gray)">Ganancia Hoy</h4><h2 id="d-profit" class="text-success" style="font-size:1.8rem;">$0.00</h2></div><div class="stat-icon" style="background:#d1fae5; color:var(--success);"><i data-feather="trending-up"></i></div></div>
+                    <div class="card stat-card admin-only"><div><h4 style="color:var(--gray)">Stock Crítico</h4><h2 id="d-critical" class="text-danger" style="font-size:1.8rem;">0</h2></div><div class="stat-icon" style="background:#fee2e2; color:var(--danger);"><i data-feather="alert-triangle"></i></div></div>
+                    <div class="card stat-card"><div><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending" style="font-size:1.8rem; color:var(--warning)">$0.00</h2></div><div class="stat-icon" style="background:#fef3c7; color:var(--warning);"><i data-feather="clock"></i></div></div>
                 </div>
             </div>
 
@@ -296,111 +169,52 @@
                         <div class="card" style="border-top: 4px solid var(--primary-light);">
                             <h3><i data-feather="shopping-cart"></i> Registrar Venta</h3>
                             <form id="form-sale">
-                                <div style="margin-bottom:1rem;">
-                                    <label>Producto</label>
-                                    <select id="sale-product" required onchange="updateSaleForm()"></select>
-                                </div>
-                                
+                                <div style="margin-bottom:1rem;"><label>Producto</label><select id="sale-product" required onchange="updateSaleForm()"></select></div>
                                 <div class="form-grid">
-                                    <div>
-                                        <label>Presentación (Descuenta Stock)</label>
-                                        <select id="sale-presentation" required onchange="updateSaleForm()">
-                                            <option value="1">Unidad</option>
-                                            <option value="6">Paca de 6</option>
-                                            <option value="9">Paca de 9</option>
-                                            <option value="12">Paca de 12</option>
-                                            <option value="20">Paca de 20</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label>Cantidad (Unidades)</label>
-                                        <input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()">
-                                    </div>
+                                    <div><label>Presentación</label><select id="sale-presentation" required onchange="updateSaleForm()"><option value="1">Unidad</option><option value="6">Paca de 6</option><option value="9">Paca de 9</option><option value="12">Paca de 12</option><option value="20">Paca de 20</option></select></div>
+                                    <div><label>Cantidad</label><input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()"></div>
                                 </div>
-                                
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Método de Pago</label>
-                                        <select id="sale-type">
-                                            <option>Efectivo</option>
-                                            <option>Transferencia</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div style="margin-bottom:1rem;">
-                                    <label>Observaciones (Opcional)</label>
-                                    <textarea id="sale-obs" rows="1" placeholder="Ej: Cliente retiró en puerta"></textarea>
-                                </div>
-
+                                <div class="form-grid"><div><label>Pago</label><select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select></div></div>
+                                <div style="margin-bottom:1rem;"><label>Observaciones</label><textarea id="sale-obs" rows="1"></textarea></div>
                                 <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
-                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Base (Unitario):</small> <b id="sale-price-unit">$0.00</b></div>
-                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Descuento Stock:</small> <b id="sale-deduct" class="text-danger">0 un.</b></div>
+                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Base:</small> <b id="sale-price-unit">$0.00</b></div>
+                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Desc. Stock:</small> <b id="sale-deduct" class="text-danger">0 un.</b></div>
                                     <hr style="border-top:1px dashed #cbd5e1; margin:0.5rem 0;">
-                                    <div class="flex justify-between items-center">
-                                        <span style="font-weight:600; color:var(--gray)">TOTAL A PAGAR:</span>
-                                        <span id="sale-total" style="font-size:1.5rem; font-weight:800; color:var(--primary);">$0.00</span>
-                                    </div>
+                                    <div class="flex justify-between items-center"><span style="font-weight:600;">TOTAL:</span><span id="sale-total" style="font-size:1.5rem; font-weight:800; color:var(--primary);">$0.00</span></div>
                                 </div>
-                                
-                                <button type="submit" id="btn-submit-sale" class="btn btn-blue" style="width:100%">
-                                    <i data-feather="check-circle" style="width:18px;"></i> CONFIRMAR VENTA
-                                </button>
+                                <button type="submit" id="btn-submit-sale" class="btn btn-blue" style="width:100%">CONFIRMAR VENTA</button>
                             </form>
                         </div>
-
                         <div class="card" style="border-top: 4px solid var(--truck); background: #f0fdfa;">
                             <h3 style="color: #0f766e;"><i data-feather="truck"></i> Carga de Camión</h3>
-                            <div style="font-size:0.8rem; color:#0f766e; margin-bottom:1rem; opacity:0.8;">
-                                * Salida de mercadería y tapas. No genera dinero en caja.
-                            </div>
-
                             <form id="form-truck-load">
-                                <div style="margin-bottom:1rem;">
-                                    <label>Responsable / Chofer</label>
-                                    <input type="text" id="truck-driver" placeholder="Nombre del Chofer" required>
-                                </div>
+                                <div style="margin-bottom:1rem;"><label>Responsable</label><input type="text" id="truck-driver" required></div>
                                 <div class="form-grid">
-                                    <div>
-                                        <label>Producto</label>
-                                        <select id="truck-product" required onchange="updateTruckInfo()"></select>
-                                        <small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small>
-                                    </div>
-                                    <div>
-                                        <label>Cantidad (Unid.)</label>
-                                        <input type="number" id="truck-qty" min="1" required placeholder="0" oninput="updateTruckInfo()">
-                                    </div>
+                                    <div><label>Producto</label><select id="truck-product" required onchange="updateTruckInfo()"></select><small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small></div>
+                                    <div><label>Cantidad</label><input type="number" id="truck-qty" min="1" required placeholder="0" oninput="updateTruckInfo()"></div>
                                 </div>
-                                <button type="submit" id="btn-submit-truck" class="btn btn-truck" style="width:100%">
-                                    <i data-feather="package" style="width:18px;"></i> REGISTRAR SALIDA
-                                </button>
+                                <button type="submit" id="btn-submit-truck" class="btn btn-truck" style="width:100%">REGISTRAR SALIDA</button>
                             </form>
                         </div>
                     </div>
-
                     <div>
                         <div class="card">
-                            <h3><i data-feather="list"></i> Ventas del Día</h3>
+                            <div class="flex justify-between items-center mb-2">
+                                <h3><i data-feather="list"></i> Ventas</h3>
+                                <input type="date" id="sales-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem;" onchange="renderSalesTable(); renderDailySummary();">
+                            </div>
                             <div class="table-container" style="max-height: 400px; overflow-y:auto;">
-                                <table id="table-sales">
-                                    <thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Total</th><th></th></tr></thead>
-                                    <tbody></tbody>
-                                </table>
+                                <table id="table-sales"><thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Total</th></tr></thead><tbody></tbody></table>
                             </div>
                         </div>
-
                         <div class="card" style="background:#f8fafc; border: 1px solid #e2e8f0;">
-                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja (Hoy)</h3>
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja</h3>
                             <div id="daily-summary"></div>
                         </div>
-
                         <div class="card" style="border-left: 4px solid var(--truck); margin-top: 1.5rem;">
-                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas Camión (HOY)</h3>
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas Camión</h3>
                             <div class="table-container" style="max-height: 300px; overflow-y:auto;">
-                                <table id="table-truck-loads">
-                                    <thead><tr><th>Hora</th><th>Chofer</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead>
-                                    <tbody></tbody>
-                                </table>
+                                <table id="table-truck-loads"><thead><tr><th>Hora</th><th>Chofer</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table>
                             </div>
                         </div>
                     </div>
@@ -409,55 +223,33 @@
 
             <div id="page-productos" class="page hidden">
                 <div class="card">
-                    <h3><i data-feather="database"></i> Catálogo de Productos</h3>
-                    <p style="color:var(--gray); font-size:0.9rem; margin-bottom:1.5rem;">Administra los precios y costos de tus productos.</p>
-                    
+                    <h3><i data-feather="database"></i> Catálogo</h3>
                     <form id="form-product">
                         <input type="hidden" id="prod-id">
                         <div class="grid-4" style="align-items:end;">
                             <div><label>Nombre</label><input type="text" id="prod-name" required></div>
-                            <div><label>Precio Venta ($)</label><input type="number" id="prod-price" step="0.01" required></div>
-                            <div><label>Costo Unit. ($)</label><input type="number" id="prod-cost" step="0.01" required></div>
-                            <div><label>Stock Inicial</label><input type="number" id="prod-stock" required></div>
+                            <div><label>Precio</label><input type="number" id="prod-price" step="0.01" required></div>
+                            <div><label>Costo</label><input type="number" id="prod-cost" step="0.01" required></div>
+                            <div><label>Stock</label><input type="number" id="prod-stock" required></div>
                         </div>
-                        
                         <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
-                            <div style="flex:1;">
-                                <label style="color:var(--primary)">Alerta Stock Mínimo</label>
-                                <input type="number" id="prod-min" required placeholder="Ej: 10">
-                            </div>
-                            <div style="flex:2;">
-                                <label style="color:var(--primary)">Insumo Vinculado (Tapas)</label>
-                                <select id="prod-supply-link"><option value="">-- Ninguno --</option></select>
-                            </div>
-                            <div style="flex:1;">
-                                <label>Cant. x Unidad</label>
-                                <input type="number" id="prod-supply-qty" value="1">
-                            </div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" required></div>
+                            <div style="flex:2;"><label style="color:var(--primary)">Insumo Vinc.</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
+                            <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1"></div>
                         </div>
-
-                        <div class="flex gap-2">
-                            <button type="submit" class="btn btn-blue">Guardar Producto</button>
-                            <button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button>
-                        </div>
+                        <div class="flex gap-2"><button type="submit" class="btn btn-blue">Guardar</button><button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button></div>
                     </form>
                 </div>
-                <div class="card">
-                    <div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Insumo</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
-                </div>
+                <div class="card"><div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Insumo</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
             </div>
 
             <div id="page-inventario" class="page hidden">
                 <div class="card" style="border-left: 5px solid var(--truck);">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3><i data-feather="tool"></i> Insumos (Tapas/Sellos)</h3>
-                        <button onclick="showSupplyForm()" class="btn btn-sm btn-green">Nuevo Insumo</button>
-                    </div>
-                    
+                    <div class="flex justify-between items-center mb-2"><h3><i data-feather="tool"></i> Insumos</h3><button onclick="showSupplyForm()" class="btn btn-sm btn-green">Nuevo</button></div>
                     <div id="box-create-supply" class="hidden" style="background:#f0fdfa; padding:1rem; margin-bottom:1rem; border-radius:8px;">
                         <form id="form-supply" class="flex gap-2 items-end">
                             <input type="hidden" id="supp-id">
-                            <div style="flex:2"><label>Nombre Insumo</label><input type="text" id="supp-name" placeholder="Ej: Tapa 20L" required style="margin:0"></div>
+                            <div style="flex:2"><label>Nombre</label><input type="text" id="supp-name" required style="margin:0"></div>
                             <div style="flex:1"><label>Stock</label><input type="number" id="supp-stock" required style="margin:0"></div>
                             <button type="submit" id="btn-save-supply" class="btn btn-green" style="margin:0">Guardar</button>
                             <button type="button" onclick="hideSupplyForm()" class="btn btn-gray" style="margin:0">Cancelar</button>
@@ -465,109 +257,70 @@
                     </div>
                     <div class="table-container"><table id="table-supplies"><thead><tr><th>Insumo</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
-
                 <div class="grid-split">
-                    <div class="card">
-                        <h3><i data-feather="box"></i> Stock Productos</h3>
-                        <div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada</th></tr></thead><tbody></tbody></table></div>
-                    </div>
-                    <div class="card">
-                        <h3><i data-feather="activity"></i> Movimientos Recientes</h3>
-                        <div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div>
-                    </div>
+                    <div class="card"><h3><i data-feather="box"></i> Stock</h3><div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada</th></tr></thead><tbody></tbody></table></div></div>
+                    <div class="card"><h3><i data-feather="activity"></i> Movimientos</h3><div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div></div>
                 </div>
             </div>
 
             <div id="page-cobros" class="page hidden">
                 <div class="grid-split">
                     <div class="card">
-                        <h3><i data-feather="book"></i> Nueva Cuenta por Cobrar</h3>
+                        <h3><i data-feather="book"></i> Por Cobrar</h3>
                         <form id="form-pending">
                             <div style="margin-bottom:1rem;"><label>Cliente</label><input type="text" id="pend-client" required></div>
-                            <div class="form-grid">
-                                <div><label>Monto ($)</label><input type="number" id="pend-total" step="0.01" required></div>
-                                <div><label>Fecha</label><input type="date" id="pend-date" required></div>
-                            </div>
-                            <button type="submit" class="btn btn-blue" style="width:100%;">Registrar Deuda</button>
+                            <div class="form-grid"><div><label>Monto</label><input type="number" id="pend-total" step="0.01" required></div><div><label>Fecha</label><input type="date" id="pend-date" required></div></div>
+                            <button type="submit" class="btn btn-blue" style="width:100%;">Registrar</button>
                         </form>
                     </div>
-                    <div class="card">
-                        <h3>Listado de Pendientes</h3>
-                        <div class="table-container"><table id="table-pending"><thead><tr><th>Fecha</th><th>Cliente</th><th>Monto</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
-                    </div>
+                    <div class="card"><h3>Listado</h3><div class="table-container"><table id="table-pending"><thead><tr><th>Fecha</th><th>Cliente</th><th>Monto</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
                 </div>
             </div>
 
             <div id="page-reportes" class="page hidden">
                 <div class="card" style="border-top: 4px solid var(--warning);">
-                    <h3><i data-feather="shield-off"></i> Anulación de Ventas</h3>
-                    <p style="color:var(--gray); font-size:0.9rem; margin-bottom:1rem;">Al anular, el stock se devuelve automáticamente.</p>
-                    <div class="table-container" style="max-height: 300px; overflow-y:auto;">
-                        <table id="table-sales-admin">
-                            <thead><tr><th>Fecha</th><th>Producto</th><th>Total</th><th>Usuario</th><th></th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                    <h3><i data-feather="shield-off"></i> Anulaciones</h3>
+                    <div class="table-container" style="max-height: 300px; overflow-y:auto;"><table id="table-sales-admin"><thead><tr><th>Fecha</th><th>Producto</th><th>Total</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table></div>
                 </div>
-
                 <div class="card">
-                    <h3><i data-feather="download-cloud"></i> Descarga de Datos</h3>
+                    <h3><i data-feather="download-cloud"></i> Descargas</h3>
                     <div class="grid-4">
-                        <button onclick="exportSales()" class="btn btn-blue" style="flex-direction:column; padding:1.5rem;"><i data-feather="calendar"></i> Ventas Hoy (Excel)</button>
-                        <button onclick="exportSalesMonthly()" class="btn btn-green" style="flex-direction:column; padding:1.5rem;"><i data-feather="grid"></i> Ventas Mes (Excel)</button>
-                        <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario Excel</button>
-                        <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría Excel</button>
+                        <button onclick="exportSales()" class="btn btn-blue" style="flex-direction:column; padding:1.5rem;"><i data-feather="calendar"></i> Ventas Hoy</button>
+                        <button onclick="exportSalesMonthly()" class="btn btn-green" style="flex-direction:column; padding:1.5rem;"><i data-feather="grid"></i> Ventas Mes</button>
+                        <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario</button>
+                        <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría</button>
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, runTransaction, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk",
-            authDomain: "fuente-nueva.firebaseapp.com",
-            projectId: "fuente-nueva",
-            storageBucket: "fuente-nueva.firebasestorage.app",
-            messagingSenderId: "256396830278",
-            appId: "1:256396830278:web:0d9cff310705e52bb20c47",
-            measurementId: "G-8NGS5XH8K6"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47", measurementId: "G-8NGS5XH8K6" };
+        const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let user = null;
-        let role = 'vendedor';
-        let products = [];
-        let supplies = [];
-        let sales = [];
-        let movements = [];
-
-        const today = () => new Date().toISOString().split('T')[0];
+        let user = null, role = 'vendedor', products = [], supplies = [], sales = [], movements = [];
+        const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
         
-        const isToday = (ts) => {
+        // Función para comparar fechas (usando el input date)
+        const isDateMatch = (ts, dateStr) => {
             if (!ts) return false;
-            const date = new Date(ts.seconds * 1000);
-            const now = new Date();
-            return date.getDate() === now.getDate() &&
-                   date.getMonth() === now.getMonth() &&
-                   date.getFullYear() === now.getFullYear();
+            const d = new Date(ts.seconds * 1000);
+            // Convertir a string local YYYY-MM-DD para comparar
+            const localYMD = d.toLocaleDateString('en-CA'); 
+            return localYMD === dateStr;
         };
-
+        const isToday = (ts) => isDateMatch(ts, today());
         const isCurrentMonth = (ts) => {
-            if (!ts) return false;
-            const date = new Date(ts.seconds * 1000);
-            const now = new Date();
-            return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            if(!ts) return false;
+            const d = new Date(ts.seconds * 1000), n = new Date();
+            return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
         };
 
         onAuthStateChanged(auth, async (u) => {
@@ -575,17 +328,19 @@
             if (u) {
                 user = u;
                 const docSnap = await getDoc(doc(db, "users", u.uid));
-                const userData = docSnap.exists() ? docSnap.data() : {};
-                role = userData.role || 'vendedor';
-                const displayName = userData.name || u.email; 
-
+                role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
+                document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.remove('hidden');
-                document.getElementById('user-display').innerHTML = displayName;
                 
+                // Mostrar solo elementos admin
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
-                initListeners();
+                
+                // Setear fecha por defecto hoy
+                document.getElementById('sales-date-filter').value = today();
                 document.getElementById('pend-date').value = today();
+
+                initListeners();
                 nav('dashboard');
             } else {
                 document.getElementById('auth-view').classList.remove('hidden');
@@ -595,610 +350,248 @@
         });
 
         function initListeners() {
-            onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => {
-                products = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderProducts(); renderInventory(); updateSelects();
+            onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
+            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); renderSupplies(); updateSupplySelect(); });
+            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => { 
+                sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderSalesTable(); updateDashboard(); renderDailySummary(); if(role === 'admin') renderAdminSalesTable(); 
             });
-            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => {
-                supplies = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderSupplies(); updateSupplySelect();
-            });
-            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => {
-                sales = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderSalesTable(); updateDashboard(); renderDailySummary();
-                if(role === 'admin') renderAdminSalesTable();
-            });
-            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => {
-                movements = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderMovements();
-                renderTruckLoads();
-            });
-            onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => {
-                const list = sn.docs.map(d => ({id: d.id, ...d.data()}));
-                renderPending(list);
-                const total = list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0);
-                document.getElementById('d-pending').textContent = fmtMoney(total);
+            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => { movements = sn.docs.map(d => ({id: d.id, ...d.data()})); renderMovements(); renderTruckLoads(); });
+            onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => { 
+                const list = sn.docs.map(d => ({id: d.id, ...d.data()})); renderPending(list);
+                document.getElementById('d-pending').textContent = fmtMoney(list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0));
             });
         }
 
-        // --- ABASTECIMIENTO CAMIÓN ---
-        // Nueva función para mostrar info visual del insumo
         window.updateTruckInfo = () => {
-            const pid = document.getElementById('truck-product').value;
-            const qty = parseInt(document.getElementById('truck-qty').value) || 0;
-            const info = document.getElementById('truck-supply-info');
+            const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
+            const prod = products.find(p => p.id === pid), info = document.getElementById('truck-supply-info');
             info.innerHTML = '';
-
-            const prod = products.find(p => p.id === pid);
             if(prod && prod.supplyLink && qty > 0) {
-                const supp = supplies.find(s => s.id === prod.supplyLink);
-                if(supp) {
-                    const totalDeduct = qty * (prod.supplyQty || 1);
-                    info.innerHTML = `⚠️ Usa Insumo: ${supp.name} <br> (Se descontarán ${totalDeduct} del inventario)`;
-                }
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${qty * (prod.supplyQty || 1)} un.)`;
             }
         };
 
         document.getElementById('form-truck-load').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-truck');
-            btn.disabled = true; 
-            
-            const driver = document.getElementById('truck-driver').value;
-            const pid = document.getElementById('truck-product').value;
-            const qty = parseInt(document.getElementById('truck-qty').value);
+            e.preventDefault(); const btn = document.getElementById('btn-submit-truck'); btn.disabled = true; 
+            const driver = document.getElementById('truck-driver').value, pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value);
             const prod = products.find(p => p.id === pid);
-
             if(!prod) { btn.disabled = false; return; }
-            if(qty <= 0) { toast("❌ Cantidad inválida"); btn.disabled = false; return; }
-            if(prod.stock < qty) { showConfirm("Error", "❌ No hay suficiente agua en planta", null); btn.disabled = false; return; }
-
-            let supplyDoc = null;
-            let supplyDeduct = 0;
+            if(prod.stock < qty) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
+            
+            let sDoc = null, sDeduct = 0;
             if(prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if(s) {
-                    supplyDeduct = qty * (prod.supplyQty || 1);
-                    if(s.stock < supplyDeduct) { showConfirm("Error", `❌ Faltan insumos (${s.name}).`, null); btn.disabled = false; return; }
-                    supplyDoc = s;
-                }
+                if(s) { sDeduct = qty * (prod.supplyQty || 1); if(s.stock < sDeduct) { showConfirm("Error", "Faltan insumos", null); btn.disabled = false; return; } sDoc = s; }
             }
 
             try {
                 await runTransaction(db, async (t) => {
-                    const pRef = doc(db, "products", pid);
-                    const pDoc = await t.get(pRef);
-                    if(!pDoc.exists()) throw "Producto no encontrado";
-                    const currentProdStock = pDoc.data().stock;
-                    if(currentProdStock < qty) throw "Stock insuficiente en BD";
-
-                    let sRef = null; 
-                    let currentSupplyStock = 0;
-                    if(supplyDoc) {
-                        sRef = doc(db, "supplies", supplyDoc.id);
-                        const sDoc = await t.get(sRef);
-                        if(!sDoc.exists()) throw "Insumo no existe";
-                        currentSupplyStock = sDoc.data().stock;
-                        if(currentSupplyStock < supplyDeduct) throw `Falta stock de ${supplyDoc.name}`;
-                    }
-
-                    t.update(pRef, { stock: currentProdStock - qty });
-                    if(supplyDoc && sRef) t.update(sRef, { stock: currentSupplyStock - supplyDeduct });
-
-                    const moveRef = doc(collection(db, "movements"));
-                    t.set(moveRef, {
-                        type: "SALIDA_CAMION",
-                        product: prod.name,
-                        productId: pid, 
-                        quantity: qty,
-                        supplyId: supplyDoc ? supplyDoc.id : null,
-                        supplyQty: supplyDeduct,
-                        user: user.email,
-                        details: `Chofer: ${driver}`,
-                        timestamp: serverTimestamp()
-                    });
+                    const pRef = doc(db, "products", pid), pData = (await t.get(pRef)).data();
+                    if(pData.stock < qty) throw "Stock insuficiente";
+                    let sRef = null, sData = null;
+                    if(sDoc) { sRef = doc(db, "supplies", sDoc.id); sData = (await t.get(sRef)).data(); if(sData.stock < sDeduct) throw "Falta insumo"; }
+                    
+                    t.update(pRef, { stock: pData.stock - qty });
+                    if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
+                    t.set(doc(collection(db, "movements")), { type: "SALIDA_CAMION", product: prod.name, productId: pid, quantity: qty, supplyId: sDoc?.id||null, supplyQty: sDeduct, user: user.email, details: `Chofer: ${driver}`, timestamp: serverTimestamp() });
                 });
-                toast("✅ Carga Registrada");
-                document.getElementById('form-truck-load').reset();
-                document.getElementById('truck-supply-info').innerHTML = '';
-            } catch (err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
-            finally { btn.disabled = false; }
+                toast("✅ Carga Registrada"); document.getElementById('form-truck-load').reset(); document.getElementById('truck-supply-info').innerHTML = '';
+            } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
         });
 
-        // CAMBIO: FILTRO DE SOLO HOY
         function renderTruckLoads() {
-            const tb = document.querySelector('#table-truck-loads tbody');
-            tb.innerHTML = '';
-            
-            // FILTRO SOLO DEL DÍA
+            const tb = document.querySelector('#table-truck-loads tbody'); tb.innerHTML = '';
             const loads = movements.filter(m => m.type === 'SALIDA_CAMION' && isToday(m.timestamp));
-            
-            if(loads.length === 0) {
-                tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">No hay cargas hoy.</td></tr>';
-                return;
-            }
-
+            if(loads.length===0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin cargas hoy.</td></tr>'; return; }
             loads.forEach(m => {
-                const btn = (role === 'admin' || role === 'vendedor') ? 
-                    `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px 8px;"><i data-feather="trash-2" style="width:14px"></i></button>` : '';
-                
-                tb.innerHTML += `<tr>
-                    <td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td>
-                    <td style="font-size:0.8rem">${m.details.replace('Chofer: ', '')}</td>
-                    <td style="font-size:0.8rem">${m.product}</td>
-                    <td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td>
-                    <td>${btn}</td>
-                </tr>`;
-            });
-            feather.replace();
+                const btn = (role === 'admin' || role === 'vendedor') ? `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px;"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
+                tb.innerHTML += `<tr><td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td><td style="font-size:0.8rem">${m.details.replace('Chofer: ', '')}</td><td style="font-size:0.8rem">${m.product}</td><td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td><td>${btn}</td></tr>`;
+            }); feather.replace();
         }
 
-        window.undoTruckLoad = async (moveId) => {
-            if (role !== 'admin' && role !== 'vendedor') return toast("❌ Sin permiso");
-            const move = movements.find(m => m.id === moveId);
-            if(!move) return toast("Error: Registro no encontrado");
-
-            showConfirm("¿Anular Carga?", `Se devolverán ${move.quantity} ${move.product} al inventario.`, async () => {
+        window.undoTruckLoad = async (id) => {
+            const m = movements.find(x => x.id === id); if(!m) return;
+            showConfirm("¿Anular Carga?", "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        let pRef = null, currentPStock = 0;
-                        if(move.productId) {
-                            pRef = doc(db, "products", move.productId);
-                            const pDoc = await t.get(pRef);
-                            if(pDoc.exists()) currentPStock = pDoc.data().stock;
-                        }
-
-                        let sRef = null, currentSStock = 0;
-                        if(move.supplyId) {
-                            sRef = doc(db, "supplies", move.supplyId);
-                            const sDoc = await t.get(sRef);
-                            if(sDoc.exists()) currentSStock = sDoc.data().stock;
-                        }
-
-                        if(pRef) t.update(pRef, { stock: currentPStock + move.quantity });
-                        if(sRef) t.update(sRef, { stock: currentSStock + (move.supplyQty || 0) });
-
-                        t.delete(doc(db, "movements", moveId));
-                    });
-                    toast("✅ Carga Rectificada");
-                } catch(e) { toast("Error: " + e.message); }
+                        if(m.productId) { const r = doc(db, "products", m.productId), d = await t.get(r); if(d.exists()) t.update(r, {stock: d.data().stock + m.quantity}); }
+                        if(m.supplyId) { const r = doc(db, "supplies", m.supplyId), d = await t.get(r); if(d.exists()) t.update(r, {stock: d.data().stock + (m.supplyQty||0)}); }
+                        t.delete(doc(db, "movements", id));
+                    }); toast("✅ Anulado");
+                } catch(e){ toast("Error"); }
             });
         };
 
-        // --- VENTA ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-sale');
-            btn.disabled = true; 
-            
-            const pid = document.getElementById('sale-product').value;
-            const pres = parseInt(document.getElementById('sale-presentation').value);
-            const qty = parseInt(document.getElementById('sale-qty').value);
-            const prod = products.find(p => p.id === pid);
-            if(!prod) { btn.disabled = false; return; }
+            e.preventDefault(); const btn = document.getElementById('btn-submit-sale'); btn.disabled = true;
+            const pid = document.getElementById('sale-product').value, pres = parseInt(document.getElementById('sale-presentation').value), qty = parseInt(document.getElementById('sale-qty').value);
+            const prod = products.find(p => p.id === pid); if(!prod) { btn.disabled = false; return; }
+            const totalUnits = qty * pres, totalPrice = qty * prod.price, totalCost = qty * prod.cost, profit = totalPrice - totalCost;
+            if(prod.stock < totalUnits) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
 
-            const totalUnits = qty * pres; 
-            const totalPrice = parseFloat(document.getElementById('sale-total').textContent.replace('$','').replace(',',''));
-            const totalCost = qty * prod.cost; 
-            const profit = totalPrice - totalCost;
-
-            if(prod.stock < totalUnits) { showConfirm("Error", "❌ Stock insuficiente", null); btn.disabled = false; return; }
-
-            let supplyDoc = null, supplyDeduct = 0;
-            if(prod.supplyLink) {
-                const s = supplies.find(x => x.id === prod.supplyLink);
-                if(s) {
-                    supplyDeduct = totalUnits * (prod.supplyQty || 1);
-                    supplyDoc = s;
-                }
-            }
+            let sDoc = null, sDeduct = 0;
+            if(prod.supplyLink) { const s = supplies.find(x => x.id === prod.supplyLink); if(s) { sDeduct = totalUnits * (prod.supplyQty || 1); sDoc = s; } }
 
             try {
                 await runTransaction(db, async (t) => {
-                    const pRef = doc(db, "products", pid);
-                    const pDoc = await t.get(pRef);
-                    if(!pDoc.exists()) throw "Producto no encontrado";
-                    const currentPStock = pDoc.data().stock;
-                    if(currentPStock < totalUnits) throw "Stock insuficiente";
-
-                    let sRef = null;
-                    let currentSStock = 0;
-                    if(supplyDoc) {
-                        sRef = doc(db, "supplies", supplyDoc.id);
-                        const sDoc = await t.get(sRef);
-                        if(!sDoc.exists()) throw "Insumo no encontrado";
-                        currentSStock = sDoc.data().stock;
-                        if(currentSStock < supplyDeduct) throw `Falta insumo: ${supplyDoc.name}`;
-                    }
-
-                    t.update(pRef, { stock: currentPStock - totalUnits });
-                    if(supplyDoc && sRef) t.update(sRef, { stock: currentSStock - supplyDeduct });
-
-                    const saleRef = doc(collection(db, "sales"));
-                    t.set(saleRef, {
-                        product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits,
-                        price: totalPrice, cost: totalCost, profit: profit,
-                        type: document.getElementById('sale-type').value,
-                        obs: document.getElementById('sale-obs').value,
-                        user: user.email, timestamp: serverTimestamp(),
-                        supplyUsed: supplyDoc ? supplyDoc.name : null, supplyQty: supplyDeduct
-                    });
-                });
-                toast("✅ Venta Exitosa");
-                document.getElementById('form-sale').reset();
-                updateSaleForm();
-            } catch(err) { toast("❌ Error: " + (typeof err==='string'?err:err.message)); }
-            finally { btn.disabled = false; }
+                    const pRef = doc(db, "products", pid), pData = (await t.get(pRef)).data();
+                    if(pData.stock < totalUnits) throw "Stock insuficiente";
+                    let sRef = null, sData = null;
+                    if(sDoc) { sRef = doc(db, "supplies", sDoc.id); sData = (await t.get(sRef)).data(); if(sData.stock < sDeduct) throw "Falta insumo"; }
+                    
+                    t.update(pRef, { stock: pData.stock - totalUnits });
+                    if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
+                    t.set(doc(collection(db, "sales")), { product: prod.name, pid, presentation_val: pres, qty_packs: qty, qty_total_units: totalUnits, price: totalPrice, cost: totalCost, profit, type: document.getElementById('sale-type').value, obs: document.getElementById('sale-obs').value, user: user.email, timestamp: serverTimestamp(), supplyUsed: sDoc?.name, supplyQty: sDeduct });
+                }); toast("✅ Venta Exitosa"); document.getElementById('form-sale').reset(); updateSaleForm();
+            } catch(e) { toast("Error: " + e); } finally { btn.disabled = false; }
         });
 
-        // --- EXPORTAR EXCEL ---
+        // GENERADOR EXCEL
         window.exportSales = () => generateSalesExcel(sales.filter(s => isToday(s.timestamp)), "Ventas_Hoy");
         window.exportSalesMonthly = () => generateSalesExcel(sales.filter(s => isCurrentMonth(s.timestamp)), "Ventas_Mes");
-
-        function generateSalesExcel(dataList, fileName) {
-            if(typeof XLSX === 'undefined') return toast("Error: Librería Excel no cargada.");
-            if(dataList.length === 0) return toast("⚠️ No hay ventas en este periodo.");
-
-            try {
-                // 1. Mapear datos
-                const data = dataList.map(s => ({
-                    Fecha: fmtDate(s.timestamp),
-                    Producto: s.product,
-                    Presentacion: s.presentation_val === 1 ? 'Unidad' : `Paca ${s.presentation_val}`,
-                    Cantidad_Packs: s.qty_packs,
-                    Total_Unidades: s.qty_total_units || (s.qty_packs * s.presentation_val),
-                    Precio_Venta: s.price,
-                    Tipo_Pago: s.type,
-                    Usuario: s.user ? s.user.split('@')[0] : 'N/A'
-                }));
-
-                // 2. Calcular Resumen
-                const cash = dataList.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
-                const transf = dataList.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
-
-                // 3. Agregar filas de resumen
-                data.push({}); 
-                data.push({Fecha: "--- RESUMEN ---"});
-                data.push({Fecha: "EFECTIVO", Precio_Venta: cash});
-                data.push({Fecha: "TRANSFERENCIA", Precio_Venta: transf});
-                data.push({Fecha: "TOTAL", Precio_Venta: cash + transf});
-
-                // 4. Generar archivo
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Ventas");
-                XLSX.writeFile(wb, `${fileName}_${today()}.xlsx`);
-                
-                toast("✅ Excel Descargado");
-            } catch (e) {
-                console.error(e);
-                toast("❌ Error al generar Excel: " + e.message);
-            }
-        };
-
-        function renderAdminSalesTable() {
-            const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return;
-            tb.innerHTML = '';
-            sales.slice(0, 50).forEach(s => {
-                const presName = s.presentation_val == 1 ? 'Unid' : `Paca ${s.presentation_val}`;
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product} <small>(${presName})</small></td>
-                <td style="font-weight:bold;">${fmtMoney(s.price)}</td><td>${s.user}</td>
-                <td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
-            });
-            feather.replace();
+        function generateSalesExcel(list, name) {
+            if(!list.length) return toast("⚠️ Sin datos");
+            const data = list.map(s => ({ Fecha: fmtDate(s.timestamp), Producto: s.product, Pres: s.presentation_val, Packs: s.qty_packs, Total_Unid: s.qty_total_units, Total: s.price, Pago: s.type, User: s.user }));
+            const cash = list.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0), transf = list.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
+            data.push({}); data.push({Fecha: "RESUMEN", Total: cash + transf}); data.push({Fecha: "EFECTIVO", Total: cash}); data.push({Fecha: "TRANSF", Total: transf});
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Ventas"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
         }
 
-        window.deleteSale = async (saleId) => {
+        function renderAdminSalesTable() {
+            const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
+            sales.slice(0, 50).forEach(s => {
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-weight:bold;">${fmtMoney(s.price)}</td><td>${s.user}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
+            }); feather.replace();
+        }
+
+        window.deleteSale = async (id) => {
             if (role !== 'admin') return toast("❌ Solo admin.");
-            const sale = sales.find(s => s.id === saleId);
-            if (!sale) return toast("Error: Venta no encontrada");
-            
-            showConfirm("⚠️ ¿Anular Venta?", "Se devolverá el stock.", async () => {
+            const s = sales.find(x => x.id === id); if(!s) return;
+            showConfirm("¿Anular Venta?", "Se repondrá stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        let pRef = null, currentPStock = 0;
-                        let targetProdId = sale.pid;
-                        if (!targetProdId && sale.product) {
-                            const foundProd = products.find(p => p.name === sale.product);
-                            if (foundProd) targetProdId = foundProd.id;
-                        }
-
-                        if(targetProdId) {
-                            pRef = doc(db, "products", targetProdId);
-                            const pDoc = await t.get(pRef);
-                            if(pDoc.exists()) currentPStock = pDoc.data().stock || 0;
-                        }
-
-                        let sRef = null, currentSStock = 0;
-                        if(sale.supplyUsed && sale.supplyQty > 0) {
-                            const supp = supplies.find(x => x.name === sale.supplyUsed);
-                            if(supp) {
-                                sRef = doc(db, "supplies", supp.id);
-                                const sDoc = await t.get(sRef);
-                                if(sDoc.exists()) currentSStock = sDoc.data().stock || 0;
-                            }
-                        }
-
-                        if(pRef) t.update(pRef, { stock: currentPStock + (sale.qty_total_units || 0) });
-                        if(sRef) t.update(sRef, { stock: currentSStock + sale.supplyQty });
-
-                        t.delete(doc(db, "sales", saleId));
+                        // Reponer producto
+                        let pRef = null, pStock = 0;
+                        let targetProdId = s.pid;
+                        // Si no hay ID (ventas viejas), buscar por nombre
+                        if(!targetProdId) { const found = products.find(p => p.name === s.product); if(found) targetProdId = found.id; }
                         
-                        const moveRef = doc(collection(db, "movements"));
-                        t.set(moveRef, { type: "ANULACION", product: sale.product, quantity: sale.qty_total_units || 0, user: user.email, timestamp: serverTimestamp() });
-                    });
-                    toast("✅ Anulado");
-                } catch (err) { toast("❌ Error: " + err.message); }
+                        if(targetProdId) { pRef = doc(db, "products", targetProdId); const d = await t.get(pRef); if(d.exists()) pStock = d.data().stock; }
+                        
+                        // Reponer insumo
+                        let sRef = null, sStock = 0;
+                        if(s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) { sRef = doc(db, "supplies", foundS.id); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; } }
+
+                        if(pRef) t.update(pRef, {stock: pStock + (s.qty_total_units||0)});
+                        if(sRef) t.update(sRef, {stock: sStock + (s.supplyQty||0)});
+                        t.delete(doc(db, "sales", id));
+                        t.set(doc(collection(db, "movements")), { type: "ANULACION", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
+                    }); toast("✅ Anulado");
+                } catch(e) { toast("Error: "+e); }
             });
         };
 
         window.productForm = document.getElementById('form-product');
         window.productForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if(role !== 'admin') return toast("❌ Acceso denegado");
-            const id = document.getElementById('prod-id').value;
-            const name = document.getElementById('prod-name').value.trim();
-            if (!id && products.some(p => p.name.toLowerCase() === name.toLowerCase())) return showConfirm("Error", "Producto ya existe", null);
-
-            const data = {
-                name: name,
-                price: parseFloat(document.getElementById('prod-price').value),
-                cost: parseFloat(document.getElementById('prod-cost').value),
-                min: parseInt(document.getElementById('prod-min').value),
-                supplyLink: document.getElementById('prod-supply-link').value || null,
-                supplyQty: parseInt(document.getElementById('prod-supply-qty').value) || 0
-            };
-            if(!id) data.stock = parseInt(document.getElementById('prod-stock').value);
-            
+            e.preventDefault(); if(role !== 'admin') return toast("❌ Acceso denegado");
+            const id = document.getElementById('prod-id').value, name = document.getElementById('prod-name').value;
+            const data = { name, price: parseFloat(document.getElementById('prod-price').value), cost: parseFloat(document.getElementById('prod-cost').value), min: parseInt(document.getElementById('prod-min').value), supplyLink: document.getElementById('prod-supply-link').value||null, supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0 };
             try {
-                if(id) { await updateDoc(doc(db, "products", id), data); } 
-                else { 
-                    await addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() });
-                    await addDoc(collection(db, "movements"), { type: "CREACION", product: data.name, quantity: data.stock, user: user.email, timestamp: serverTimestamp() });
-                }
-                resetProdForm();
-                toast("✅ Producto Guardado");
-            } catch(e) { toast("❌ Error: " + e.message); }
+                if(id) await updateDoc(doc(db,"products",id), data);
+                else { await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value), createdAt: serverTimestamp()}); }
+                resetProdForm(); toast("✅ Guardado");
+            } catch(e) { toast("Error"); }
         });
 
-        // --- HELPERS & UI ---
+        // --- FILTRO Y RENDER VENTAS ---
         function renderDailySummary() {
-            const todayS = sales.filter(s => isToday(s.timestamp));
+            // Usar la fecha del filtro, no solo hoy
+            const filterDate = document.getElementById('sales-date-filter').value;
+            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
 
-            let total = 0, cash = 0, transfer = 0;
-            const prodCounts = {};
-
-            todayS.forEach(s => {
+            let total = 0, cash = 0, transfer = 0, prodCounts = {};
+            filteredSales.forEach(s => {
                 total += s.price;
-                if(s.type === 'Efectivo') cash += s.price;
-                else transfer += s.price;
-
-                const key = s.product; 
-                if(!prodCounts[key]) prodCounts[key] = 0;
-                prodCounts[key] += s.qty_packs; 
+                if(s.type === 'Efectivo') cash += s.price; else transfer += s.price;
+                prodCounts[s.product] = (prodCounts[s.product] || 0) + s.qty_packs;
             });
 
-            let html = `
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
-                    <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;">
-                        <div style="font-size:0.8rem; color:var(--gray)">Efectivo</div>
-                        <div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div>
-                    </div>
-                    <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;">
-                        <div style="font-size:0.8rem; color:var(--gray)">Transfer.</div>
-                        <div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div>
-                    </div>
-                </div>
-                <div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;">
-                    <small style="font-weight:600; color:var(--dark); display:block; margin-bottom:5px;">Conteo de Productos:</small>
-                    <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">`;
-            
-            for(const [prod, count] of Object.entries(prodCounts)){
-                html += `<li style="display:flex; justify-content:space-between; padding:2px 0;">
-                            <span style="color:var(--gray)">${prod}</span>
-                            <b>${count}</b>
-                         </li>`;
-            }
-            html += `</ul>
-                    <div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">
-                        Total: ${fmtMoney(total)}
-                    </div>
-                </div>`;
+            let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
+                <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div>
+                <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div>
+            </div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
+            for(const [p, c] of Object.entries(prodCounts)) html += `<li style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:var(--gray)">${p}</span><b>${c}</b></li>`;
+            html += `</ul><div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">Total: ${fmtMoney(total)}</div></div>`;
             document.getElementById('daily-summary').innerHTML = html;
         }
 
         window.updateSaleForm = () => {
-            const pid = document.getElementById('sale-product').value;
-            const pres = parseInt(document.getElementById('sale-presentation').value)||1;
-            const qty = parseInt(document.getElementById('sale-qty').value)||0;
-            const prod = products.find(p => p.id === pid);
-            if(!prod) return;
-            
-            const totalUnits = qty * pres;
-            const total = qty * prod.price;
-            
+            const pid = document.getElementById('sale-product').value, pres = parseInt(document.getElementById('sale-presentation').value)||1, qty = parseInt(document.getElementById('sale-qty').value)||0;
+            const prod = products.find(p => p.id === pid); if(!prod) return;
             document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
-            document.getElementById('sale-deduct').textContent = totalUnits + " un.";
-            document.getElementById('sale-total').textContent = fmtMoney(total);
+            document.getElementById('sale-deduct').textContent = (qty * pres) + " un.";
+            document.getElementById('sale-total').textContent = fmtMoney(qty * prod.price);
         };
 
         function renderProducts() {
             const tb = document.querySelector('#table-products tbody'); tb.innerHTML='';
             products.forEach(p => {
-                const supplyName = p.supplyLink ? (supplies.find(s=>s.id==p.supplyLink)?.name || '...') : '-';
                 const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${supplyName}</td><td>${editBtn}</td></tr>`;
-            });
-            feather.replace();
+                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${p.supplyLink ? 'Si' : '-'}</td><td>${editBtn}</td></tr>`;
+            }); feather.replace();
         }
+
         function renderSalesTable() {
             const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
-            const todays = sales.filter(s => isToday(s.timestamp));
-
-            todays.forEach(s => {
+            // Usar filtro
+            const filterDate = document.getElementById('sales-date-filter').value;
+            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
+            if(filteredSales.length === 0) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray)">Sin ventas esta fecha.</td></tr>'; return; }
+            
+            filteredSales.forEach(s => {
                 const presName = s.presentation_val == 1 ? 'Unid' : `Paca ${s.presentation_val}`;
                 tb.innerHTML += `<tr><td>${fmtDate(s.timestamp).split(',')[1]}</td><td>${s.user.split('@')[0]}</td><td>${s.product} <small>(${s.qty_packs})</small></td><td>${fmtMoney(s.price)}</td></tr>`;
             });
         }
         function updateSelects() {
-            const selSale = document.getElementById('sale-product');
-            const selTruck = document.getElementById('truck-product');
-            const selProdLink = document.getElementById('prod-supply-link');
-            
-            selSale.innerHTML = '<option value="">Seleccionar...</option>';
-            if(selTruck) selTruck.innerHTML = '<option value="">Seleccionar...</option>';
-            
-            products.forEach(p => {
-                const opt = `<option value="${p.id}">${p.name} (Disp: ${p.stock})</option>`;
-                selSale.innerHTML += opt;
-                if(selTruck) selTruck.innerHTML += opt;
-            });
+            const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); s1.innerHTML = '<option value="">Seleccionar...</option>'; if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>';
+            products.forEach(p => { const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; s1.innerHTML += o; if(s2) s2.innerHTML += o; });
         }
         function updateSupplySelect() {
-            const sel = document.getElementById('prod-supply-link');
-            const currentVal = sel.value; // Keep current val if re-rendering
-            sel.innerHTML = '<option value="">-- Ninguno --</option>';
-            supplies.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.name}</option>`);
-            sel.value = currentVal;
+            const s = document.getElementById('prod-supply-link'), v = s.value; s.innerHTML = '<option value="">-- Ninguno --</option>';
+            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`); s.value = v;
         }
-
         function renderSupplies() {
             const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
             supplies.forEach(s => {
-                let btns = '-';
-                if(role === 'admin') {
-                    // BOTONES DE EDICIÓN Y ENTRADA
-                    btns = `<div style="display:flex; gap:5px;">
-                                <button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm" title="Agregar Stock">+</button>
-                                <button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm" title="Editar"><i data-feather="edit-2" style="width:12px;"></i></button>
-                            </div>`;
-                }
-                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️ BAJO':'OK'}</td><td>${btns}</td></tr>`;
-            });
-            feather.replace();
+                const btns = role === 'admin' ? `<div style="display:flex; gap:5px;"><button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button></div>` : '-';
+                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️':'OK'}</td><td>${btns}</td></tr>`;
+            }); feather.replace();
         }
-
-        // FUNCIONES DE EDICIÓN DE INSUMOS
-        window.editSupply = (id) => {
-            const s = supplies.find(x => x.id === id);
-            if(!s) return;
-            window.showSupplyForm();
-            document.getElementById('supp-id').value = s.id;
-            document.getElementById('supp-name').value = s.name;
-            document.getElementById('supp-stock').value = s.stock;
-            document.getElementById('btn-save-supply').innerText = "Actualizar";
-            document.getElementById('btn-save-supply').classList.remove('btn-green');
-            document.getElementById('btn-save-supply').classList.add('btn-blue');
-        };
-
-        function renderInventory() {
-            const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = '';
-            let criticalCount = 0;
-            products.forEach(p => {
-                const isLow = p.stock <= p.min;
-                if(isLow) criticalCount++;
-                const actionBtn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">+ Entrada</button>` : '-';
-                tb.innerHTML += `<tr><td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${p.stock}</td><td>${isLow?'🔴 BAJO':'🟢 OK'}</td><td>${actionBtn}</td></tr>`;
-            });
-            document.getElementById('d-critical').textContent = criticalCount;
-        }
-        function renderMovements() {
-            const tb = document.querySelector('#table-movements tbody'); tb.innerHTML='';
-            movements.slice(0,50).forEach(m => { 
-                const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px 6px;"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
-                tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product} ${m.details||''}</td><td>${m.quantity}</td><td>${btn}</td></tr>`; 
-            });
-            feather.replace();
-        }
-        window.deleteLog = async (id) => {
-             if(role !== 'admin') return;
-             showConfirm("Borrar Registro", "Esto eliminará la línea del historial pero NO afectará el stock. ¿Continuar?", async () => {
-                 await deleteDoc(doc(db, "movements", id));
-                 toast("Registro eliminado");
-             });
-        }
-
-        function renderPending(list) {
-            const tb = document.querySelector('#table-pending tbody'); tb.innerHTML='';
-            list.forEach(i => { tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td></tr>`; });
-        }
-        function updateDashboard() {
-            const todays = sales.filter(s => isToday(s.timestamp));
-            document.getElementById('d-today').textContent = fmtMoney(todays.reduce((a,b)=>a+b.price,0));
-            document.getElementById('d-profit').textContent = fmtMoney(todays.reduce((a,b)=>a+(b.profit||0),0));
-        }
-
-        window.showSupplyForm = () => {
-            document.getElementById('box-create-supply').classList.remove('hidden');
-            document.getElementById('form-supply').reset();
-            document.getElementById('supp-id').value = '';
-            document.getElementById('btn-save-supply').innerText = "Guardar";
-            document.getElementById('btn-save-supply').classList.add('btn-green');
-            document.getElementById('btn-save-supply').classList.remove('btn-blue');
-        };
+        
+        // EDICIONES
+        window.editSupply = (id) => { const s = supplies.find(x => x.id === id); if(!s) return; window.showSupplyForm(); document.getElementById('supp-id').value = s.id; document.getElementById('supp-name').value = s.name; document.getElementById('supp-stock').value = s.stock; document.getElementById('btn-save-supply').innerText = "Actualizar"; };
+        window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); document.getElementById('form-supply').reset(); document.getElementById('supp-id').value = ''; document.getElementById('btn-save-supply').innerText = "Guardar"; };
         window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
-        
-        // MODIFICADO: GUARDAR O EDITAR INSUMO
-        document.getElementById('form-supply').addEventListener('submit', async (e) => { 
-            e.preventDefault(); 
-            const id = document.getElementById('supp-id').value;
-            const name = document.getElementById('supp-name').value;
-            const stock = parseInt(document.getElementById('supp-stock').value);
+        document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('supp-id').value, name = document.getElementById('supp-name').value, stock = parseInt(document.getElementById('supp-stock').value); try { if(id) await updateDoc(doc(db,"supplies",id), {name, stock}); else await addDoc(collection(db,"supplies"), {name, stock, createdAt: serverTimestamp()}); hideSupplyForm(); toast("✅ Listo"); } catch(e){ toast("Error"); } });
 
-            try { 
-                if(id) {
-                    // Editar
-                    await updateDoc(doc(db, "supplies", id), { name, stock });
-                    toast("✅ Insumo Actualizado");
-                } else {
-                    // Crear
-                    await addDoc(collection(db, "supplies"), { name, stock, createdAt: serverTimestamp() }); 
-                    toast("✅ Insumo Creado");
-                }
-                document.getElementById('form-supply').reset(); 
-                hideSupplyForm(); 
-            } catch(e){ toast("Error"); }
-        });
+        window.editProd = (id) => { const p = products.find(x=>x.id==id); document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; document.getElementById('prod-supply-link').value=p.supplyLink||''; document.getElementById('prod-supply-qty').value=p.supplyQty||1; };
+        window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
         
-        window.editProd = (id) => {
-            const p = products.find(x=>x.id==id);
-            document.getElementById('prod-id').value=p.id;
-            document.getElementById('prod-name').value=p.name;
-            document.getElementById('prod-price').value=p.price;
-            document.getElementById('prod-cost').value=p.cost||0;
-            document.getElementById('prod-stock').value=p.stock; 
-            document.getElementById('prod-stock').disabled = true; 
-            document.getElementById('prod-min').value=p.min||0;
-            document.getElementById('prod-supply-link').value=p.supplyLink||'';
-            document.getElementById('prod-supply-qty').value=p.supplyQty||1;
-        };
-        window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; }
-        
-        window.openRestock = (id, type) => {
-            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id);
-            document.getElementById('modal-prod-name').textContent = item.name;
-            document.getElementById('restock-id').value = item.id;
-            document.getElementById('restock-type').value = type;
-            document.getElementById('modal-restock').classList.remove('hidden');
-        };
+        window.openRestock = (id, type) => { const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); document.getElementById('modal-prod-name').textContent = item.name; document.getElementById('restock-id').value = item.id; document.getElementById('restock-type').value = type; document.getElementById('modal-restock').classList.remove('hidden'); };
         window.closeModal = () => document.getElementById('modal-restock').classList.add('hidden');
-        document.getElementById('form-restock').addEventListener('submit', async e => {
-            e.preventDefault();
-            const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value, qty = parseInt(document.getElementById('restock-qty').value);
-            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id);
-            try {
-                await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: (item.stock||0) + qty });
-                await addDoc(collection(db, "movements"), { type: "ENTRADA", product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() });
-                toast("✅ Stock Actualizado"); closeModal();
-            } catch(e) { toast("Error"); }
-        });
+        document.getElementById('form-restock').addEventListener('submit', async e => { e.preventDefault(); const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value, qty = parseInt(document.getElementById('restock-qty').value); const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); try { await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: (item.stock||0) + qty }); await addDoc(collection(db, "movements"), { type: "ENTRADA", product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() }); toast("✅ Stock Actualizado"); closeModal(); } catch(e) { toast("Error"); } });
 
-        window.payPending = async (id) => { showConfirm("Cobro", "¿Marcar como pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); }
-        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
-        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
-        function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
+        function renderInventory() { const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = ''; let crit=0; products.forEach(p => { const isLow = p.stock <= p.min; if(isLow) crit++; const btn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">+</button>` : '-'; tb.innerHTML += `<tr><td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${p.stock}</td><td>${isLow?'🔴':'🟢'}</td><td>${btn}</td></tr>`; }); document.getElementById('d-critical').textContent = crit; }
+        function renderMovements() { const tb = document.querySelector('#table-movements tbody'); tb.innerHTML=''; movements.slice(0,50).forEach(m => { const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px;"><i data-feather="trash-2" style="width:12px"></i></button>` : ''; tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product}</td><td>${m.quantity}</td><td>${btn}</td></tr>`; }); feather.replace(); }
+        window.deleteLog = async (id) => { if(role !== 'admin') return; showConfirm("Borrar", "¿Borrar registro historial?", async () => { await deleteDoc(doc(db, "movements", id)); toast("Borrado"); }); }
 
-        // Utils
+        function renderPending(list) { const tb = document.querySelector('#table-pending tbody'); tb.innerHTML=''; list.forEach(i => { tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td></tr>`; }); }
+        window.payPending = async (id) => { showConfirm("Cobro", "¿Pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); };
+        function updateDashboard() { const todays = sales.filter(s => isToday(s.timestamp)); document.getElementById('d-today').textContent = fmtMoney(todays.reduce((a,b)=>a+b.price,0)); document.getElementById('d-profit').textContent = fmtMoney(todays.reduce((a,b)=>a+(b.profit||0),0)); }
+
         window.showConfirm = (t, m, c) => { document.getElementById('confirm-title').innerText=t; document.getElementById('confirm-msg').innerText=m; document.getElementById('modal-confirm').classList.remove('hidden'); const b=document.getElementById('confirm-yes-btn'); const n=b.cloneNode(true); b.parentNode.replaceChild(n, b); if(c){ n.onclick=()=>{ c(); document.getElementById('modal-confirm').classList.add('hidden'); }; } };
         window.closeConfirm = () => document.getElementById('modal-confirm').classList.add('hidden');
         window.nav = (id) => { document.querySelectorAll('.page').forEach(p => p.classList.add('hidden')); document.getElementById('page-'+id).classList.remove('hidden'); document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active')); event?.currentTarget?.classList.add('active'); };
@@ -1211,6 +604,11 @@
         document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
         document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{ email:c.user.email, role:document.getElementById('r-role').value, name:document.getElementById('r-name').value }); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
         document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value), date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
+        
+        // Exportar helpers
+        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
+        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
+        function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
 
         feather.replace();
     </script>
