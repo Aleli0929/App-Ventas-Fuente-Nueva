@@ -23,8 +23,6 @@
         .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
         .gap-2 { gap: 0.75rem; } .text-primary { color: var(--primary); }
         .text-success { color: var(--success); font-weight: 700; } .text-danger { color: var(--danger); font-weight: 700; }
-        
-        /* Ocultar elementos según rol */
         .admin-only { display: none; }
 
         header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
@@ -187,8 +185,8 @@
                                 <div class="form-grid"><div><label>Pago</label><select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select></div></div>
                                 <div style="margin-bottom:1rem;"><label>Observaciones</label><textarea id="sale-obs" rows="1"></textarea></div>
                                 <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
-                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Base (Unitario):</small> <b id="sale-price-unit">$0.00</b></div>
-                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Insumo a Descontar:</small> <b id="sale-deduct" class="text-danger">0 botellas</b></div>
+                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Base:</small> <b id="sale-price-unit">$0.00</b></div>
+                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Insumos a Descontar:</small> <b id="sale-deduct" class="text-danger">0</b></div>
                                     <hr style="border-top:1px dashed #cbd5e1; margin:0.5rem 0;">
                                     <div class="flex justify-between items-center"><span style="font-weight:600;">TOTAL A PAGAR:</span><span id="sale-total" style="font-size:1.5rem; font-weight:800; color:var(--primary);">$0.00</span></div>
                                 </div>
@@ -322,9 +320,9 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47", measurementId: "G-8NGS5XH8K6" };
         const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
@@ -342,26 +340,26 @@
             document.getElementById('loader').classList.remove('hidden');
             if (u) {
                 user = u;
-                const docSnap = await getDoc(doc(db, "users", u.uid));
-                role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
-                document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
-                document.getElementById('auth-view').classList.add('hidden');
-                document.getElementById('app-view').classList.remove('hidden');
-                
-                document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
-                
-                // Si es vendedor, bloquear fecha de venta a hoy. Si es admin, dejar libre.
-                const saleDateInput = document.getElementById('sale-date-input');
-                saleDateInput.value = today();
-                if(role !== 'admin') { saleDateInput.disabled = true; }
-
-                // Fechas filtros
-                document.getElementById('sales-date-filter').value = today();
-                document.getElementById('truck-date-filter').value = today();
-                document.getElementById('dash-date-filter').value = today();
-                document.getElementById('pend-date').value = today();
-
-                initListeners(); nav('dashboard');
+                try {
+                    const docSnap = await getDoc(doc(db, "users", u.uid));
+                    role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
+                    document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
+                    document.getElementById('auth-view').classList.add('hidden');
+                    document.getElementById('app-view').classList.remove('hidden');
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+                    const saleDateInput = document.getElementById('sale-date-input');
+                    if(saleDateInput) {
+                        saleDateInput.value = today();
+                        if(role !== 'admin') { saleDateInput.disabled = true; }
+                    }
+                    document.getElementById('sales-date-filter').value = today();
+                    document.getElementById('truck-date-filter').value = today();
+                    document.getElementById('dash-date-filter').value = today();
+                    document.getElementById('pend-date').value = today();
+                    initListeners(); nav('dashboard');
+                } catch(err) {
+                    alert("Error al cargar perfil: " + err.message);
+                }
             } else { document.getElementById('auth-view').classList.remove('hidden'); document.getElementById('app-view').classList.add('hidden'); }
             document.getElementById('loader').classList.add('hidden');
         });
@@ -386,10 +384,7 @@
             const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value)||0;
             const prod = products.find(p => p.id === pid); if(!prod) return;
             const total = prod.price * qty;
-            
-            // Calculo insumos
             const insumosQty = qty * (prod.supplyQty || 0);
-
             document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
             document.getElementById('sale-deduct').textContent = insumosQty > 0 ? insumosQty + " botellas" : "0";
             document.getElementById('sale-total').textContent = fmtMoney(total);
@@ -399,26 +394,13 @@
             e.preventDefault(); const btn = document.getElementById('btn-submit-sale'); btn.disabled = true;
             const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value);
             const selectedDateStr = document.getElementById('sale-date-input').value;
-            
             const prod = products.find(p => p.id === pid); if(!prod) { btn.disabled = false; return; }
-            
-            // LOGICA DIRECTA: Precio * Cantidad
             const totalUnits = qty; 
             const totalPrice = prod.price * qty;
-            
-            // DEDUCCION INSUMOS: 1 Paca * 9 Botellas
             let sDoc = null, sDeduct = 0;
-            if(prod.supplyLink) { 
-                const s = supplies.find(x => x.id === prod.supplyLink); 
-                if(s) { 
-                    sDeduct = totalUnits * (prod.supplyQty || 1); 
-                    sDoc = s; 
-                } 
-            }
-
+            if(prod.supplyLink) { const s = supplies.find(x => x.id === prod.supplyLink); if(s) { sDeduct = totalUnits * (prod.supplyQty || 1); sDoc = s; } }
             if(prod.stock < totalUnits) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
             const saleDateObj = new Date(selectedDateStr + 'T12:00:00');
-
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid), pData = (await t.get(pRef)).data();
@@ -426,14 +408,7 @@
                     let sRef = null; if(sDoc) { sRef = doc(db, "supplies", sDoc.id); const sData = (await t.get(sRef)).data(); if(sData.stock < sDeduct) throw "Falta insumo"; }
                     t.update(pRef, { stock: pData.stock - totalUnits });
                     if(sRef) t.update(sRef, { stock: (await t.get(sRef)).data().stock - sDeduct });
-                    
-                    t.set(doc(collection(db, "sales")), { 
-                        product: prod.name, pid, qty_total_units: totalUnits, 
-                        price: totalPrice, type: document.getElementById('sale-type').value, 
-                        obs: document.getElementById('sale-obs').value, user: user.email, 
-                        timestamp: saleDateObj, 
-                        supplyUsed: sDoc?.name, supplyQty: sDeduct 
-                    });
+                    t.set(doc(collection(db, "sales")), { product: prod.name, pid, qty_total_units: totalUnits, price: totalPrice, type: document.getElementById('sale-type').value, obs: document.getElementById('sale-obs').value, user: user.email, timestamp: saleDateObj, supplyUsed: sDoc?.name, supplyQty: sDeduct });
                 }); toast("✅ Venta Guardada"); document.getElementById('form-sale').reset(); document.getElementById('sale-date-input').value = today(); updateSaleForm();
             } catch(e) { toast("Error: " + e); } finally { btn.disabled = false; }
         });
@@ -443,15 +418,7 @@
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault(); if(role !== 'admin') return toast("❌ Acceso denegado");
             const id = document.getElementById('prod-id').value;
-            const data = { 
-                name: document.getElementById('prod-name').value, 
-                category: document.getElementById('prod-cat').value,
-                price: parseFloat(document.getElementById('prod-price').value), 
-                cost: parseFloat(document.getElementById('prod-cost').value), 
-                min: parseInt(document.getElementById('prod-min').value),
-                supplyLink: document.getElementById('prod-supply-link').value||null, 
-                supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0 
-            };
+            const data = { name: document.getElementById('prod-name').value, category: document.getElementById('prod-cat').value, price: parseFloat(document.getElementById('prod-price').value), cost: parseFloat(document.getElementById('prod-cost').value), min: parseInt(document.getElementById('prod-min').value), supplyLink: document.getElementById('prod-supply-link').value||null, supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0 };
             try {
                 if(id) await updateDoc(doc(db,"products",id), data);
                 else { await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value), createdAt: serverTimestamp()}); }
@@ -459,16 +426,8 @@
             } catch(e) { toast("Error"); }
         });
 
-        window.editProd = (id) => { 
-            const p = products.find(x=>x.id==id); 
-            document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; 
-            document.getElementById('prod-cat').value=p.category||'water';
-            document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; 
-            document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; 
-            document.getElementById('prod-min').value=p.min||0; 
-            document.getElementById('prod-supply-link').value=p.supplyLink||''; document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
-        };
-
+        window.editProd = (id) => { const p = products.find(x=>x.id==id); document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-cat').value=p.category||'water'; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; document.getElementById('prod-supply-link').value=p.supplyLink||''; document.getElementById('prod-supply-qty').value=p.supplyQty||1; };
+        
         function renderInventory() { 
             const tbWater = document.querySelector('#table-inventory-water tbody'); tbWater.innerHTML = '';
             const tbEquip = document.querySelector('#table-inventory-equip tbody'); tbEquip.innerHTML = '';
@@ -487,11 +446,7 @@
             supplies.forEach(s => { 
                 let btns = '-';
                 if(role === 'admin') {
-                    btns = `<div style="display:flex; gap:5px;">
-                        <button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button>
-                        <button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button>
-                        <button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button>
-                    </div>`;
+                    btns = `<div style="display:flex; gap:5px;"><button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button><button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button></div>`;
                 }
                 tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️':'OK'}</td><td>${btns}</td></tr>`; 
             }); feather.replace(); 
