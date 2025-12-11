@@ -186,11 +186,8 @@
                                     <label style="color:#c2410c;">📅 Registrar en fecha pasada (Opcional)</label>
                                     <input type="date" id="sale-date-admin">
                                 </div>
-
                                 <div style="margin-bottom:1rem;"><label>Producto</label><select id="sale-product" required onchange="updateSaleForm()"></select></div>
-                                
                                 <div style="margin-bottom:1rem;"><label>Cantidad (Unidades)</label><input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()"></div>
-                                
                                 <div class="form-grid"><div><label>Pago</label><select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select></div></div>
                                 <div style="margin-bottom:1rem;"><label>Observaciones</label><textarea id="sale-obs" rows="1"></textarea></div>
                                 <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
@@ -204,6 +201,11 @@
                         <div class="card" style="border-top: 4px solid var(--truck); background: #f0fdfa;">
                             <h3 style="color: #0f766e;"><i data-feather="truck"></i> Carga de Camión</h3>
                             <form id="form-truck-load">
+                                <div class="admin-only" style="margin-bottom:1rem; background: #ccfbf1; padding: 10px; border-radius: 6px; border: 1px dashed #0f766e;">
+                                    <label style="color:#0f766e;">📅 Carga en fecha pasada (Opcional)</label>
+                                    <input type="date" id="truck-date-admin">
+                                </div>
+
                                 <div style="margin-bottom:1rem;"><label>Responsable</label><input type="text" id="truck-driver" required></div>
                                 <div class="form-grid">
                                     <div><label>Producto</label><select id="truck-product" required onchange="updateTruckInfo()"></select><small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small></div>
@@ -383,7 +385,6 @@
                 
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
                 
-                // Set default dates
                 const t = today();
                 document.getElementById('sales-date-filter').value = t;
                 document.getElementById('dash-date-filter').value = t;
@@ -424,7 +425,6 @@
             });
         }
 
-        // --- DASHBOARD ACTUALIZADO CON FILTRO ---
         window.updateDashboard = () => {
             const dateVal = document.getElementById('dash-date-filter').value;
             const filteredSales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
@@ -467,6 +467,13 @@
                 if(s) { sDeduct = qty * (prod.supplyQty || 1); if(s.stock < sDeduct) { showConfirm("Error", "Faltan insumos", null); btn.disabled = false; return; } sDoc = s; }
             }
 
+            // CAMBIO: Logica de fecha pasada para camión
+            let loadTimestamp = serverTimestamp();
+            const adminDate = document.getElementById('truck-date-admin').value;
+            if(role === 'admin' && adminDate) {
+                loadTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
+            }
+
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid), pData = (await t.get(pRef)).data();
@@ -476,13 +483,14 @@
                     
                     t.update(pRef, { stock: pData.stock - qty });
                     if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
-                    t.set(doc(collection(db, "movements")), { type: "SALIDA_CAMION", product: prod.name, productId: pid, quantity: qty, supplyId: sDoc?.id||null, supplyQty: sDeduct, user: user.email, details: `Chofer: ${driver}`, timestamp: serverTimestamp() });
+                    t.set(doc(collection(db, "movements")), { type: "SALIDA_CAMION", product: prod.name, productId: pid, quantity: qty, supplyId: sDoc?.id||null, supplyQty: sDeduct, user: user.email, details: `Chofer: ${driver}`, timestamp: loadTimestamp });
                 });
                 toast("✅ Carga Registrada"); document.getElementById('form-truck-load').reset(); document.getElementById('truck-supply-info').innerHTML = '';
+                // Limpiar fecha
+                document.getElementById('truck-date-admin').value = '';
             } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
         });
 
-        // --- HISTORIAL CAMION CON FILTRO ---
         window.renderTruckLoads = () => {
             const tb = document.querySelector('#table-truck-loads tbody'); tb.innerHTML = '';
             const dateVal = document.getElementById('truck-date-filter').value;
@@ -508,13 +516,11 @@
             });
         };
 
-        // --- LOGICA DE VENTAS ACTUALIZADA ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('btn-submit-sale'); btn.disabled = true;
             const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value);
             const prod = products.find(p => p.id === pid); if(!prod) { btn.disabled = false; return; }
             
-            // Presentación eliminada, asumimos unidad
             const totalUnits = qty;
             const totalPrice = qty * prod.price;
             const totalCost = qty * prod.cost;
@@ -525,11 +531,9 @@
             let sDoc = null, sDeduct = 0;
             if(prod.supplyLink) { const s = supplies.find(x => x.id === prod.supplyLink); if(s) { sDeduct = totalUnits * (prod.supplyQty || 1); sDoc = s; } }
 
-            // Lógica fecha personalizada (Backdated Sales)
             let saleTimestamp = serverTimestamp();
             const adminDate = document.getElementById('sale-date-admin').value;
             if(role === 'admin' && adminDate) {
-                // Crear timestamp a las 12pm de ese dia para evitar líos de zona horaria
                 saleTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
             }
 
@@ -544,24 +548,27 @@
                     if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
                     t.set(doc(collection(db, "sales")), { product: prod.name, pid, presentation_val: 1, qty_packs: qty, qty_total_units: totalUnits, price: totalPrice, cost: totalCost, profit, type: document.getElementById('sale-type').value, obs: document.getElementById('sale-obs').value, user: user.email, timestamp: saleTimestamp, supplyUsed: sDoc?.name, supplyQty: sDeduct });
                 }); toast("✅ Venta Exitosa"); document.getElementById('form-sale').reset(); updateSaleForm();
-                // Limpiar fecha manual
                 document.getElementById('sale-date-admin').value = '';
             } catch(e) { toast("Error: " + e); } finally { btn.disabled = false; }
         });
 
-        // --- GASTOS (NUEVO) ---
+        // --- GASTOS ---
         document.getElementById('form-expense').addEventListener('submit', async (e) => {
             e.preventDefault();
             const desc = document.getElementById('exp-desc').value;
             const amount = parseFloat(document.getElementById('exp-amount').value);
             const date = document.getElementById('exp-date').value;
             
+            // CORRECCION: Captura correcta del error
             try {
                 await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() });
                 document.getElementById('exp-desc').value = '';
                 document.getElementById('exp-amount').value = '';
                 toast("✅ Gasto registrado");
-            } catch(e) { toast("Error al guardar gasto"); }
+            } catch(err) { 
+                console.error(err);
+                toast("Error: " + err.message); 
+            }
         });
 
         function renderExpenses() {
@@ -609,14 +616,12 @@
             showConfirm("¿Anular Venta?", "Se repondrá stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        // Reponer producto
                         let pRef = null, pStock = 0;
                         let targetProdId = s.pid;
                         if(!targetProdId) { const found = products.find(p => p.name === s.product); if(found) targetProdId = found.id; }
                         
                         if(targetProdId) { pRef = doc(db, "products", targetProdId); const d = await t.get(pRef); if(d.exists()) pStock = d.data().stock; }
                         
-                        // Reponer insumo
                         let sRef = null, sStock = 0;
                         if(s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) { sRef = doc(db, "supplies", foundS.id); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; } }
 
@@ -702,13 +707,11 @@
         function renderSupplies() {
             const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
             supplies.forEach(s => {
-                // Se agregó el botón de eliminar (papelera)
                 const btns = role === 'admin' ? `<div style="display:flex; gap:5px;"><button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button><button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button></div>` : '-';
                 tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️':'OK'}</td><td>${btns}</td></tr>`;
             }); feather.replace();
         }
         
-        // --- ELIMINAR INSUMO ---
         window.deleteSupply = async (id) => {
             if(role!=='admin') return;
             showConfirm("Borrar Insumo", "¿Estás seguro? Esto podría afectar productos vinculados.", async () => {
