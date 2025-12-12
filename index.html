@@ -546,7 +546,24 @@
                     
                     t.update(pRef, { stock: pData.stock - totalUnits });
                     if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
-                    t.set(doc(collection(db, "sales")), { product: prod.name, pid, presentation_val: 1, qty_packs: qty, qty_total_units: totalUnits, price: totalPrice, cost: totalCost, profit, type: document.getElementById('sale-type').value, obs: document.getElementById('sale-obs').value, user: user.email, timestamp: saleTimestamp, supplyUsed: sDoc?.name, supplyQty: sDeduct });
+                    
+                    // --- CORRECCIÓN AQUI ---
+                    t.set(doc(collection(db, "sales")), { 
+                        product: prod.name, 
+                        pid, 
+                        presentation_val: 1, 
+                        qty_packs: qty, 
+                        qty_total_units: totalUnits, 
+                        price: totalPrice, 
+                        cost: totalCost, 
+                        profit, 
+                        type: document.getElementById('sale-type').value, 
+                        obs: document.getElementById('sale-obs').value, 
+                        user: user.email, 
+                        timestamp: saleTimestamp, 
+                        supplyUsed: sDoc?.name ?? null, // <--- AQUI ESTABA EL ERROR (se agrego ?? null)
+                        supplyQty: sDeduct 
+                    });
                 }); toast("✅ Venta Exitosa"); document.getElementById('form-sale').reset(); updateSaleForm();
                 document.getElementById('sale-date-admin').value = '';
             } catch(e) { toast("Error: " + e); } finally { btn.disabled = false; }
