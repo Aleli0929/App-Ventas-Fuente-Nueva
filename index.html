@@ -320,35 +320,29 @@
             </div>
 
             <div id="page-reportes" class="page hidden">
-                <div class="card">
-                    <h3><i data-feather="download-cloud"></i> Reporte Contable Avanzado</h3>
-                    <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:end; margin-bottom:1.5rem; background:#f1f5f9; padding:1.5rem; border-radius:12px;">
-                        <div>
-                            <label>Desde Fecha:</label>
-                            <input type="date" id="export-start" style="padding:0.6rem;">
-                        </div>
-                        <div>
-                            <label>Hasta Fecha:</label>
-                            <input type="date" id="export-end" style="padding:0.6rem;">
-                        </div>
-                        <button onclick="exportAdvancedReport()" class="btn btn-green" style="height:46px;">
-                            <i data-feather="download"></i> Descargar Excel Completo
-                        </button>
-                    </div>
-                </div>
-
                 <div class="card" style="border-top: 4px solid var(--warning);">
                     <h3><i data-feather="shield-off"></i> Anulaciones</h3>
                     <div class="table-container" style="max-height: 300px; overflow-y:auto;">
                         <table id="table-sales-admin"><thead><tr><th>Fecha</th><th>Producto</th><th>Obs.</th><th>Total</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table>
                     </div>
                 </div>
-                
                 <div class="card">
-                    <h3>Otras Descargas</h3>
-                    <div class="flex gap-2">
-                        <button onclick="exportInventory()" class="btn btn-gray"><i data-feather="box"></i> Inventario</button>
-                        <button onclick="exportMovements()" class="btn btn-gray"><i data-feather="activity"></i> Auditoría</button>
+                    <h3><i data-feather="download-cloud"></i> Descargas y Contabilidad</h3>
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
+                        <h4 style="margin-bottom:1rem; color:var(--primary);">📊 Reporte Contable Personalizado</h4>
+                        <div style="display:flex; gap:1rem; align-items:end; flex-wrap:wrap;">
+                            <div><label>Fecha Inicio</label><input type="date" id="rpt-start"></div>
+                            <div><label>Fecha Fin</label><input type="date" id="rpt-end"></div>
+                            <button onclick="exportCustomRange()" class="btn btn-primary" style="background:var(--dark); color:white; min-width:180px;"><i data-feather="file-text"></i> Descargar Balance</button>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-bottom:1rem; color:var(--gray);">Descargas Rápidas</h4>
+                    <div class="grid-4">
+                        <button onclick="exportSales()" class="btn btn-blue" style="flex-direction:column; padding:1.5rem;"><i data-feather="calendar"></i> Ventas Hoy</button>
+                        <button onclick="exportSalesMonthly()" class="btn btn-green" style="flex-direction:column; padding:1.5rem;"><i data-feather="grid"></i> Ventas Mes</button>
+                        <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario</button>
+                        <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría</button>
                     </div>
                 </div>
             </div>
@@ -390,40 +384,39 @@
         };
 
         onAuthStateChanged(auth, async (u) => {
-            try {
-                document.getElementById('loader').classList.remove('hidden');
-                if (u) {
-                    user = u;
-                    const docSnap = await getDoc(doc(db, "users", u.uid));
-                    role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
-                    document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
-                    document.getElementById('auth-view').classList.add('hidden');
-                    document.getElementById('app-view').classList.remove('hidden');
-                    
-                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
-                    
-                    const t = today();
-                    document.getElementById('sales-date-filter').value = t;
-                    document.getElementById('dash-date-filter').value = t;
-                    document.getElementById('truck-date-filter').value = t;
-                    document.getElementById('pend-date').value = t;
-                    document.getElementById('exp-date').value = t;
-                    document.getElementById('export-start').value = t;
-                    document.getElementById('export-end').value = t;
+            document.getElementById('loader').classList.remove('hidden');
+            if (u) {
+                user = u;
+                const docSnap = await getDoc(doc(db, "users", u.uid));
+                role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
+                document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('app-view').classList.remove('hidden');
+                
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+                
+                const t = today();
+                document.getElementById('sales-date-filter').value = t;
+                document.getElementById('dash-date-filter').value = t;
+                document.getElementById('truck-date-filter').value = t;
+                document.getElementById('pend-date').value = t;
+                document.getElementById('exp-date').value = t;
+                
+                // Set default report dates
+                document.getElementById('rpt-start').value = t.substring(0, 7) + '-01'; // First day
+                document.getElementById('rpt-end').value = t;
 
-                    initListeners();
-                    nav('dashboard');
-                } else {
-                    document.getElementById('auth-view').classList.remove('hidden');
-                    document.getElementById('app-view').classList.add('hidden');
-                }
-            } catch (err) {
-                console.error("Error Auth:", err);
-                // Si falla, mostramos el login de todas formas para no bloquear
-                if(!user) document.getElementById('auth-view').classList.remove('hidden');
-            } finally {
-                document.getElementById('loader').classList.add('hidden');
+                initListeners();
+                nav('dashboard');
+                
+                console.log("Sistema actualizado: Módulo de Contabilidad y Gastos V2 cargado.");
+                toast("✅ Sistema Actualizado y Listo");
+
+            } else {
+                document.getElementById('auth-view').classList.remove('hidden');
+                document.getElementById('app-view').classList.add('hidden');
             }
+            document.getElementById('loader').classList.add('hidden');
         });
 
         function initListeners() {
@@ -583,7 +576,7 @@
                         obs: document.getElementById('sale-obs').value, 
                         user: user.email, 
                         timestamp: saleTimestamp, 
-                        supplyUsed: sDoc?.name ?? null, 
+                        supplyUsed: sDoc?.name ?? null,
                         supplyQty: sDeduct 
                     });
                 }); toast("✅ Venta Exitosa"); document.getElementById('form-sale').reset(); updateSaleForm();
@@ -591,6 +584,7 @@
             } catch(e) { toast("Error: " + e); } finally { btn.disabled = false; }
         });
 
+        // --- GASTOS ---
         document.getElementById('form-expense').addEventListener('submit', async (e) => {
             e.preventDefault();
             const desc = document.getElementById('exp-desc').value;
@@ -611,98 +605,98 @@
         function renderExpenses() {
             const tb = document.querySelector('#table-expenses tbody'); tb.innerHTML = '';
             expenses.slice(0, 50).forEach(e => {
+                // SEGURIDAD: Solo Admin puede borrar gastos
                 const btn = role === 'admin' ? `<button onclick="deleteExpense('${e.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
                 tb.innerHTML += `<tr><td>${e.date}</td><td>${e.desc}</td><td style="color:var(--danger); font-weight:bold;">${fmtMoney(e.amount)}</td><td>${e.user.split('@')[0]}</td><td>${btn}</td></tr>`;
             }); feather.replace();
         }
 
         window.deleteExpense = async (id) => {
-            if(role!=='admin') return;
+            if(role!=='admin') return toast("⛔ Acción no permitida");
             showConfirm("Borrar Gasto", "¿Estás seguro?", async () => {
                 await deleteDoc(doc(db, "expenses", id)); toast("🗑️ Eliminado");
             });
         };
 
-        // --- NUEVA FUNCION DE REPORTE AVANZADO ---
-        window.exportAdvancedReport = () => {
-            const start = document.getElementById('export-start').value;
-            const end = document.getElementById('export-end').value;
-
+        // --- EXPORTACIÓN AVANZADA ---
+        window.exportCustomRange = () => {
+            const start = document.getElementById('rpt-start').value;
+            const end = document.getElementById('rpt-end').value;
             if(!start || !end) return toast("⚠️ Selecciona ambas fechas");
-            if(start > end) return toast("⚠️ Fechas inválidas");
 
             // Filtrar datos
             const rSales = sales.filter(s => {
-                if(!s.timestamp) return false;
                 const d = getLocalYMD(new Date(s.timestamp.seconds*1000));
                 return d >= start && d <= end;
             });
-
             const rExpenses = expenses.filter(e => e.date >= start && e.date <= end);
 
-            // Cálculos
-            const incomeCash = rSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
-            const incomeTrans = rSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
-            const totalIncome = incomeCash + incomeTrans;
-            const totalExpense = rExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
-            const balance = totalIncome - totalExpense;
+            if(rSales.length === 0 && rExpenses.length === 0) return toast("⚠️ Sin datos en este rango");
 
-            // Construir Estructura Excel (Array of Arrays)
-            const sheetData = [
-                ["REPORTE FINANCIERO Y CONTABLE"],
-                ["Desde:", start, "Hasta:", end],
-                [""],
-                ["RESUMEN GENERAL"],
-                ["Concepto", "Monto"],
-                ["Ingresos (Efectivo)", incomeCash],
-                ["Ingresos (Transferencia)", incomeTrans],
-                ["TOTAL INGRESOS", totalIncome],
-                ["TOTAL GASTOS", totalExpense],
-                ["BALANCE FINAL (Utilidad)", balance],
-                [""],
-                ["--------------------------------------------------"],
-                ["DETALLE DE VENTAS"],
-                ["Fecha", "Producto", "Cant.", "Total", "Tipo Pago", "Vendedor", "Notas"],
-            ];
+            // Calcular Totales
+            const totalCash = rSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
+            const totalTransf = rSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
+            const totalIncome = totalCash + totalTransf;
+            const totalExp = rExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
+            const netProfit = totalIncome - totalExp;
 
-            // Agregar Ventas
+            // Construir JSON para Excel
+            const data = [];
+            
+            data.push({A: "REPORTE CONTABLE", B: `Desde: ${start} Hasta: ${end}`});
+            data.push({}); 
+
+            data.push({A: "DETALLE DE VENTAS"});
+            data.push({A: "Fecha", B: "Producto", C: "Cantidad", D: "Monto", E: "Metodo", F: "Usuario"});
             rSales.forEach(s => {
-                sheetData.push([
-                    fmtDate(s.timestamp),
-                    s.product,
-                    s.qty_packs,
-                    s.price,
-                    s.type,
-                    s.user.split('@')[0],
-                    s.obs || ''
-                ]);
+                data.push({
+                    A: fmtDate(s.timestamp), 
+                    B: s.product, 
+                    C: s.qty_packs, 
+                    D: s.price, 
+                    E: s.type, 
+                    F: s.user
+                });
             });
 
-            sheetData.push([""]);
-            sheetData.push(["--------------------------------------------------"]);
-            sheetData.push(["DETALLE DE GASTOS"]);
-            sheetData.push(["Fecha", "Descripción", "Monto", "Usuario"]);
-
-            // Agregar Gastos
+            data.push({}); 
+            data.push({A: "DETALLE DE GASTOS"});
+            data.push({A: "Fecha", B: "Descripción", C: "Monto", D: "Responsable"});
             rExpenses.forEach(e => {
-                sheetData.push([
-                    e.date,
-                    e.desc,
-                    e.amount,
-                    e.user.split('@')[0]
-                ]);
+                data.push({
+                    A: e.date, 
+                    B: e.desc, 
+                    C: parseFloat(e.amount), 
+                    D: e.user
+                });
             });
 
-            // Generar Archivo
+            data.push({});
+            data.push({});
+            data.push({A: "BALANCE FINAL DEL PERIODO"});
+            data.push({A: "CONCEPTOS", B: "TOTALES"});
+            data.push({A: "(+) Ventas Efectivo", B: totalCash});
+            data.push({A: "(+) Ventas Transferencia", B: totalTransf});
+            data.push({A: "(=) INGRESOS TOTALES", B: totalIncome});
+            data.push({A: "(-) GASTOS TOTALES", B: totalExp});
+            data.push({A: "(=) GANANCIA REAL", B: netProfit});
+
+            // Generar archivo
+            const ws = XLSX.utils.json_to_sheet(data, {skipHeader: true});
             const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-            XLSX.writeFile(wb, `Reporte_Contable_${start}_al_${end}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "Balance_General");
+            XLSX.writeFile(wb, `Balance_${start}_al_${end}.xlsx`);
         };
 
-        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
-        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
-        function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
+        window.exportSales = () => generateSalesExcel(sales.filter(s => isToday(s.timestamp)), "Ventas_Hoy");
+        window.exportSalesMonthly = () => generateSalesExcel(sales.filter(s => isCurrentMonth(s.timestamp)), "Ventas_Mes");
+        function generateSalesExcel(list, name) {
+            if(!list.length) return toast("⚠️ Sin datos");
+            const data = list.map(s => ({ Fecha: fmtDate(s.timestamp), Producto: s.product, Packs: s.qty_packs, Total_Unid: s.qty_total_units, Total: s.price, Pago: s.type, Obs: s.obs, User: s.user }));
+            const cash = list.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0), transf = list.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
+            data.push({}); data.push({Fecha: "RESUMEN", Total: cash + transf}); data.push({Fecha: "EFECTIVO", Total: cash}); data.push({Fecha: "TRANSF", Total: transf});
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Ventas"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
+        }
 
         function renderAdminSalesTable() {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
