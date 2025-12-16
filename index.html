@@ -390,33 +390,40 @@
         };
 
         onAuthStateChanged(auth, async (u) => {
-            document.getElementById('loader').classList.remove('hidden');
-            if (u) {
-                user = u;
-                const docSnap = await getDoc(doc(db, "users", u.uid));
-                role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
-                document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
-                document.getElementById('auth-view').classList.add('hidden');
-                document.getElementById('app-view').classList.remove('hidden');
-                
-                document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
-                
-                const t = today();
-                document.getElementById('sales-date-filter').value = t;
-                document.getElementById('dash-date-filter').value = t;
-                document.getElementById('truck-date-filter').value = t;
-                document.getElementById('pend-date').value = t;
-                document.getElementById('exp-date').value = t;
-                document.getElementById('export-start').value = t;
-                document.getElementById('export-end').value = t;
+            try {
+                document.getElementById('loader').classList.remove('hidden');
+                if (u) {
+                    user = u;
+                    const docSnap = await getDoc(doc(db, "users", u.uid));
+                    role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
+                    document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
+                    document.getElementById('auth-view').classList.add('hidden');
+                    document.getElementById('app-view').classList.remove('hidden');
+                    
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+                    
+                    const t = today();
+                    document.getElementById('sales-date-filter').value = t;
+                    document.getElementById('dash-date-filter').value = t;
+                    document.getElementById('truck-date-filter').value = t;
+                    document.getElementById('pend-date').value = t;
+                    document.getElementById('exp-date').value = t;
+                    document.getElementById('export-start').value = t;
+                    document.getElementById('export-end').value = t;
 
-                initListeners();
-                nav('dashboard');
-            } else {
-                document.getElementById('auth-view').classList.remove('hidden');
-                document.getElementById('app-view').classList.add('hidden');
+                    initListeners();
+                    nav('dashboard');
+                } else {
+                    document.getElementById('auth-view').classList.remove('hidden');
+                    document.getElementById('app-view').classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("Error Auth:", err);
+                // Si falla, mostramos el login de todas formas para no bloquear
+                if(!user) document.getElementById('auth-view').classList.remove('hidden');
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
             }
-            document.getElementById('loader').classList.add('hidden');
         });
 
         function initListeners() {
