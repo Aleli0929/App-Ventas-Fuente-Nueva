@@ -402,15 +402,14 @@
                 document.getElementById('pend-date').value = t;
                 document.getElementById('exp-date').value = t;
                 
-                // Set default report dates
-                document.getElementById('rpt-start').value = t.substring(0, 7) + '-01'; // First day
+                document.getElementById('rpt-start').value = t.substring(0, 7) + '-01'; 
                 document.getElementById('rpt-end').value = t;
 
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Módulo de Contabilidad y Gastos V2 cargado.");
-                toast("✅ Sistema Actualizado y Listo");
+                console.log("Sistema actualizado: Corrección de Insumos V3 cargada.");
+                toast("✅ Sistema Seguro Activo");
 
             } else {
                 document.getElementById('auth-view').classList.remove('hidden');
@@ -482,7 +481,10 @@
             let sDoc = null, sDeduct = 0;
             if(prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if(s) { sDeduct = qty * (prod.supplyQty || 1); if(s.stock < sDeduct) { showConfirm("Error", "Faltan insumos", null); btn.disabled = false; return; } sDoc = s; }
+                if(!s) { alert("Error: Insumo vinculado no encontrado. Revise el producto."); btn.disabled = false; return; }
+                sDeduct = qty * (prod.supplyQty || 1); 
+                if(s.stock < sDeduct) { showConfirm("Error", `Falta insumo: ${s.name}`, null); btn.disabled = false; return; } 
+                sDoc = s; 
             }
 
             let loadTimestamp = serverTimestamp();
@@ -532,56 +534,104 @@
             });
         };
 
+        // --- LÓGICA DE VENTA CORREGIDA Y SEGURA ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
-            e.preventDefault(); const btn = document.getElementById('btn-submit-sale'); btn.disabled = true;
-            const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value);
-            const prod = products.find(p => p.id === pid); if(!prod) { btn.disabled = false; return; }
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-sale');
             
-            const totalUnits = qty;
+            const pid = document.getElementById('sale-product').value;
+            const qty = parseInt(document.getElementById('sale-qty').value) || 0;
+            const prod = products.find(p => p.id === pid);
+
+            if (!prod || qty <= 0) return;
+
+            // Validación de Stock
+            if (prod.stock < qty) {
+                showConfirm("Stock Insuficiente", `Solo tienes ${prod.stock} unidades.`, null);
+                return;
+            }
+
+            btn.disabled = true; // Evitar doble clic
+
+            // --- LÓGICA DE INSUMOS MEJORADA ---
+            let sDoc = null, sDeduct = 0;
+            
+            // Verificamos si el producto tiene un vínculo configurado
+            if (prod.supplyLink && prod.supplyLink !== "") {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                
+                if (!s) {
+                    // ERROR CRÍTICO DETECTADO: El producto pide tapa pero no la encuentra
+                    alert(`⚠️ ERROR: Este producto (${prod.name}) tiene vinculado un insumo que NO SE ENCUENTRA.\n\nSolución: Ve a "Productos", edita este producto y selecciona de nuevo la Tapa/Insumo.`);
+                    btn.disabled = false;
+                    return; // DETENEMOS LA VENTA
+                }
+
+                sDeduct = qty * (prod.supplyQty || 1);
+                
+                // Validamos stock del insumo
+                if (s.stock < sDeduct) {
+                    showConfirm("Faltan Insumos", `No hay suficientes ${s.name}.\nRequerido: ${sDeduct}\nDisponible: ${s.stock}`, null);
+                    btn.disabled = false;
+                    return;
+                }
+                sDoc = s;
+            }
+
+            // Cálculos financieros
             const totalPrice = qty * prod.price;
             const totalCost = qty * prod.cost;
             const profit = totalPrice - totalCost;
 
-            if(prod.stock < totalUnits) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
-
-            let sDoc = null, sDeduct = 0;
-            if(prod.supplyLink) { const s = supplies.find(x => x.id === prod.supplyLink); if(s) { sDeduct = totalUnits * (prod.supplyQty || 1); sDoc = s; } }
-
             let saleTimestamp = serverTimestamp();
             const adminDate = document.getElementById('sale-date-admin').value;
-            if(role === 'admin' && adminDate) {
+            if (role === 'admin' && adminDate) {
                 saleTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
             }
 
             try {
                 await runTransaction(db, async (t) => {
-                    const pRef = doc(db, "products", pid), pData = (await t.get(pRef)).data();
-                    if(pData.stock < totalUnits) throw "Stock insuficiente";
-                    let sRef = null, sData = null;
-                    if(sDoc) { sRef = doc(db, "supplies", sDoc.id); sData = (await t.get(sRef)).data(); if(sData.stock < sDeduct) throw "Falta insumo"; }
-                    
-                    t.update(pRef, { stock: pData.stock - totalUnits });
-                    if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
-                    
-                    t.set(doc(collection(db, "sales")), { 
-                        product: prod.name, 
-                        pid, 
-                        presentation_val: 1, 
-                        qty_packs: qty, 
-                        qty_total_units: totalUnits, 
-                        price: totalPrice, 
-                        cost: totalCost, 
-                        profit, 
-                        type: document.getElementById('sale-type').value, 
-                        obs: document.getElementById('sale-obs').value, 
-                        user: user.email, 
-                        timestamp: saleTimestamp, 
-                        supplyUsed: sDoc?.name ?? null,
-                        supplyQty: sDeduct 
+                    const pRef = doc(db, "products", pid);
+                    const pData = (await t.get(pRef)).data();
+                    if (pData.stock < qty) throw "Stock insuficiente (cambió durante la venta).";
+
+                    let sRef = null;
+                    if (sDoc) {
+                        sRef = doc(db, "supplies", sDoc.id);
+                        const sData = (await t.get(sRef)).data();
+                        if (sData.stock < sDeduct) throw `Falta insumo: ${sDoc.name}`;
+                        
+                        // Descuento Insumo
+                        t.update(sRef, { stock: sData.stock - sDeduct });
+                    }
+
+                    // Descuento Producto
+                    t.update(pRef, { stock: pData.stock - qty });
+
+                    // Registro Venta
+                    t.set(doc(collection(db, "sales")), {
+                        product: prod.name, pid, qty_packs: qty, qty_total_units: qty,
+                        price: totalPrice, cost: totalCost, profit,
+                        type: document.getElementById('sale-type').value,
+                        obs: document.getElementById('sale-obs').value,
+                        user: user.email, timestamp: saleTimestamp,
+                        supplyUsed: sDoc ? sDoc.name : null,
+                        supplyQty: sDeduct
                     });
-                }); toast("✅ Venta Exitosa"); document.getElementById('form-sale').reset(); updateSaleForm();
-                document.getElementById('sale-date-admin').value = '';
-            } catch(e) { toast("Error: " + e); } finally { btn.disabled = false; }
+                });
+
+                toast("✅ Venta Registrada Correctamente");
+                document.getElementById('form-sale').reset();
+                updateSaleForm();
+                if(document.getElementById('sale-date-admin')) document.getElementById('sale-date-admin').value = '';
+
+            } catch (err) {
+                console.error(err);
+                // Si es error de string, mostrarlo, sino mensaje genérico
+                toast("❌ Error: " + (typeof err === 'string' ? err : err.message));
+            } finally {
+                btn.disabled = false;
+            }
         });
 
         // --- GASTOS ---
@@ -605,7 +655,6 @@
         function renderExpenses() {
             const tb = document.querySelector('#table-expenses tbody'); tb.innerHTML = '';
             expenses.slice(0, 50).forEach(e => {
-                // SEGURIDAD: Solo Admin puede borrar gastos
                 const btn = role === 'admin' ? `<button onclick="deleteExpense('${e.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
                 tb.innerHTML += `<tr><td>${e.date}</td><td>${e.desc}</td><td style="color:var(--danger); font-weight:bold;">${fmtMoney(e.amount)}</td><td>${e.user.split('@')[0]}</td><td>${btn}</td></tr>`;
             }); feather.replace();
@@ -681,7 +730,6 @@
             data.push({A: "(-) GASTOS TOTALES", B: totalExp});
             data.push({A: "(=) GANANCIA REAL", B: netProfit});
 
-            // Generar archivo
             const ws = XLSX.utils.json_to_sheet(data, {skipHeader: true});
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Balance_General");
@@ -802,10 +850,41 @@
             const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); s1.innerHTML = '<option value="">Seleccionar...</option>'; if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>';
             products.forEach(p => { const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; s1.innerHTML += o; if(s2) s2.innerHTML += o; });
         }
+        
+        // --- FUNCIÓN CORREGIDA: EDITAR PRODUCTO (Guarda valor pendiente si carga lento) ---
+        window.editProd = (id) => { 
+            const p = products.find(x=>x.id==id); 
+            if(!p) return;
+            document.getElementById('prod-id').value=p.id; 
+            document.getElementById('prod-name').value=p.name; 
+            document.getElementById('prod-price').value=p.price; 
+            document.getElementById('prod-cost').value=p.cost||0; 
+            document.getElementById('prod-stock').value=p.stock; 
+            document.getElementById('prod-stock').disabled = true; 
+            document.getElementById('prod-min').value=p.min||0; 
+            
+            const sel = document.getElementById('prod-supply-link');
+            const target = p.supplyLink||'';
+            if(sel.options.length > 1) sel.value = target; 
+            else sel.dataset.pending = target; // Fix: guardar valor si select aun no carga
+
+            document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
+        };
+
+        window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
+        
+        // --- FUNCIÓN CORREGIDA: CARGAR INSUMOS (Restaura valor pendiente) ---
         function updateSupplySelect() {
-            const s = document.getElementById('prod-supply-link'), v = s.value; s.innerHTML = '<option value="">-- Ninguno --</option>';
-            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`); s.value = v;
+            const s = document.getElementById('prod-supply-link');
+            const pending = s.dataset.pending || s.value;
+            
+            s.innerHTML = '<option value="">-- Ninguno --</option>';
+            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`);
+            
+            if(pending) s.value = pending; 
+            delete s.dataset.pending;
         }
+
         function renderSupplies() {
             const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
             supplies.forEach(s => {
@@ -825,9 +904,6 @@
         window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); document.getElementById('form-supply').reset(); document.getElementById('supp-id').value = ''; document.getElementById('btn-save-supply').innerText = "Guardar"; };
         window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
         document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('supp-id').value, name = document.getElementById('supp-name').value, stock = parseInt(document.getElementById('supp-stock').value); try { if(id) await updateDoc(doc(db,"supplies",id), {name, stock}); else await addDoc(collection(db,"supplies"), {name, stock, createdAt: serverTimestamp()}); hideSupplyForm(); toast("✅ Listo"); } catch(e){ toast("Error"); } });
-
-        window.editProd = (id) => { const p = products.find(x=>x.id==id); document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; document.getElementById('prod-supply-link').value=p.supplyLink||''; document.getElementById('prod-supply-qty').value=p.supplyQty||1; };
-        window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
         
         window.openRestock = (id, type) => { const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); document.getElementById('modal-prod-name').textContent = item.name; document.getElementById('restock-id').value = item.id; document.getElementById('restock-type').value = type; document.getElementById('modal-restock').classList.remove('hidden'); };
         window.closeModal = () => document.getElementById('modal-restock').classList.add('hidden');
@@ -860,3 +936,4 @@
     </script>
 </body>
 </html>
+
