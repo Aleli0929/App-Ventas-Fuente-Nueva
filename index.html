@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ERP Fuente Nueva | Control Profesional</title>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -408,7 +407,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Corrección de Insumos V3 cargada.");
+                console.log("Sistema actualizado: Corrección de Cargas v2.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -521,16 +520,43 @@
             }); feather.replace();
         }
 
+        // --- SOLUCIÓN ERROR CAMIÓN: LÓGICA DE TRANSACCIÓN CORREGIDA ---
         window.undoTruckLoad = async (id) => {
             const m = movements.find(x => x.id === id); if(!m) return;
             showConfirm("¿Anular Carga?", "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        if(m.productId) { const r = doc(db, "products", m.productId), d = await t.get(r); if(d.exists()) t.update(r, {stock: d.data().stock + m.quantity}); }
-                        if(m.supplyId) { const r = doc(db, "supplies", m.supplyId), d = await t.get(r); if(d.exists()) t.update(r, {stock: d.data().stock + (m.supplyQty||0)}); }
+                        // 1. PRIMERO LEEMOS TODO
+                        let pRef = null, pData = null;
+                        let sRef = null, sData = null;
+
+                        if(m.productId) {
+                            pRef = doc(db, "products", m.productId);
+                            const pDoc = await t.get(pRef);
+                            if(pDoc.exists()) pData = pDoc.data();
+                        }
+
+                        if(m.supplyId) {
+                            sRef = doc(db, "supplies", m.supplyId);
+                            const sDoc = await t.get(sRef);
+                            if(sDoc.exists()) sData = sDoc.data();
+                        }
+
+                        // 2. DESPUÉS ESCRIBIMOS TODO (Esto evita el error de Firestore)
+                        if(pRef && pData) {
+                            t.update(pRef, {stock: pData.stock + m.quantity});
+                        }
+                        if(sRef && sData) {
+                            t.update(sRef, {stock: sData.stock + (m.supplyQty||0)});
+                        }
+                        
                         t.delete(doc(db, "movements", id));
-                    }); toast("✅ Anulado");
-                } catch(e){ toast("Error"); }
+                    }); 
+                    toast("✅ Anulado");
+                } catch(e){ 
+                    console.error(e);
+                    toast("Error: " + e.message); 
+                }
             });
         };
 
@@ -561,15 +587,13 @@
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 
                 if (!s) {
-                    // ERROR CRÍTICO DETECTADO: El producto pide tapa pero no la encuentra
                     alert(`⚠️ ERROR: Este producto (${prod.name}) tiene vinculado un insumo que NO SE ENCUENTRA.\n\nSolución: Ve a "Productos", edita este producto y selecciona de nuevo la Tapa/Insumo.`);
                     btn.disabled = false;
-                    return; // DETENEMOS LA VENTA
+                    return; 
                 }
 
                 sDeduct = qty * (prod.supplyQty || 1);
                 
-                // Validamos stock del insumo
                 if (s.stock < sDeduct) {
                     showConfirm("Faltan Insumos", `No hay suficientes ${s.name}.\nRequerido: ${sDeduct}\nDisponible: ${s.stock}`, null);
                     btn.disabled = false;
@@ -578,7 +602,6 @@
                 sDoc = s;
             }
 
-            // Cálculos financieros
             const totalPrice = qty * prod.price;
             const totalCost = qty * prod.cost;
             const profit = totalPrice - totalCost;
@@ -600,15 +623,11 @@
                         sRef = doc(db, "supplies", sDoc.id);
                         const sData = (await t.get(sRef)).data();
                         if (sData.stock < sDeduct) throw `Falta insumo: ${sDoc.name}`;
-                        
-                        // Descuento Insumo
                         t.update(sRef, { stock: sData.stock - sDeduct });
                     }
 
-                    // Descuento Producto
                     t.update(pRef, { stock: pData.stock - qty });
 
-                    // Registro Venta
                     t.set(doc(collection(db, "sales")), {
                         product: prod.name, pid, qty_packs: qty, qty_total_units: qty,
                         price: totalPrice, cost: totalCost, profit,
@@ -627,7 +646,6 @@
 
             } catch (err) {
                 console.error(err);
-                // Si es error de string, mostrarlo, sino mensaje genérico
                 toast("❌ Error: " + (typeof err === 'string' ? err : err.message));
             } finally {
                 btn.disabled = false;
@@ -648,7 +666,8 @@
                 toast("✅ Gasto registrado");
             } catch(err) { 
                 console.error(err);
-                toast("Error: " + err.message); 
+                // Si falla aqui, es problema de Reglas de Firebase
+                toast("Error: Permisos insuficientes (Revisar Reglas Firebase)"); 
             }
         });
 
@@ -936,4 +955,3 @@
     </script>
 </body>
 </html>
-
