@@ -185,27 +185,11 @@
                                     <label style="color:#c2410c;">📅 Registrar en fecha pasada (Opcional)</label>
                                     <input type="date" id="sale-date-admin">
                                 </div>
-                                <div style="margin-bottom:1rem;"><label>Producto a Vender (Ej: Válvula)</label><select id="sale-product" required onchange="updateSaleForm()"></select></div>
+                                <div style="margin-bottom:1rem;"><label>Producto a Vender</label><select id="sale-product" required onchange="updateSaleForm()"></select></div>
                                 <div style="margin-bottom:1rem;"><label>Cantidad (Unidades)</label><input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()"></div>
                                 <div class="form-grid"><div><label>Pago</label><select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select></div></div>
                                 <div style="margin-bottom:1rem;"><label>Observaciones</label><textarea id="sale-obs" rows="1"></textarea></div>
 
-                                <div style="margin-bottom:1rem; background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd;">
-                                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--primary); margin:0;">
-                                        <input type="checkbox" id="sale-swap-bottle" onchange="toggleSwapOptions()">
-                                        <span>🔄 Implica Cambio de Envase</span>
-                                    </label>
-                                    <div id="swap-options" class="hidden" style="margin-top:10px; padding-top:10px; border-top:1px dashed #bae6fd;">
-                                        <div style="margin-bottom:0.8rem;">
-                                            <label style="font-size:0.8rem; color:var(--dark);">📤 Entregas (Descuenta Stock):</label>
-                                            <select id="swap-prod-out" style="padding:0.4rem; font-size:0.85rem; background:white;"></select>
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.8rem; color:var(--dark);">📥 Recibes (Suma Insumo):</label>
-                                            <select id="swap-supply-in" style="padding:0.4rem; font-size:0.85rem; background:white;"></select>
-                                        </div>
-                                    </div>
-                                </div>
                                 <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
                                     <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Unit:</small> <b id="sale-price-unit">$0.00</b></div>
                                     <hr style="border-top:1px dashed #cbd5e1; margin:0.5rem 0;">
@@ -292,13 +276,17 @@
                         </div>
                         <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
                             <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" required></div>
-                            <div style="flex:2;"><label style="color:var(--primary)">Insumo Vinc.</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Vinc. Insumo (Resta)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
                             <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1"></div>
+                        </div>
+                        <div style="background:#f0fdfa; padding:1rem; border-radius:8px; margin:0 0 1rem 0;">
+                            <label style="color:var(--success)">🔄 Al vender, recibir envase (Suma):</label>
+                            <select id="prod-return-link"><option value="">-- Nada (Solo venta) --</option></select>
                         </div>
                         <div class="flex gap-2"><button type="submit" class="btn btn-blue">Guardar</button><button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button></div>
                     </form>
                 </div>
-                <div class="card"><div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Insumo</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
+                <div class="card"><div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Insumo (Resta)</th><th>Retorno (Suma)</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
             </div>
 
             <div id="page-inventario" class="page hidden">
@@ -424,7 +412,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Corrección Válvulas v3.");
+                console.log("Sistema actualizado: Automático v4.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -436,7 +424,14 @@
 
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
-            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); renderSupplies(); updateSupplySelect(); });
+            
+            // CORRECCIÓN: Renderiza productos cuando llegan insumos para evitar Vínculo Roto
+            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
+                supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderSupplies(); 
+                updateSupplySelect(); 
+                renderProducts(); 
+            });
             
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
@@ -574,13 +569,7 @@
             });
         };
 
-        window.toggleSwapOptions = () => {
-            const isChecked = document.getElementById('sale-swap-bottle').checked;
-            const options = document.getElementById('swap-options');
-            if(isChecked) options.classList.remove('hidden'); else options.classList.add('hidden');
-        };
-
-        // --- LÓGICA DE VENTA CON INTERCAMBIO ---
+        // --- LÓGICA DE VENTA CON AUTOMATIZACIÓN DE RETORNO ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
@@ -591,16 +580,6 @@
 
             if (!prod || qty <= 0) return;
             if (prod.stock < qty) { showConfirm("Stock Insuficiente", `Solo tienes ${prod.stock} unidades.`, null); return; }
-
-            // Datos Intercambio
-            const isSwap = document.getElementById('sale-swap-bottle').checked;
-            const swapProdId = document.getElementById('swap-prod-out').value; // Botellón Lleno (Sale)
-            const swapSupplyId = document.getElementById('swap-supply-in').value; // Envase Vacío (Entra)
-
-            if(isSwap && (!swapProdId || !swapSupplyId)) {
-                toast("⚠️ Selecciona qué Botellón sale y qué Envase entra.");
-                return;
-            }
 
             btn.disabled = true;
 
@@ -628,7 +607,7 @@
                     const pData = (await t.get(pRef)).data();
                     if (pData.stock < qty) throw "Stock insuficiente.";
 
-                    // 1. Descontar Insumo Vinculado (Tapa de la Válvula si aplica)
+                    // 1. Descontar Insumo Vinculado
                     let sRef = null;
                     if (sDoc) {
                         sRef = doc(db, "supplies", sDoc.id);
@@ -637,42 +616,36 @@
                         t.update(sRef, { stock: sData.stock - sDeduct });
                     }
 
-                    // 2. Descontar Válvula
+                    // 2. Descontar Producto Vendido
                     t.update(pRef, { stock: pData.stock - qty });
 
-                    // 3. Lógica de Intercambio (Válvula en Botellón)
-                    let swapDetail = "";
-                    if(isSwap) {
-                        const refOut = doc(db, "products", swapProdId); // Botellón Lleno
-                        const refIn = doc(db, "supplies", swapSupplyId); // Envase Vacío
-                        const dOut = await t.get(refOut);
-                        const dIn = await t.get(refIn);
-                        
-                        if(!dOut.exists() || !dIn.exists()) throw "Error leyendo productos de intercambio";
-                        
-                        // Restar Lleno, Sumar Vacío
-                        t.update(refOut, { stock: (dOut.data().stock || 0) - qty }); 
-                        t.update(refIn, { stock: (dIn.data().stock || 0) + qty });
-                        
-                        swapDetail = ` (Cambio: ${dOut.data().name} x ${dIn.data().name})`;
+                    // 3. RETORNO AUTOMÁTICO (MAGIA)
+                    let returnDetail = "";
+                    if(prod.returnId) {
+                        const retRef = doc(db, "products", prod.returnId);
+                        const retData = await t.get(retRef);
+                        if(retData.exists()) {
+                            // Sumamos el stock del producto de retorno
+                            t.update(retRef, { stock: (retData.data().stock || 0) + qty });
+                            returnDetail = ` (Recibido: ${retData.data().name})`;
+                        }
                     }
 
                     // 4. Registrar Venta
                     t.set(doc(collection(db, "sales")), {
-                        product: prod.name + swapDetail, 
+                        product: prod.name + returnDetail, 
                         pid: pid, qty_packs: qty, qty_total_units: qty,
                         price: totalPrice, cost: totalCost, profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
                         user: user.email, timestamp: saleTimestamp,
-                        supplyUsed: sDoc ? sDoc.name : null, supplyId: sDoc ? sDoc.id : null, supplyQty: sDeduct
+                        supplyUsed: sDoc ? sDoc.name : null, supplyId: sDoc ? sDoc.id : null, supplyQty: sDeduct,
+                        returnId: prod.returnId || null // Guardamos qué se devolvió para anular si es necesario
                     });
                 });
 
-                toast("✅ Venta e Intercambio Registrados");
+                toast("✅ Venta Registrada");
                 document.getElementById('form-sale').reset();
-                document.getElementById('sale-swap-bottle').checked = false;
-                toggleSwapOptions();
                 updateSaleForm();
                 if(document.getElementById('sale-date-admin')) document.getElementById('sale-date-admin').value = '';
 
@@ -790,6 +763,16 @@
                             if (!targetSupplyId && s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) targetSupplyId = foundS.id; }
                             if (targetSupplyId) { sRef = doc(db, "supplies", targetSupplyId); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; }
                         }
+                        
+                        // DEVOLUCIÓN DE RETORNO (Si se sumó botellón, se vuelve a restar)
+                        if(s.returnId) {
+                             const retRef = doc(db, "products", s.returnId);
+                             const retData = await t.get(retRef);
+                             if(retData.exists()) {
+                                 t.update(retRef, { stock: retData.data().stock - (s.qty_packs||0) });
+                             }
+                        }
+
                         if(pRef) t.update(pRef, {stock: pStock + (s.qty_total_units||0)});
                         if(sRef) t.update(sRef, {stock: sStock + (s.supplyQty||0)});
                         t.delete(doc(db, "sales", id));
@@ -803,7 +786,15 @@
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault(); if(role !== 'admin') return toast("❌ Acceso denegado");
             const id = document.getElementById('prod-id').value, name = document.getElementById('prod-name').value;
-            const data = { name, price: parseFloat(document.getElementById('prod-price').value), cost: parseFloat(document.getElementById('prod-cost').value), min: parseInt(document.getElementById('prod-min').value), supplyLink: document.getElementById('prod-supply-link').value||null, supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0 };
+            const data = { 
+                name, 
+                price: parseFloat(document.getElementById('prod-price').value), 
+                cost: parseFloat(document.getElementById('prod-cost').value), 
+                min: parseInt(document.getElementById('prod-min').value), 
+                supplyLink: document.getElementById('prod-supply-link').value||null, 
+                supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0,
+                returnId: document.getElementById('prod-return-link').value||null // Guardamos el retorno automático
+            };
             try {
                 if(id) await updateDoc(doc(db,"products",id), data);
                 else { await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value), createdAt: serverTimestamp()}); }
@@ -841,46 +832,59 @@
                     const s = supplies.find(x => x.id === p.supplyLink);
                     supplyInfo = s ? `<span style="font-size:0.8rem; color:var(--truck);"><i data-feather="link" style="width:10px"></i> ${s.name} <b>(x${p.supplyQty || 1})</b></span>` : `<span style="color:var(--danger); font-size:0.8rem;">⚠️ Vínculo Roto</span>`;
                 }
-                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td style="font-weight:bold">${p.stock}</td><td>${supplyInfo}</td><td>${editBtn}</td></tr>`;
-            }); feather.replace();
-        }
+                
+                let returnInfo = '<span style="color:#cbd5e1">-</span>';
+                if (p.returnId) {
+                    const r = products.find(x => x.id === p.returnId);
+                    returnInfo = r ? `<span style="font-size:0.8rem; color:var(--success);"><i data-feather="corner-down-left" style="width:10px"></i> ${r.name}</span>` : '-';
+                }
 
-        function renderSalesTable() {
-            const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
-            const filterDate = document.getElementById('sales-date-filter').value;
-            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
-            if(filteredSales.length === 0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin ventas esta fecha.</td></tr>'; return; }
-            filteredSales.forEach(s => { tb.innerHTML += `<tr><td>${fmtDate(s.timestamp).split(',')[1]}</td><td>${s.user.split('@')[0]}</td><td>${s.product} <small>(${s.qty_packs})</small></td><td>${fmtMoney(s.price)}</td></tr>`; });
+                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
+                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td style="font-weight:bold">${p.stock}</td><td>${supplyInfo}</td><td>${returnInfo}</td><td>${editBtn}</td></tr>`;
+            }); feather.replace();
         }
         
         function updateSelects() {
             const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); 
-            const sOut = document.getElementById('swap-prod-out'); // Nuevo Select: Entregas
-            s1.innerHTML = '<option value="">Seleccionar...</option>'; if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>'; if(sOut) sOut.innerHTML = '';
+            const sRet = document.getElementById('prod-return-link'); // Nuevo Select: Retornos
+            s1.innerHTML = '<option value="">Seleccionar...</option>'; 
+            if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>'; 
+            if(sRet) sRet.innerHTML = '<option value="">-- Nada (Solo venta) --</option>';
             
             products.forEach(p => { 
                 const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; 
-                s1.innerHTML += o; if(s2) s2.innerHTML += o; if(sOut) sOut.innerHTML += o;
+                s1.innerHTML += o; 
+                if(s2) s2.innerHTML += o; 
+                
+                // Para el retorno, usamos solo el nombre
+                if(sRet) sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`;
             });
         }
         
         window.editProd = (id) => { 
             const p = products.find(x=>x.id==id); if(!p) return;
             document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; 
-            const sel = document.getElementById('prod-supply-link'); const target = p.supplyLink||''; if(sel.options.length > 1) sel.value = target; else sel.dataset.pending = target; document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
+            
+            // Insumos
+            const sel = document.getElementById('prod-supply-link'); 
+            const target = p.supplyLink||''; 
+            if(sel.options.length > 1) sel.value = target; else sel.dataset.pending = target; 
+            document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
+
+            // Retorno
+            const selRet = document.getElementById('prod-return-link');
+            const targetRet = p.returnId || '';
+            selRet.value = targetRet;
         };
 
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
         
         function updateSupplySelect() {
             const s = document.getElementById('prod-supply-link'); const pending = s.dataset.pending || s.value;
-            const sIn = document.getElementById('swap-supply-in'); // Nuevo Select: Recibes
-            
-            s.innerHTML = '<option value="">-- Ninguno --</option>'; if(sIn) sIn.innerHTML = '';
+            s.innerHTML = '<option value="">-- Ninguno --</option>'; 
             supplies.forEach(i => {
                 const opt = `<option value="${i.id}">${i.name}</option>`;
-                s.innerHTML += opt; if(sIn) sIn.innerHTML += opt;
+                s.innerHTML += opt; 
             });
             if(pending) s.value = pending; delete s.dataset.pending;
         }
