@@ -407,7 +407,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Corrección de Cargas v2.");
+                console.log("Sistema actualizado: Corrección de Cargas v2 + Fix Insumos.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -520,13 +520,11 @@
             }); feather.replace();
         }
 
-        // --- SOLUCIÓN ERROR CAMIÓN: LÓGICA DE TRANSACCIÓN CORREGIDA ---
         window.undoTruckLoad = async (id) => {
             const m = movements.find(x => x.id === id); if(!m) return;
             showConfirm("¿Anular Carga?", "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        // 1. PRIMERO LEEMOS TODO
                         let pRef = null, pData = null;
                         let sRef = null, sData = null;
 
@@ -542,7 +540,6 @@
                             if(sDoc.exists()) sData = sDoc.data();
                         }
 
-                        // 2. DESPUÉS ESCRIBIMOS TODO (Esto evita el error de Firestore)
                         if(pRef && pData) {
                             t.update(pRef, {stock: pData.stock + m.quantity});
                         }
@@ -571,23 +568,21 @@
 
             if (!prod || qty <= 0) return;
 
-            // Validación de Stock
             if (prod.stock < qty) {
                 showConfirm("Stock Insuficiente", `Solo tienes ${prod.stock} unidades.`, null);
                 return;
             }
 
-            btn.disabled = true; // Evitar doble clic
+            btn.disabled = true;
 
             // --- LÓGICA DE INSUMOS MEJORADA ---
             let sDoc = null, sDeduct = 0;
             
-            // Verificamos si el producto tiene un vínculo configurado
             if (prod.supplyLink && prod.supplyLink !== "") {
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 
                 if (!s) {
-                    alert(`⚠️ ERROR: Este producto (${prod.name}) tiene vinculado un insumo que NO SE ENCUENTRA.\n\nSolución: Ve a "Productos", edita este producto y selecciona de nuevo la Tapa/Insumo.`);
+                    alert(`⚠️ ERROR CRÍTICO: El insumo vinculado a este producto ya no existe. Por favor edita el producto.`);
                     btn.disabled = false;
                     return; 
                 }
@@ -629,12 +624,19 @@
                     t.update(pRef, { stock: pData.stock - qty });
 
                     t.set(doc(collection(db, "sales")), {
-                        product: prod.name, pid, qty_packs: qty, qty_total_units: qty,
-                        price: totalPrice, cost: totalCost, profit,
+                        product: prod.name, 
+                        pid: pid, // ID del Producto
+                        qty_packs: qty, 
+                        qty_total_units: qty,
+                        price: totalPrice, 
+                        cost: totalCost, 
+                        profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
-                        user: user.email, timestamp: saleTimestamp,
+                        user: user.email, 
+                        timestamp: saleTimestamp,
                         supplyUsed: sDoc ? sDoc.name : null,
+                        supplyId: sDoc ? sDoc.id : null, // IMPORTANTE: Guardamos ID
                         supplyQty: sDeduct
                     });
                 });
@@ -666,7 +668,6 @@
                 toast("✅ Gasto registrado");
             } catch(err) { 
                 console.error(err);
-                // Si falla aqui, es problema de Reglas de Firebase
                 toast("Error: Permisos insuficientes (Revisar Reglas Firebase)"); 
             }
         });
@@ -781,25 +782,67 @@
 
         window.deleteSale = async (id) => {
             if (role !== 'admin') return toast("❌ Solo admin.");
-            const s = sales.find(x => x.id === id); if(!s) return;
-            showConfirm("¿Anular Venta?", "Se repondrá stock.", async () => {
+            const s = sales.find(x => x.id === id); 
+            if(!s) return;
+
+            showConfirm("¿Anular Venta?", "Se repondrá stock de producto e insumos.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
+                        // 1. Reponer Stock de Producto
                         let pRef = null, pStock = 0;
                         let targetProdId = s.pid;
-                        if(!targetProdId) { const found = products.find(p => p.name === s.product); if(found) targetProdId = found.id; }
                         
-                        if(targetProdId) { pRef = doc(db, "products", targetProdId); const d = await t.get(pRef); if(d.exists()) pStock = d.data().stock; }
+                        // Fallback: Si es una venta antigua sin PID, buscar por nombre
+                        if(!targetProdId) { 
+                            const found = products.find(p => p.name === s.product); 
+                            if(found) targetProdId = found.id; 
+                        }
                         
+                        if(targetProdId) { 
+                            pRef = doc(db, "products", targetProdId); 
+                            const d = await t.get(pRef); 
+                            if(d.exists()) pStock = d.data().stock; 
+                        }
+                        
+                        // 2. Reponer Stock de Insumo (Lógica Corregida)
                         let sRef = null, sStock = 0;
-                        if(s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) { sRef = doc(db, "supplies", foundS.id); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; } }
+                        
+                        if(s.supplyQty && s.supplyQty > 0) {
+                            let targetSupplyId = s.supplyId;
 
+                            // Si es venta antigua y no tiene ID guardado, buscamos por nombre
+                            if (!targetSupplyId && s.supplyUsed) {
+                                const foundS = supplies.find(x => x.name === s.supplyUsed);
+                                if(foundS) targetSupplyId = foundS.id;
+                            }
+
+                            if (targetSupplyId) {
+                                sRef = doc(db, "supplies", targetSupplyId);
+                                const d = await t.get(sRef);
+                                if(d.exists()) sStock = d.data().stock;
+                            }
+                        }
+
+                        // Ejecutar actualizaciones
                         if(pRef) t.update(pRef, {stock: pStock + (s.qty_total_units||0)});
                         if(sRef) t.update(sRef, {stock: sStock + (s.supplyQty||0)});
+                        
+                        // Borrar venta y registrar movimiento
                         t.delete(doc(db, "sales", id));
-                        t.set(doc(collection(db, "movements")), { type: "ANULACION", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
-                    }); toast("✅ Anulado");
-                } catch(e) { toast("Error: "+e); }
+                        t.set(doc(collection(db, "movements")), { 
+                            type: "ANULACION_VENTA", 
+                            product: s.product, 
+                            quantity: s.qty_total_units||0, 
+                            user: user.email, 
+                            timestamp: serverTimestamp() 
+                        });
+
+                    }); 
+                    toast("✅ Venta Anulada y Stock Repuesto");
+                } catch(e) { 
+                    console.error(e);
+                    toast("Error al anular: " + e.message); 
+                }
             });
         };
 
@@ -842,12 +885,38 @@
             document.getElementById('sale-total').textContent = fmtMoney(qty * prod.price);
         };
 
+        // --- RENDERIZADO DE PRODUCTOS MEJORADO (Muestra detalles de insumo) ---
         function renderProducts() {
-            const tb = document.querySelector('#table-products tbody'); tb.innerHTML='';
+            const tb = document.querySelector('#table-products tbody'); 
+            tb.innerHTML = '';
             products.forEach(p => {
-                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${p.supplyLink ? 'Si' : '-'}</td><td>${editBtn}</td></tr>`;
-            }); feather.replace();
+                // BUSCAR NOMBRE DEL INSUMO VINCULADO
+                let supplyInfo = '<span style="color:#cbd5e1">-</span>';
+                if (p.supplyLink) {
+                    const s = supplies.find(x => x.id === p.supplyLink);
+                    if (s) {
+                        supplyInfo = `<span style="font-size:0.8rem; color:var(--truck);">
+                                        <i data-feather="link" style="width:10px"></i> ${s.name} 
+                                        <b>(x${p.supplyQty || 1})</b>
+                                    </span>`;
+                    } else {
+                        supplyInfo = `<span style="color:var(--danger); font-size:0.8rem;">⚠️ Vínculo Roto</span>`;
+                    }
+                }
+
+                const editBtn = role === 'admin' ? 
+                    `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
+                
+                tb.innerHTML += `<tr>
+                    <td>${p.name}</td>
+                    <td>${fmtMoney(p.price)}</td>
+                    <td>${fmtMoney(p.cost)}</td>
+                    <td style="font-weight:bold">${p.stock}</td>
+                    <td>${supplyInfo}</td>
+                    <td>${editBtn}</td>
+                </tr>`;
+            }); 
+            feather.replace();
         }
 
         function renderSalesTable() {
@@ -870,7 +939,6 @@
             products.forEach(p => { const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; s1.innerHTML += o; if(s2) s2.innerHTML += o; });
         }
         
-        // --- FUNCIÓN CORREGIDA: EDITAR PRODUCTO (Guarda valor pendiente si carga lento) ---
         window.editProd = (id) => { 
             const p = products.find(x=>x.id==id); 
             if(!p) return;
@@ -885,14 +953,13 @@
             const sel = document.getElementById('prod-supply-link');
             const target = p.supplyLink||'';
             if(sel.options.length > 1) sel.value = target; 
-            else sel.dataset.pending = target; // Fix: guardar valor si select aun no carga
+            else sel.dataset.pending = target; 
 
             document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
         };
 
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
         
-        // --- FUNCIÓN CORREGIDA: CARGAR INSUMOS (Restaura valor pendiente) ---
         function updateSupplySelect() {
             const s = document.getElementById('prod-supply-link');
             const pending = s.dataset.pending || s.value;
