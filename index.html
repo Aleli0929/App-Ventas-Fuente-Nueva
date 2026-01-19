@@ -348,14 +348,6 @@
                         <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario</button>
                         <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría</button>
                     </div>
-
-                    <hr style="margin: 2rem 0; border-top: 1px solid #e2e8f0;">
-                    
-                    <div class="admin-only" style="background:#fee2e2; padding:1rem; border-radius:8px; border:1px solid #ef4444; margin-top:2rem;">
-                        <h4 style="color:#991b1b; margin-bottom:0.5rem;">⚠️ Zona de Peligro</h4>
-                        <p style="font-size:0.9rem; color:#7f1d1d; margin-bottom:1rem;">Esta acción borrará <b>TODAS LAS VENTAS</b> del historial. Úsalo si quieres reiniciar el sistema con la nueva lógica.</p>
-                        <button onclick="purgeAllSales()" class="btn btn-red" style="width:100%;">🧨 BORRAR HISTORIAL DE VENTAS</button>
-                    </div>
                 </div>
             </div>
         </main>
@@ -380,19 +372,36 @@
         const today = () => getLocalYMD(new Date());
 
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
-        const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
+        
+        // --- FUNCIÓN DE FECHA SEGURA (CORRECCIÓN) ---
+        const fmtDate = (ts) => {
+            if (!ts) return '--';
+            try {
+                if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                if (typeof ts === 'string') return ts; // Soporte para formato antiguo string
+            } catch(e) { return 'Error Fecha'; }
+            return '--';
+        };
         
         const isDateMatch = (ts, dateStrInput) => {
             if (!ts) return false;
-            const d = new Date(ts.seconds * 1000);
-            return getLocalYMD(d) === dateStrInput;
+            try {
+                if(ts.seconds) {
+                    const d = new Date(ts.seconds * 1000);
+                    return getLocalYMD(d) === dateStrInput;
+                }
+            } catch(e) { return false; }
+            return false;
         };
 
         const isToday = (ts) => isDateMatch(ts, today());
         const isCurrentMonth = (ts) => {
             if(!ts) return false;
-            const d = new Date(ts.seconds * 1000), n = new Date();
-            return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+            try {
+                const d = ts.seconds ? new Date(ts.seconds * 1000) : new Date();
+                const n = new Date();
+                return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+            } catch(e) { return false; }
         };
 
         onAuthStateChanged(auth, async (u) => {
@@ -420,7 +429,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Corrección Final + Botón Reset.");
+                console.log("Sistema actualizado: Versión Segura (Recuperación).");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -433,7 +442,6 @@
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
             
-            // CORRECCIÓN: Renderiza productos cuando llegan insumos para evitar Vínculo Roto
             onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
                 supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
                 renderSupplies(); 
@@ -937,37 +945,6 @@
         window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
         window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
         function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
-
-        // --- FUNCIÓN DE LIMPIEZA TOTAL ---
-        window.purgeAllSales = async () => {
-            if(role !== 'admin') return;
-            const confirm1 = confirm("⚠️ ¿ESTÁS SEGURA?\n\nEsto borrará TODAS las ventas antiguas.\nEl historial quedará vacío.");
-            if(!confirm1) return;
-            const confirm2 = confirm("¿De verdad? Esta acción NO se puede deshacer.");
-            if(!confirm2) return;
-
-            document.getElementById('loader').classList.remove('hidden');
-            try {
-                // Borrar Ventas
-                const qSales = query(collection(db, "sales"));
-                const snSales = await getDocs(qSales);
-                const batch = writeBatch(db);
-                snSales.forEach(doc => batch.delete(doc.ref));
-                
-                // Borrar Movimientos (Opcional, pero recomendado para limpiar todo)
-                const qMovs = query(collection(db, "movements"));
-                const snMovs = await getDocs(qMovs);
-                snMovs.forEach(doc => batch.delete(doc.ref));
-
-                await batch.commit();
-                toast("✅ Historial Borrado Exitosamente");
-            } catch(e) {
-                console.error(e);
-                toast("Error al borrar: " + e.message);
-            } finally {
-                document.getElementById('loader').classList.add('hidden');
-            }
-        };
 
         feather.replace();
     </script>
