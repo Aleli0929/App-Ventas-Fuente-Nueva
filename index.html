@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Fuente Nueva | Control Profesional</title>
+    <title>ERP Fuente Nueva | Sistema Control</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -275,13 +275,13 @@
                         </div>
                         <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
                             <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" required></div>
-                            <div style="flex:1;"><label style="color:var(--primary)">Insumo Vinc. (Resta)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Insumo Vinc. (Tapa)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
                             <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1"></div>
                         </div>
                         
                         <div style="background:#f0fdfa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
                             <label style="color:var(--success)">🔄 Al vender, recibir envase (Suma):</label>
-                            <select id="prod-return-link"><option value="">-- Nada (Solo venta) --</option></select>
+                            <select id="prod-return-link"><option value="">-- Ninguno --</option></select>
                         </div>
 
                         <div class="flex gap-2"><button type="submit" class="btn btn-blue">Guardar</button><button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button></div>
@@ -326,7 +326,13 @@
 
             <div id="page-reportes" class="page hidden">
                 <div class="card" style="border-top: 4px solid var(--warning);">
-                    <h3><i data-feather="shield-off"></i> Anulaciones</h3>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3><i data-feather="shield-off"></i> Anulaciones</h3>
+                        <div class="flex items-center gap-2">
+                            <small class="text-gray-500">Filtrar:</small>
+                            <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem; border-radius:6px; border:1px solid #ccc;" onchange="renderAdminSalesTable()">
+                        </div>
+                    </div>
                     <div class="table-container" style="max-height: 300px; overflow-y:auto;">
                         <table id="table-sales-admin"><thead><tr><th>Fecha</th><th>Producto</th><th>Obs.</th><th>Total</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table>
                     </div>
@@ -374,12 +380,13 @@
 
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         
-        // --- FECHA SEGURA (Evita que el sistema colapse si hay datos viejos) ---
+        // --- FUNCIÓN FECHA SEGURA (Evita que la pantalla se quede en blanco) ---
         const fmtDate = (ts) => {
+            if (!ts) return '--';
             try {
-                if (ts && ts.seconds) return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
                 return '--';
-            } catch(e) { return '--'; }
+            } catch(e) { return 'Error'; }
         };
         
         const isDateMatch = (ts, dateStrInput) => {
@@ -393,8 +400,10 @@
         const isToday = (ts) => isDateMatch(ts, today());
         const isCurrentMonth = (ts) => {
             if(!ts || !ts.seconds) return false;
-            const d = new Date(ts.seconds * 1000), n = new Date();
-            return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+            try {
+                const d = new Date(ts.seconds * 1000), n = new Date();
+                return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+            } catch(e) { return false; }
         };
 
         onAuthStateChanged(auth, async (u) => {
@@ -415,6 +424,7 @@
                 document.getElementById('truck-date-filter').value = t;
                 document.getElementById('pend-date').value = t;
                 document.getElementById('exp-date').value = t;
+                document.getElementById('admin-date-filter').value = t; // Filtro de anulaciones
                 
                 document.getElementById('rpt-start').value = t.substring(0, 7) + '-01'; 
                 document.getElementById('rpt-end').value = t;
@@ -422,7 +432,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Versión Definitiva (Safe Mode).");
+                console.log("Sistema cargado: Versión Válvula + Filtro Anulación.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -435,7 +445,7 @@
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
             
-            // Renderizamos productos de nuevo cuando llegan los insumos para evitar "Vínculo Roto" visual
+            // Renderizamos productos de nuevo cuando llegan los insumos
             onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
                 supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
                 renderSupplies(); 
@@ -579,7 +589,7 @@
             });
         };
 
-        // --- LÓGICA DE VENTA CON AUTOMATIZACIÓN DE RETORNO ---
+        // --- LÓGICA DE VENTA CON AUTOMATIZACIÓN DE RETORNO (VÁLVULA -> BOTELLÓN) ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
@@ -597,7 +607,7 @@
             let sDoc = null, sDeduct = 0;
             if (prod.supplyLink && prod.supplyLink !== "") {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if (!s) { alert(`⚠️ ERROR: Insumo vinculado no existe.`); btn.disabled = false; return; }
+                if (!s) { alert(`⚠️ ERROR: Insumo vinculado no existe. Revisa el producto.`); btn.disabled = false; return; }
                 sDeduct = qty * (prod.supplyQty || 1);
                 if (s.stock < sDeduct) { showConfirm("Faltan Insumos", `No hay suficientes ${s.name}.`, null); btn.disabled = false; return; }
                 sDoc = s;
@@ -750,11 +760,22 @@
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Ventas"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
         }
 
-        function renderAdminSalesTable() {
+        // --- FILTRO DE ANULACIONES (NUEVO) ---
+        window.renderAdminSalesTable = () => {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
-            sales.slice(0, 50).forEach(s => {
+            
+            const dateVal = document.getElementById('admin-date-filter').value; // Tomamos la fecha del nuevo filtro
+            const filtered = sales.filter(s => isDateMatch(s.timestamp, dateVal)); // Filtramos
+
+            if(filtered.length === 0) { 
+                tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas en esta fecha.</td></tr>'; 
+                return; 
+            }
+
+            filtered.forEach(s => {
                 tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${s.user || 'Anon'}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
-            }); feather.replace();
+            }); 
+            feather.replace();
         }
 
         window.deleteSale = async (id) => {
@@ -856,7 +877,7 @@
         
         function updateSelects() {
             const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); 
-            const sRet = document.getElementById('prod-return-link'); // Nuevo Select: Retornos
+            const sRet = document.getElementById('prod-return-link'); 
             s1.innerHTML = '<option value="">Seleccionar...</option>'; 
             if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>'; 
             if(sRet) sRet.innerHTML = '<option value="">-- Ninguno --</option>';
