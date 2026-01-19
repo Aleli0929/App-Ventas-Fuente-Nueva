@@ -275,13 +275,19 @@
                         </div>
                         <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
                             <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" required></div>
-                            <div style="flex:2;"><label style="color:var(--primary)">Insumo Vinc.</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Insumo Vinc. (Resta)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
                             <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1"></div>
                         </div>
+                        
+                        <div style="background:#f0fdfa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                            <label style="color:var(--success)">🔄 Al vender, recibir envase (Suma):</label>
+                            <select id="prod-return-link"><option value="">-- Nada (Solo venta) --</option></select>
+                        </div>
+
                         <div class="flex gap-2"><button type="submit" class="btn btn-blue">Guardar</button><button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button></div>
                     </form>
                 </div>
-                <div class="card"><div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Insumo</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
+                <div class="card"><div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Insumo</th><th>Retorno</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
             </div>
 
             <div id="page-inventario" class="page hidden">
@@ -367,17 +373,26 @@
         const today = () => getLocalYMD(new Date());
 
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
-        const fmtDate = (ts) => ts ? new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '--';
+        
+        // --- FECHA SEGURA (Evita que el sistema colapse si hay datos viejos) ---
+        const fmtDate = (ts) => {
+            try {
+                if (ts && ts.seconds) return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                return '--';
+            } catch(e) { return '--'; }
+        };
         
         const isDateMatch = (ts, dateStrInput) => {
-            if (!ts) return false;
-            const d = new Date(ts.seconds * 1000);
-            return getLocalYMD(d) === dateStrInput;
+            if (!ts || !ts.seconds) return false;
+            try {
+                const d = new Date(ts.seconds * 1000);
+                return getLocalYMD(d) === dateStrInput;
+            } catch(e) { return false; }
         };
 
         const isToday = (ts) => isDateMatch(ts, today());
         const isCurrentMonth = (ts) => {
-            if(!ts) return false;
+            if(!ts || !ts.seconds) return false;
             const d = new Date(ts.seconds * 1000), n = new Date();
             return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
         };
@@ -407,7 +422,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Corrección de Cargas v2.");
+                console.log("Sistema actualizado: Versión Definitiva (Safe Mode).");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -419,7 +434,14 @@
 
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
-            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); renderSupplies(); updateSupplySelect(); });
+            
+            // Renderizamos productos de nuevo cuando llegan los insumos para evitar "Vínculo Roto" visual
+            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
+                supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderSupplies(); 
+                updateSupplySelect(); 
+                renderProducts(); 
+            });
             
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
@@ -446,7 +468,7 @@
             const filteredSales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
             const filteredExpenses = expenses.filter(e => e.date === dateVal);
 
-            const totalSales = filteredSales.reduce((a,b)=>a+b.price,0);
+            const totalSales = filteredSales.reduce((a,b)=>a+(b.price||0),0);
             const totalProfit = filteredSales.reduce((a,b)=>a+(b.profit||0),0);
             const totalExp = filteredExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
 
@@ -520,13 +542,11 @@
             }); feather.replace();
         }
 
-        // --- SOLUCIÓN ERROR CAMIÓN: LÓGICA DE TRANSACCIÓN CORREGIDA ---
         window.undoTruckLoad = async (id) => {
             const m = movements.find(x => x.id === id); if(!m) return;
             showConfirm("¿Anular Carga?", "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        // 1. PRIMERO LEEMOS TODO
                         let pRef = null, pData = null;
                         let sRef = null, sData = null;
 
@@ -542,7 +562,6 @@
                             if(sDoc.exists()) sData = sDoc.data();
                         }
 
-                        // 2. DESPUÉS ESCRIBIMOS TODO (Esto evita el error de Firestore)
                         if(pRef && pData) {
                             t.update(pRef, {stock: pData.stock + m.quantity});
                         }
@@ -560,7 +579,7 @@
             });
         };
 
-        // --- LÓGICA DE VENTA CORREGIDA Y SEGURA ---
+        // --- LÓGICA DE VENTA CON AUTOMATIZACIÓN DE RETORNO ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
@@ -570,35 +589,17 @@
             const prod = products.find(p => p.id === pid);
 
             if (!prod || qty <= 0) return;
+            if (prod.stock < qty) { showConfirm("Stock Insuficiente", `Solo tienes ${prod.stock} unidades.`, null); return; }
 
-            // Validación de Stock
-            if (prod.stock < qty) {
-                showConfirm("Stock Insuficiente", `Solo tienes ${prod.stock} unidades.`, null);
-                return;
-            }
+            btn.disabled = true;
 
-            btn.disabled = true; // Evitar doble clic
-
-            // --- LÓGICA DE INSUMOS MEJORADA ---
+            // Insumos de la Venta (Válvula)
             let sDoc = null, sDeduct = 0;
-            
-            // Verificamos si el producto tiene un vínculo configurado
             if (prod.supplyLink && prod.supplyLink !== "") {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                
-                if (!s) {
-                    alert(`⚠️ ERROR: Este producto (${prod.name}) tiene vinculado un insumo que NO SE ENCUENTRA.\n\nSolución: Ve a "Productos", edita este producto y selecciona de nuevo la Tapa/Insumo.`);
-                    btn.disabled = false;
-                    return; 
-                }
-
+                if (!s) { alert(`⚠️ ERROR: Insumo vinculado no existe.`); btn.disabled = false; return; }
                 sDeduct = qty * (prod.supplyQty || 1);
-                
-                if (s.stock < sDeduct) {
-                    showConfirm("Faltan Insumos", `No hay suficientes ${s.name}.\nRequerido: ${sDeduct}\nDisponible: ${s.stock}`, null);
-                    btn.disabled = false;
-                    return;
-                }
+                if (s.stock < sDeduct) { showConfirm("Faltan Insumos", `No hay suficientes ${s.name}.`, null); btn.disabled = false; return; }
                 sDoc = s;
             }
 
@@ -608,16 +609,15 @@
 
             let saleTimestamp = serverTimestamp();
             const adminDate = document.getElementById('sale-date-admin').value;
-            if (role === 'admin' && adminDate) {
-                saleTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
-            }
+            if (role === 'admin' && adminDate) saleTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
 
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid);
                     const pData = (await t.get(pRef)).data();
-                    if (pData.stock < qty) throw "Stock insuficiente (cambió durante la venta).";
+                    if (pData.stock < qty) throw "Stock insuficiente.";
 
+                    // 1. Descontar Insumo Vinculado
                     let sRef = null;
                     if (sDoc) {
                         sRef = doc(db, "supplies", sDoc.id);
@@ -626,20 +626,35 @@
                         t.update(sRef, { stock: sData.stock - sDeduct });
                     }
 
+                    // 2. Descontar Producto Vendido
                     t.update(pRef, { stock: pData.stock - qty });
 
+                    // 3. RETORNO AUTOMÁTICO (MAGIA)
+                    let returnDetail = "";
+                    if(prod.returnId) {
+                        const retRef = doc(db, "products", prod.returnId);
+                        const retData = await t.get(retRef);
+                        if(retData.exists()) {
+                            // Sumamos el stock del producto de retorno
+                            t.update(retRef, { stock: (retData.data().stock || 0) + qty });
+                            returnDetail = ` (Recibido: ${retData.data().name})`;
+                        }
+                    }
+
+                    // 4. Registrar Venta
                     t.set(doc(collection(db, "sales")), {
-                        product: prod.name, pid, qty_packs: qty, qty_total_units: qty,
-                        price: totalPrice, cost: totalCost, profit,
+                        product: prod.name + returnDetail, 
+                        pid: pid, qty_packs: qty, qty_total_units: qty,
+                        price: totalPrice, cost: totalCost, profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
                         user: user.email, timestamp: saleTimestamp,
-                        supplyUsed: sDoc ? sDoc.name : null,
-                        supplyQty: sDeduct
+                        supplyUsed: sDoc ? sDoc.name : null, supplyId: sDoc ? sDoc.id : null, supplyQty: sDeduct,
+                        returnId: prod.returnId || null // Guardamos qué se devolvió para anular si es necesario
                     });
                 });
 
-                toast("✅ Venta Registrada Correctamente");
+                toast("✅ Venta Registrada");
                 document.getElementById('form-sale').reset();
                 updateSaleForm();
                 if(document.getElementById('sale-date-admin')) document.getElementById('sale-date-admin').value = '';
@@ -658,17 +673,12 @@
             const desc = document.getElementById('exp-desc').value;
             const amount = parseFloat(document.getElementById('exp-amount').value);
             const date = document.getElementById('exp-date').value;
-            
             try {
                 await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() });
                 document.getElementById('exp-desc').value = '';
                 document.getElementById('exp-amount').value = '';
                 toast("✅ Gasto registrado");
-            } catch(err) { 
-                console.error(err);
-                // Si falla aqui, es problema de Reglas de Firebase
-                toast("Error: Permisos insuficientes (Revisar Reglas Firebase)"); 
-            }
+            } catch(err) { toast("Error: Permisos insuficientes (Revisar Reglas Firebase)"); }
         });
 
         function renderExpenses() {
@@ -692,56 +702,31 @@
             const end = document.getElementById('rpt-end').value;
             if(!start || !end) return toast("⚠️ Selecciona ambas fechas");
 
-            // Filtrar datos
             const rSales = sales.filter(s => {
                 const d = getLocalYMD(new Date(s.timestamp.seconds*1000));
                 return d >= start && d <= end;
             });
             const rExpenses = expenses.filter(e => e.date >= start && e.date <= end);
-
             if(rSales.length === 0 && rExpenses.length === 0) return toast("⚠️ Sin datos en este rango");
 
-            // Calcular Totales
             const totalCash = rSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
             const totalTransf = rSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
             const totalIncome = totalCash + totalTransf;
             const totalExp = rExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
             const netProfit = totalIncome - totalExp;
 
-            // Construir JSON para Excel
             const data = [];
-            
             data.push({A: "REPORTE CONTABLE", B: `Desde: ${start} Hasta: ${end}`});
             data.push({}); 
-
             data.push({A: "DETALLE DE VENTAS"});
             data.push({A: "Fecha", B: "Producto", C: "Cantidad", D: "Monto", E: "Metodo", F: "Usuario"});
-            rSales.forEach(s => {
-                data.push({
-                    A: fmtDate(s.timestamp), 
-                    B: s.product, 
-                    C: s.qty_packs, 
-                    D: s.price, 
-                    E: s.type, 
-                    F: s.user
-                });
-            });
+            rSales.forEach(s => { data.push({ A: fmtDate(s.timestamp), B: s.product, C: s.qty_packs, D: s.price, E: s.type, F: s.user }); });
 
-            data.push({}); 
-            data.push({A: "DETALLE DE GASTOS"});
+            data.push({}); data.push({A: "DETALLE DE GASTOS"});
             data.push({A: "Fecha", B: "Descripción", C: "Monto", D: "Responsable"});
-            rExpenses.forEach(e => {
-                data.push({
-                    A: e.date, 
-                    B: e.desc, 
-                    C: parseFloat(e.amount), 
-                    D: e.user
-                });
-            });
+            rExpenses.forEach(e => { data.push({ A: e.date, B: e.desc, C: parseFloat(e.amount), D: e.user }); });
 
-            data.push({});
-            data.push({});
-            data.push({A: "BALANCE FINAL DEL PERIODO"});
+            data.push({}); data.push({}); data.push({A: "BALANCE FINAL DEL PERIODO"});
             data.push({A: "CONCEPTOS", B: "TOTALES"});
             data.push({A: "(+) Ventas Efectivo", B: totalCash});
             data.push({A: "(+) Ventas Transferencia", B: totalTransf});
@@ -768,38 +753,42 @@
         function renderAdminSalesTable() {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
             sales.slice(0, 50).forEach(s => {
-                tb.innerHTML += `<tr>
-                    <td>${fmtDate(s.timestamp)}</td>
-                    <td>${s.product}</td>
-                    <td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td>
-                    <td style="font-weight:bold;">${fmtMoney(s.price)}</td>
-                    <td>${s.user}</td>
-                    <td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td>
-                </tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${s.user || 'Anon'}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
             }); feather.replace();
         }
 
         window.deleteSale = async (id) => {
             if (role !== 'admin') return toast("❌ Solo admin.");
             const s = sales.find(x => x.id === id); if(!s) return;
-            showConfirm("¿Anular Venta?", "Se repondrá stock.", async () => {
+            showConfirm("¿Anular Venta?", "Se repondrá stock de producto e insumos.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        let pRef = null, pStock = 0;
-                        let targetProdId = s.pid;
+                        let pRef = null, pStock = 0; let targetProdId = s.pid;
                         if(!targetProdId) { const found = products.find(p => p.name === s.product); if(found) targetProdId = found.id; }
-                        
                         if(targetProdId) { pRef = doc(db, "products", targetProdId); const d = await t.get(pRef); if(d.exists()) pStock = d.data().stock; }
                         
                         let sRef = null, sStock = 0;
-                        if(s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) { sRef = doc(db, "supplies", foundS.id); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; } }
+                        if(s.supplyQty && s.supplyQty > 0) {
+                            let targetSupplyId = s.supplyId;
+                            if (!targetSupplyId && s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) targetSupplyId = foundS.id; }
+                            if (targetSupplyId) { sRef = doc(db, "supplies", targetSupplyId); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; }
+                        }
+                        
+                        // DEVOLUCIÓN DE RETORNO (Si se sumó botellón, se vuelve a restar)
+                        if(s.returnId) {
+                             const retRef = doc(db, "products", s.returnId);
+                             const retData = await t.get(retRef);
+                             if(retData.exists()) {
+                                 t.update(retRef, { stock: retData.data().stock - (s.qty_packs||0) });
+                             }
+                        }
 
                         if(pRef) t.update(pRef, {stock: pStock + (s.qty_total_units||0)});
                         if(sRef) t.update(sRef, {stock: sStock + (s.supplyQty||0)});
                         t.delete(doc(db, "sales", id));
-                        t.set(doc(collection(db, "movements")), { type: "ANULACION", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
-                    }); toast("✅ Anulado");
-                } catch(e) { toast("Error: "+e); }
+                        t.set(doc(collection(db, "movements")), { type: "ANULACION_VENTA", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
+                    }); toast("✅ Venta Anulada");
+                } catch(e) { toast("Error al anular: " + e.message); }
             });
         };
 
@@ -807,7 +796,15 @@
         window.productForm.addEventListener('submit', async (e) => {
             e.preventDefault(); if(role !== 'admin') return toast("❌ Acceso denegado");
             const id = document.getElementById('prod-id').value, name = document.getElementById('prod-name').value;
-            const data = { name, price: parseFloat(document.getElementById('prod-price').value), cost: parseFloat(document.getElementById('prod-cost').value), min: parseInt(document.getElementById('prod-min').value), supplyLink: document.getElementById('prod-supply-link').value||null, supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0 };
+            const data = { 
+                name, 
+                price: parseFloat(document.getElementById('prod-price').value), 
+                cost: parseFloat(document.getElementById('prod-cost').value), 
+                min: parseInt(document.getElementById('prod-min').value), 
+                supplyLink: document.getElementById('prod-supply-link').value||null, 
+                supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0,
+                returnId: document.getElementById('prod-return-link').value||null // Guardamos el retorno automático
+            };
             try {
                 if(id) await updateDoc(doc(db,"products",id), data);
                 else { await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value), createdAt: serverTimestamp()}); }
@@ -818,18 +815,13 @@
         function renderDailySummary() {
             const filterDate = document.getElementById('sales-date-filter').value;
             const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
-
             let total = 0, cash = 0, transfer = 0, prodCounts = {};
             filteredSales.forEach(s => {
                 total += s.price;
                 if(s.type === 'Efectivo') cash += s.price; else transfer += s.price;
                 prodCounts[s.product] = (prodCounts[s.product] || 0) + s.qty_packs;
             });
-
-            let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
-                <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div>
-                <div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div>
-            </div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
+            let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;"><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div></div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
             for(const [p, c] of Object.entries(prodCounts)) html += `<li style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:var(--gray)">${p}</span><b>${c}</b></li>`;
             html += `</ul><div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">Total: ${fmtMoney(total)}</div></div>`;
             document.getElementById('daily-summary').innerHTML = html;
@@ -843,65 +835,68 @@
         };
 
         function renderProducts() {
-            const tb = document.querySelector('#table-products tbody'); tb.innerHTML='';
+            const tb = document.querySelector('#table-products tbody'); tb.innerHTML = '';
             products.forEach(p => {
+                let supplyInfo = '<span style="color:#cbd5e1">-</span>';
+                if (p.supplyLink) {
+                    const s = supplies.find(x => x.id === p.supplyLink);
+                    supplyInfo = s ? `<span style="font-size:0.8rem; color:var(--truck);"><i data-feather="link" style="width:10px"></i> ${s.name} <b>(x${p.supplyQty || 1})</b></span>` : `<span style="color:var(--danger); font-size:0.8rem;">⚠️ Vínculo Roto</span>`;
+                }
+                
+                let returnInfo = '<span style="color:#cbd5e1">-</span>';
+                if (p.returnId) {
+                    const r = products.find(x => x.id === p.returnId);
+                    returnInfo = r ? `<span style="font-size:0.8rem; color:var(--success);"><i data-feather="corner-down-left" style="width:10px"></i> ${r.name}</span>` : '-';
+                }
+
                 const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td>${fmtMoney(p.cost)}</td><td>${p.stock}</td><td>${p.supplyLink ? 'Si' : '-'}</td><td>${editBtn}</td></tr>`;
+                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td style="font-weight:bold">${p.stock}</td><td>${supplyInfo}</td><td>${returnInfo}</td><td>${editBtn}</td></tr>`;
             }); feather.replace();
         }
-
-        function renderSalesTable() {
-            const tb = document.querySelector('#table-sales tbody'); tb.innerHTML='';
-            const filterDate = document.getElementById('sales-date-filter').value;
-            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
-            if(filteredSales.length === 0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin ventas esta fecha.</td></tr>'; return; }
+        
+        function updateSelects() {
+            const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); 
+            const sRet = document.getElementById('prod-return-link'); // Nuevo Select: Retornos
+            s1.innerHTML = '<option value="">Seleccionar...</option>'; 
+            if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>'; 
+            if(sRet) sRet.innerHTML = '<option value="">-- Ninguno --</option>';
             
-            filteredSales.forEach(s => {
-                tb.innerHTML += `<tr>
-                    <td>${fmtDate(s.timestamp).split(',')[1]}</td>
-                    <td>${s.user.split('@')[0]}</td>
-                    <td>${s.product} <small>(${s.qty_packs})</small></td>
-                    <td>${fmtMoney(s.price)}</td>
-                </tr>`;
+            products.forEach(p => { 
+                const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; 
+                s1.innerHTML += o; 
+                if(s2) s2.innerHTML += o; 
+                
+                // Para el retorno, usamos solo el nombre
+                if(sRet) sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`;
             });
         }
-        function updateSelects() {
-            const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); s1.innerHTML = '<option value="">Seleccionar...</option>'; if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>';
-            products.forEach(p => { const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; s1.innerHTML += o; if(s2) s2.innerHTML += o; });
-        }
         
-        // --- FUNCIÓN CORREGIDA: EDITAR PRODUCTO (Guarda valor pendiente si carga lento) ---
         window.editProd = (id) => { 
-            const p = products.find(x=>x.id==id); 
-            if(!p) return;
-            document.getElementById('prod-id').value=p.id; 
-            document.getElementById('prod-name').value=p.name; 
-            document.getElementById('prod-price').value=p.price; 
-            document.getElementById('prod-cost').value=p.cost||0; 
-            document.getElementById('prod-stock').value=p.stock; 
-            document.getElementById('prod-stock').disabled = true; 
-            document.getElementById('prod-min').value=p.min||0; 
+            const p = products.find(x=>x.id==id); if(!p) return;
+            document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; 
             
-            const sel = document.getElementById('prod-supply-link');
-            const target = p.supplyLink||'';
-            if(sel.options.length > 1) sel.value = target; 
-            else sel.dataset.pending = target; // Fix: guardar valor si select aun no carga
-
+            // Insumos
+            const sel = document.getElementById('prod-supply-link'); 
+            const target = p.supplyLink||''; 
+            if(sel.options.length > 1) sel.value = target; else sel.dataset.pending = target; 
             document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
+
+            // Retorno
+            const selRet = document.getElementById('prod-return-link');
+            const targetRet = p.returnId || '';
+            selRet.value = targetRet;
         };
 
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
         
-        // --- FUNCIÓN CORREGIDA: CARGAR INSUMOS (Restaura valor pendiente) ---
         function updateSupplySelect() {
-            const s = document.getElementById('prod-supply-link');
-            const pending = s.dataset.pending || s.value;
-            
-            s.innerHTML = '<option value="">-- Ninguno --</option>';
-            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`);
-            
-            if(pending) s.value = pending; 
-            delete s.dataset.pending;
+            const s = document.getElementById('prod-supply-link'); const pending = s.dataset.pending || s.value;
+            s.innerHTML = '<option value="">-- Ninguno --</option>'; 
+            supplies.forEach(i => {
+                const opt = `<option value="${i.id}">${i.name}</option>`;
+                s.innerHTML += opt; 
+            });
+            if(pending) s.value = pending; delete s.dataset.pending;
         }
 
         function renderSupplies() {
@@ -912,13 +907,7 @@
             }); feather.replace();
         }
         
-        window.deleteSupply = async (id) => {
-            if(role!=='admin') return;
-            showConfirm("Borrar Insumo", "¿Estás seguro? Esto podría afectar productos vinculados.", async () => {
-                await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Insumo Eliminado");
-            });
-        }
-
+        window.deleteSupply = async (id) => { if(role!=='admin') return; showConfirm("Borrar Insumo", "¿Estás seguro? Esto podría afectar productos vinculados.", async () => { await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Insumo Eliminado"); }); }
         window.editSupply = (id) => { const s = supplies.find(x => x.id === id); if(!s) return; window.showSupplyForm(); document.getElementById('supp-id').value = s.id; document.getElementById('supp-name').value = s.name; document.getElementById('supp-stock').value = s.stock; document.getElementById('btn-save-supply').innerText = "Actualizar"; };
         window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); document.getElementById('form-supply').reset(); document.getElementById('supp-id').value = ''; document.getElementById('btn-save-supply').innerText = "Guardar"; };
         window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
