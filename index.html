@@ -497,6 +497,38 @@
             renderDailySummary();
         };
 
+        // --- FUNCIÓN AGREGADA: PINTAR TABLA DE VENTAS ---
+        window.renderSalesTable = () => {
+            const tb = document.querySelector('#table-sales tbody');
+            if(!tb) return;
+            tb.innerHTML = '';
+            
+            const filterDate = document.getElementById('sales-date-filter').value;
+            const filtered = sales.filter(s => isDateMatch(s.timestamp, filterDate));
+            
+            if(filtered.length === 0) {
+                tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray)">Sin ventas en esta fecha.</td></tr>';
+                return;
+            }
+
+            filtered.forEach(s => {
+                const timeStr = s.timestamp ? new Date(s.timestamp.seconds * 1000).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '--:--';
+                const userStr = s.user ? s.user.split('@')[0] : 'Anon';
+                const qtyStr = s.qty_packs > 1 ? `<span style="font-weight:bold; color:var(--primary)"> (x${s.qty_packs})</span>` : '';
+                
+                const row = `
+                    <tr>
+                        <td>${timeStr}</td>
+                        <td style="font-size:0.85rem">${userStr}</td>
+                        <td style="font-size:0.85rem">${s.product}${qtyStr}</td>
+                        <td style="font-weight:bold; color:var(--dark)">${fmtMoney(s.price)}</td>
+                    </tr>
+                `;
+                tb.innerHTML += row;
+            });
+        };
+        // ------------------------------------------------
+
         window.updateTruckInfo = () => {
             const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
             const prod = products.find(p => p.id === pid), info = document.getElementById('truck-supply-info');
