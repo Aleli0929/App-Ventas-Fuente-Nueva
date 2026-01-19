@@ -348,6 +348,14 @@
                         <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario</button>
                         <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría</button>
                     </div>
+
+                    <hr style="margin: 2rem 0; border-top: 1px solid #e2e8f0;">
+                    
+                    <div class="admin-only" style="background:#fee2e2; padding:1rem; border-radius:8px; border:1px solid #ef4444; margin-top:2rem;">
+                        <h4 style="color:#991b1b; margin-bottom:0.5rem;">⚠️ Zona de Peligro</h4>
+                        <p style="font-size:0.9rem; color:#7f1d1d; margin-bottom:1rem;">Esta acción borrará <b>TODAS LAS VENTAS</b> del historial. Úsalo si quieres reiniciar el sistema con la nueva lógica.</p>
+                        <button onclick="purgeAllSales()" class="btn btn-red" style="width:100%;">🧨 BORRAR HISTORIAL DE VENTAS</button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -356,7 +364,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47", measurementId: "G-8NGS5XH8K6" };
         const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
@@ -412,7 +420,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Automático v4.");
+                console.log("Sistema actualizado: Corrección Final + Botón Reset.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -458,7 +466,7 @@
             const filteredSales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
             const filteredExpenses = expenses.filter(e => e.date === dateVal);
 
-            const totalSales = filteredSales.reduce((a,b)=>a+b.price,0);
+            const totalSales = filteredSales.reduce((a,b)=>a+(b.price||0),0);
             const totalProfit = filteredSales.reduce((a,b)=>a+(b.profit||0),0);
             const totalExp = filteredExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
 
@@ -743,7 +751,7 @@
         function renderAdminSalesTable() {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
             sales.slice(0, 50).forEach(s => {
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price)}</td><td>${s.user}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
+                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${s.user || 'Anon'}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
             }); feather.replace();
         }
 
@@ -929,6 +937,37 @@
         window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
         window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
         function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
+
+        // --- FUNCIÓN DE LIMPIEZA TOTAL ---
+        window.purgeAllSales = async () => {
+            if(role !== 'admin') return;
+            const confirm1 = confirm("⚠️ ¿ESTÁS SEGURA?\n\nEsto borrará TODAS las ventas antiguas.\nEl historial quedará vacío.");
+            if(!confirm1) return;
+            const confirm2 = confirm("¿De verdad? Esta acción NO se puede deshacer.");
+            if(!confirm2) return;
+
+            document.getElementById('loader').classList.remove('hidden');
+            try {
+                // Borrar Ventas
+                const qSales = query(collection(db, "sales"));
+                const snSales = await getDocs(qSales);
+                const batch = writeBatch(db);
+                snSales.forEach(doc => batch.delete(doc.ref));
+                
+                // Borrar Movimientos (Opcional, pero recomendado para limpiar todo)
+                const qMovs = query(collection(db, "movements"));
+                const snMovs = await getDocs(qMovs);
+                snMovs.forEach(doc => batch.delete(doc.ref));
+
+                await batch.commit();
+                toast("✅ Historial Borrado Exitosamente");
+            } catch(e) {
+                console.error(e);
+                toast("Error al borrar: " + e.message);
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
+            }
+        };
 
         feather.replace();
     </script>
