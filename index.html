@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Fuente Nueva | Sistema Control</title>
+    <title>ERP Fuente Nueva | Sistema Rápido</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -275,7 +275,7 @@
                         </div>
                         <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
                             <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" required></div>
-                            <div style="flex:1;"><label style="color:var(--primary)">Insumo Vinc. (Tapa)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Vinc. Insumo (Resta)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
                             <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1"></div>
                         </div>
                         
@@ -329,7 +329,7 @@
                     <div class="flex justify-between items-center mb-2">
                         <h3><i data-feather="shield-off"></i> Anulaciones</h3>
                         <div class="flex items-center gap-2">
-                            <small class="text-gray-500">Filtrar:</small>
+                            <small class="text-gray-500">Filtrar por fecha:</small>
                             <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem; border-radius:6px; border:1px solid #ccc;" onchange="renderAdminSalesTable()">
                         </div>
                     </div>
@@ -363,7 +363,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47", measurementId: "G-8NGS5XH8K6" };
         const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
@@ -380,7 +380,7 @@
 
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         
-        // --- FUNCIÓN FECHA SEGURA (Evita que la pantalla se quede en blanco) ---
+        // --- FECHA SEGURA (BLINDAJE CONTRA ERRORES) ---
         const fmtDate = (ts) => {
             if (!ts) return '--';
             try {
@@ -390,10 +390,14 @@
         };
         
         const isDateMatch = (ts, dateStrInput) => {
-            if (!ts || !ts.seconds) return false;
+            if (!ts) return false;
             try {
-                const d = new Date(ts.seconds * 1000);
-                return getLocalYMD(d) === dateStrInput;
+                // Soporte para Timestamp de Firestore
+                if(ts.seconds) {
+                    const d = new Date(ts.seconds * 1000);
+                    return getLocalYMD(d) === dateStrInput;
+                }
+                return false;
             } catch(e) { return false; }
         };
 
@@ -424,7 +428,7 @@
                 document.getElementById('truck-date-filter').value = t;
                 document.getElementById('pend-date').value = t;
                 document.getElementById('exp-date').value = t;
-                document.getElementById('admin-date-filter').value = t; // Filtro de anulaciones
+                document.getElementById('admin-date-filter').value = t; 
                 
                 document.getElementById('rpt-start').value = t.substring(0, 7) + '-01'; 
                 document.getElementById('rpt-end').value = t;
@@ -432,7 +436,7 @@
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema cargado: Versión Válvula + Filtro Anulación.");
+                console.log("Sistema actualizado: Versión Rápida + Filtro.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -453,7 +457,8 @@
                 renderProducts(); 
             });
             
-            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc")), (sn) => { 
+            // --- OPTIMIZACIÓN: Limitamos a las últimas 300 ventas para velocidad ---
+            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(300)), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
                 refreshSalesView(); 
                 updateDashboard();
@@ -466,7 +471,7 @@
                 updateDashboard();
             });
 
-            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc")), (sn) => { movements = sn.docs.map(d => ({id: d.id, ...d.data()})); renderMovements(); renderTruckLoads(); });
+            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc"), limit(100)), (sn) => { movements = sn.docs.map(d => ({id: d.id, ...d.data()})); renderMovements(); renderTruckLoads(); });
             onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => { 
                 const list = sn.docs.map(d => ({id: d.id, ...d.data()})); renderPending(list);
                 document.getElementById('d-pending').textContent = fmtMoney(list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0));
@@ -764,8 +769,8 @@
         window.renderAdminSalesTable = () => {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
             
-            const dateVal = document.getElementById('admin-date-filter').value; // Tomamos la fecha del nuevo filtro
-            const filtered = sales.filter(s => isDateMatch(s.timestamp, dateVal)); // Filtramos
+            const dateVal = document.getElementById('admin-date-filter').value; 
+            const filtered = sales.filter(s => isDateMatch(s.timestamp, dateVal)); 
 
             if(filtered.length === 0) { 
                 tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas en esta fecha.</td></tr>'; 
