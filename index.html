@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Fuente Nueva | Gestión Pro (Versión Blindada)</title>
+    <title>ERP Fuente Nueva | Gestión Pro (Lógica Mixta)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
@@ -206,15 +206,40 @@
                                 </div>
                                 <div style="margin-bottom:1rem;"><label>Responsable</label><input type="text" id="truck-driver" required></div>
                                 <div class="form-grid">
-                                    <div><label>Producto</label><select id="truck-product" required onchange="updateTruckInfo()"></select><small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small></div>
+                                    <div>
+                                        <label>Producto</label>
+                                        <select id="truck-product" required onchange="updateTruckInfo()"></select>
+                                        <small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small>
+                                    </div>
                                     <div><label>Cantidad</label><input type="number" id="truck-qty" min="1" step="1" required placeholder="0" oninput="updateTruckInfo()"></div>
                                 </div>
-                                <button type="submit" id="btn-submit-truck" class="btn btn-truck" style="width:100%">REGISTRAR SALIDA</button>
+
+                                <div style="display:flex; gap:10px; flex-direction:column;">
+                                    <button type="button" onclick="processTruckOutput(false)" class="btn" style="background:#475569; color:white; width:100%; padding: 1rem;">
+                                        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                            <i data-feather="box"></i> 
+                                            <div style="text-align:left; line-height:1.2;">
+                                                <span style="display:block; font-size:1rem;">Cargar YA Envasados</span>
+                                                <span style="font-size:0.75rem; font-weight:400; opacity:0.9;">(Stock guardado / No gasta insumos)</span>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button type="button" onclick="processTruckOutput(true)" class="btn btn-truck" style="width:100%; padding: 1rem;">
+                                        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                            <i data-feather="settings"></i>
+                                            <div style="text-align:left; line-height:1.2;">
+                                                <span style="display:block; font-size:1rem;">Producción del Día</span>
+                                                <span style="font-size:0.75rem; font-weight:400; opacity:0.9;">(Directo de máquina / Gasta insumos)</span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
                         <div class="card" style="border-top: 4px solid var(--pack); background: #f5f3ff;">
-                            <h3 style="color: #5b21b6;"><i data-feather="package"></i> Envasados</h3>
+                            <h3 style="color: #5b21b6;"><i data-feather="package"></i> Envasados (Stock)</h3>
                             <form id="form-pack-load">
                                 <div class="admin-only" style="margin-bottom:1rem; background: #ddd6fe; padding: 10px; border-radius: 6px; border: 1px dashed #5b21b6;">
                                     <label style="color:#5b21b6;">📅 Envasado en fecha pasada</label>
@@ -492,7 +517,7 @@
                 renderSupplies(); updateSupplySelect(); renderProducts(); 
             });
             
-            // Limitamos listeners a 300 para velocidad, pero NO usamos esto para el Dashboard histórico
+            // Limitamos listeners a 300 para velocidad
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(300)), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
                 refreshSalesView(); // Vista "Operaciones" (Realtime)
@@ -602,38 +627,89 @@
 
         // --- TRANSACCIONES DE STOCK (LÓGICA CRÍTICA) ---
 
-        window.updateTruckInfo = () => {
-            const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
-            const prod = products.find(p => p.id === pid), info = document.getElementById('truck-supply-info');
-            info.innerHTML = '';
-            if(prod && prod.supplyLink && qty > 0) {
+        // Función para CAMIÓN (Dos botones)
+        window.processTruckOutput = async (useSupply) => {
+            const driver = document.getElementById('truck-driver').value;
+            const pid = document.getElementById('truck-product').value;
+            const qtyVal = document.getElementById('truck-qty').value;
+            
+            if(!driver || !pid || !qtyVal) return toast("⚠️ Completa todos los campos");
+            
+            const qty = parseInt(qtyVal);
+            if (qty <= 0) return toast("Cantidad inválida");
+
+            const prod = products.find(p => p.id === pid);
+            if(!prod) return toast("Producto no válido");
+            if(prod.stock < qty) return showConfirm("Error", "Stock insuficiente", null);
+
+            // --- LÓGICA DE INSUMOS ---
+            let sDoc = null;
+            let sDeduct = 0;
+
+            if(prod.supplyLink && useSupply) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
+                if(!s) return alert("Error: Insumo vinculado no encontrado.");
+                sDeduct = qty * (prod.supplyQty || 1); 
+                if(s.stock < sDeduct) return showConfirm("Error", `Falta insumo: ${s.name}`, null);
+                sDoc = s; 
             }
+
+            const dateInput = document.getElementById('truck-date-admin').value;
+            let loadTimestamp = serverTimestamp();
+            if(role === 'admin' && dateInput) loadTimestamp = Timestamp.fromDate(new Date(dateInput + 'T12:00:00'));
+            
+            try {
+                await runTransaction(db, async (t) => {
+                    const pRef = doc(db, "products", pid);
+                    const pSnapshot = await t.get(pRef);
+                    if(!pSnapshot.exists()) throw "Producto no existe";
+                    const pData = pSnapshot.data();
+                    if(pData.stock < qty) throw "Stock insuficiente al procesar";
+                    
+                    let sRef = null, sData = null;
+                    if(sDoc) { 
+                        sRef = doc(db, "supplies", sDoc.id); 
+                        const sSnapshot = await t.get(sRef);
+                        sData = sSnapshot.data(); 
+                        if(sData.stock < sDeduct) throw "Falta insumo al procesar";
+                    }
+                    
+                    t.update(pRef, { stock: pData.stock - qty });
+                    if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
+
+                    const originText = useSupply ? '(Prod. Día)' : '(YA Envasado)';
+                    
+                    t.set(doc(collection(db, "movements")), { 
+                        type: 'SALIDA_CAMION', 
+                        product: prod.name, 
+                        productId: pid, 
+                        quantity: qty, 
+                        supplyId: sDoc?.id||null, 
+                        supplyQty: sDeduct, 
+                        user: user.email, 
+                        details: `Chofer: ${driver} ${originText}`, 
+                        timestamp: loadTimestamp 
+                    });
+                });
+                toast("✅ Carga Registrada"); 
+                document.getElementById('form-truck-load').reset();
+                document.getElementById('truck-supply-info').innerHTML = '';
+            } catch (err) { toast("Error: " + err); }
         };
 
-        window.updatePackInfo = () => {
-            const pid = document.getElementById('pack-product').value, qty = parseInt(document.getElementById('pack-qty').value) || 0;
-            const prod = products.find(p => p.id === pid), info = document.getElementById('pack-supply-info');
-            info.innerHTML = '';
-            if(prod && prod.supplyLink && qty > 0) {
-                const s = supplies.find(x => x.id === prod.supplyLink);
-                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
-            }
-        };
-
-        async function processOutput(e, type) {
+        // Función Genérica para Envasado (Siempre descuenta insumos)
+        window.processOutput = async (e, type) => {
             e.preventDefault();
-            const isTruck = type === 'SALIDA_CAMION';
-            const btnId = isTruck ? 'btn-submit-truck' : 'btn-submit-pack';
-            const formId = isTruck ? 'form-truck-load' : 'form-pack-load';
+            // Esta función solo queda para ENVASADOS (u otros futuros), el camión ya tiene la suya arriba
+            const btnId = 'btn-submit-pack';
+            const formId = 'form-pack-load';
             
             const btn = document.getElementById(btnId); btn.disabled = true; 
             
-            const detail = isTruck ? `Chofer: ${document.getElementById('truck-driver').value}` : `Lote: ${document.getElementById('pack-detail').value}`;
-            const pid = document.getElementById(isTruck ? 'truck-product' : 'pack-product').value;
-            const qty = parseInt(document.getElementById(isTruck ? 'truck-qty' : 'pack-qty').value) || 0;
-            const dateInput = document.getElementById(isTruck ? 'truck-date-admin' : 'pack-date-admin').value;
+            const detail = `Lote: ${document.getElementById('pack-detail').value}`;
+            const pid = document.getElementById('pack-product').value;
+            const qty = parseInt(document.getElementById('pack-qty').value) || 0;
+            const dateInput = document.getElementById('pack-date-admin').value;
 
             if (qty <= 0) { toast("Cantidad inválida"); btn.disabled = false; return; }
 
@@ -643,6 +719,7 @@
             
             let sDoc = null;
             let sDeduct = 0;
+            // Para Envasado SIEMPRE descontamos si hay vínculo
             if(prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 if(!s) { alert("Error: Insumo vinculado no encontrado."); btn.disabled = false; return; }
@@ -688,12 +765,36 @@
                 });
                 toast("✅ Registrado con éxito"); 
                 document.getElementById(formId).reset(); 
-                document.getElementById(isTruck ? 'truck-supply-info' : 'pack-supply-info').innerHTML = '';
+                document.getElementById('pack-supply-info').innerHTML = '';
             } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
         }
 
-        document.getElementById('form-truck-load').addEventListener('submit', (e) => processOutput(e, 'SALIDA_CAMION'));
         document.getElementById('form-pack-load').addEventListener('submit', (e) => processOutput(e, 'SALIDA_ENVASADO'));
+
+        window.updateTruckInfo = () => {
+            const pid = document.getElementById('truck-product').value;
+            const qty = parseInt(document.getElementById('truck-qty').value) || 0;
+            const prod = products.find(p => p.id === pid);
+            const info = document.getElementById('truck-supply-info');
+            info.innerHTML = '';
+            if(prod && prod.supplyLink && qty > 0) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) info.innerHTML = `<span style="color:var(--gray)">ℹ️ Si es Prod. Día: -${(qty * (prod.supplyQty || 1)).toFixed(1)} ${s.name}</span>`;
+            }
+        };
+
+        window.updatePackInfo = () => {
+            const pid = document.getElementById('pack-product').value;
+            const qty = parseInt(document.getElementById('pack-qty').value) || 0;
+            const prod = products.find(p => p.id === pid);
+            const info = document.getElementById('pack-supply-info');
+            info.innerHTML = '';
+            // Visualmente avisamos que se gastarán insumos
+            if(prod && prod.supplyLink && qty > 0) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
+            }
+        };
 
         function renderGenericLoads(tableId, type, filterId) {
             const tb = document.querySelector(`#${tableId} tbody`); tb.innerHTML = '';
@@ -1156,12 +1257,6 @@
 
             if(!startVal || !endVal) return toast("⚠️ Seleccione ambas fechas");
             if(startVal > endVal) return toast("⚠️ Fecha inicio mayor a fin");
-
-            // 1. Filtrar Ventas (Local si posible, pero idealmente debería ser consulta)
-            // Para mantener simpleza, usamos local 'sales' (limitado) advirtiendo, o podemos hacer fetch.
-            // Para exportación real, es mejor usar la data en memoria si asumimos que es reciente, 
-            // OJO: Si quieres exportar mes pasado, esto fallará con la limitación de 300.
-            // MEJORA: Avisar al usuario.
             
             const listSales = sales.filter(s => {
                 if(!s.timestamp) return false;
