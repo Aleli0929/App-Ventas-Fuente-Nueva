@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Fuente Nueva | Sistema Rápido</title>
+    <title>ERP Fuente Nueva | Gestión Pro (Versión Blindada)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 
@@ -13,7 +12,7 @@
         :root {
             --primary: #1e40af; --primary-light: #3b82f6; --dark: #0f172a; --gray: #64748b;
             --bg: #f1f5f9; --white: #ffffff;
-            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --truck: #0891b2;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --truck: #0891b2; --pack: #7c3aed;
             --radius: 12px; --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
@@ -22,7 +21,7 @@
         .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
         .gap-2 { gap: 0.75rem; } .text-primary { color: var(--primary); }
         .text-success { color: var(--success); font-weight: 700; } .text-danger { color: var(--danger); font-weight: 700; }
-        .admin-only { display: none; }
+        .admin-only { display: none; } 
 
         header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
         .app-title { font-size: 1.5rem; font-weight: 700; }
@@ -41,12 +40,15 @@
         label { font-size: 0.85rem; font-weight: 600; color: var(--gray); margin-bottom: 0.3rem; display: block; }
         input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background: #f8fafc; }
         
-        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; }
-        .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { background: #cbd5e1 !important; cursor: not-allowed; opacity: 0.7; }
         .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px; }
+        
         .btn-blue { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
         .btn-green { background: linear-gradient(135deg, #059669, var(--success)); }
         .btn-truck { background: linear-gradient(135deg, #0e7490, var(--truck)); }
+        .btn-pack { background: linear-gradient(135deg, #6d28d9, var(--pack)); }
         .btn-red { background: linear-gradient(135deg, #b91c1c, var(--danger)); }
         .btn-gray { background: #e2e8f0; color: var(--dark); }
 
@@ -88,8 +90,8 @@
             <p style="color:var(--gray); margin-bottom: 1.5rem;">Producto: <b id="modal-prod-name" class="text-primary"></b></p>
             <form id="form-restock">
                 <input type="hidden" id="restock-id"><input type="hidden" id="restock-type">
-                <label>Cantidad a Ingresar:</label>
-                <input type="number" id="restock-qty" min="1" placeholder="0" required style="font-size:1.5rem; padding:1rem; text-align:center; font-weight:bold; color:var(--primary); border: 2px solid var(--primary-light);">
+                <label>Cantidad a Ingresar (Unidades enteras):</label>
+                <input type="number" id="restock-qty" min="1" step="1" placeholder="0" required style="font-size:1.5rem; padding:1rem; text-align:center; font-weight:bold; color:var(--primary); border: 2px solid var(--primary-light);">
                 <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
                     <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
                     <button type="submit" class="btn btn-green" style="flex:1">Guardar</button>
@@ -139,7 +141,7 @@
             </div>
             <nav>
                 <a href="#dashboard" class="nav-link active" onclick="nav('dashboard')"><i data-feather="pie-chart" style="width:16px;"></i> Dashboard</a>
-                <a href="#ventas" class="nav-link" onclick="nav('ventas')"><i data-feather="shopping-cart" style="width:16px;"></i> Ventas</a>
+                <a href="#ventas" class="nav-link" onclick="nav('ventas')"><i data-feather="shopping-cart" style="width:16px;"></i> Operaciones</a>
                 <a href="#gastos" class="nav-link" onclick="nav('gastos')"><i data-feather="trending-down" style="width:16px;"></i> Gastos</a>
                 <a href="#cobros" class="nav-link" onclick="nav('cobros')"><i data-feather="clock" style="width:16px;"></i> Por Cobrar</a>
                 <a href="#productos" class="nav-link admin-only" onclick="nav('productos')"><i data-feather="package" style="width:16px;"></i> Productos</a>
@@ -152,15 +154,13 @@
             <div id="page-dashboard" class="page">
                 <div class="flex justify-between items-center" style="margin-bottom:1.5rem;">
                     <h2 style="color:var(--primary);">Resumen General</h2>
-                    <div class="admin-only" style="background: white; padding: 5px 10px; border-radius: 8px; box-shadow: var(--shadow);">
+                    <div style="background: white; padding: 5px 10px; border-radius: 8px; box-shadow: var(--shadow);">
                         <small style="color:var(--gray); margin-right:5px;">Ver fecha:</small>
-                        <input type="date" id="dash-date-filter" style="width:auto; padding:5px; border:none; font-weight:bold;" onchange="updateDashboard()">
+                        <input type="date" id="dash-date-filter" style="width:auto; padding:5px; border:none; font-weight:bold;" onchange="updateDashboard(true)">
                     </div>
                 </div>
-                
                 <div class="grid-4">
                     <div class="card stat-card"><div><h4 style="color:var(--gray)">Ventas</h4><h2 id="d-today" style="font-size:1.8rem; color:var(--dark)">$0.00</h2></div><div class="stat-icon" style="background:#dbeafe; color:var(--primary);"><i data-feather="dollar-sign"></i></div></div>
-                    
                     <div class="card stat-card admin-only">
                         <div>
                             <h4 style="color:var(--gray)">Ganancia Neta</h4>
@@ -169,7 +169,6 @@
                         </div>
                         <div class="stat-icon" style="background:#d1fae5; color:var(--success);"><i data-feather="trending-up"></i></div>
                     </div>
-                    
                     <div class="card stat-card admin-only"><div><h4 style="color:var(--gray)">Stock Crítico</h4><h2 id="d-critical" class="text-danger" style="font-size:1.8rem;">0</h2></div><div class="stat-icon" style="background:#fee2e2; color:var(--danger);"><i data-feather="alert-triangle"></i></div></div>
                     <div class="card stat-card"><div><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending" style="font-size:1.8rem; color:var(--warning)">$0.00</h2></div><div class="stat-icon" style="background:#fef3c7; color:var(--warning);"><i data-feather="clock"></i></div></div>
                 </div>
@@ -182,11 +181,11 @@
                             <h3><i data-feather="shopping-cart"></i> Registrar Venta</h3>
                             <form id="form-sale">
                                 <div class="admin-only" style="margin-bottom:1rem; background: #fff7ed; padding: 10px; border-radius: 6px; border: 1px dashed #fdba74;">
-                                    <label style="color:#c2410c;">📅 Registrar en fecha pasada (Opcional)</label>
+                                    <label style="color:#c2410c;">📅 Registrar en fecha pasada</label>
                                     <input type="date" id="sale-date-admin">
                                 </div>
                                 <div style="margin-bottom:1rem;"><label>Producto</label><select id="sale-product" required onchange="updateSaleForm()"></select></div>
-                                <div style="margin-bottom:1rem;"><label>Cantidad (Unidades)</label><input type="number" id="sale-qty" value="1" min="1" required oninput="updateSaleForm()"></div>
+                                <div style="margin-bottom:1rem;"><label>Cantidad (Unidades)</label><input type="number" id="sale-qty" value="1" min="1" step="1" required oninput="updateSaleForm()"></div>
                                 <div class="form-grid"><div><label>Pago</label><select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select></div></div>
                                 <div style="margin-bottom:1rem;"><label>Observaciones</label><textarea id="sale-obs" rows="1"></textarea></div>
                                 <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
@@ -197,45 +196,73 @@
                                 <button type="submit" id="btn-submit-sale" class="btn btn-blue" style="width:100%">CONFIRMAR VENTA</button>
                             </form>
                         </div>
+                        
                         <div class="card" style="border-top: 4px solid var(--truck); background: #f0fdfa;">
                             <h3 style="color: #0f766e;"><i data-feather="truck"></i> Carga de Camión</h3>
                             <form id="form-truck-load">
                                 <div class="admin-only" style="margin-bottom:1rem; background: #ccfbf1; padding: 10px; border-radius: 6px; border: 1px dashed #0f766e;">
-                                    <label style="color:#0f766e;">📅 Carga en fecha pasada (Opcional)</label>
+                                    <label style="color:#0f766e;">📅 Carga en fecha pasada</label>
                                     <input type="date" id="truck-date-admin">
                                 </div>
-
                                 <div style="margin-bottom:1rem;"><label>Responsable</label><input type="text" id="truck-driver" required></div>
                                 <div class="form-grid">
                                     <div><label>Producto</label><select id="truck-product" required onchange="updateTruckInfo()"></select><small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small></div>
-                                    <div><label>Cantidad</label><input type="number" id="truck-qty" min="1" required placeholder="0" oninput="updateTruckInfo()"></div>
+                                    <div><label>Cantidad</label><input type="number" id="truck-qty" min="1" step="1" required placeholder="0" oninput="updateTruckInfo()"></div>
                                 </div>
                                 <button type="submit" id="btn-submit-truck" class="btn btn-truck" style="width:100%">REGISTRAR SALIDA</button>
                             </form>
                         </div>
+
+                        <div class="card" style="border-top: 4px solid var(--pack); background: #f5f3ff;">
+                            <h3 style="color: #5b21b6;"><i data-feather="package"></i> Envasados</h3>
+                            <form id="form-pack-load">
+                                <div class="admin-only" style="margin-bottom:1rem; background: #ddd6fe; padding: 10px; border-radius: 6px; border: 1px dashed #5b21b6;">
+                                    <label style="color:#5b21b6;">📅 Envasado en fecha pasada</label>
+                                    <input type="date" id="pack-date-admin">
+                                </div>
+                                <div style="margin-bottom:1rem;"><label>Detalles / Lote</label><input type="text" id="pack-detail" required></div>
+                                <div class="form-grid">
+                                    <div><label>Producto</label><select id="pack-product" required onchange="updatePackInfo()"></select><small id="pack-supply-info" style="color:var(--pack); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small></div>
+                                    <div><label>Cantidad</label><input type="number" id="pack-qty" min="1" step="1" required placeholder="0" oninput="updatePackInfo()"></div>
+                                </div>
+                                <button type="submit" id="btn-submit-pack" class="btn btn-pack" style="width:100%">REGISTRAR ENVASADO</button>
+                            </form>
+                        </div>
                     </div>
+
                     <div>
                         <div class="card">
                             <div class="flex justify-between items-center mb-2">
-                                <h3><i data-feather="list"></i> Ventas</h3>
+                                <h3><i data-feather="list"></i> Ventas Recientes</h3>
                                 <input type="date" id="sales-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem;" oninput="refreshSalesView()">
                             </div>
                             <div class="table-container" style="max-height: 400px; overflow-y:auto;">
                                 <table id="table-sales"><thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Total</th></tr></thead><tbody></tbody></table>
                             </div>
                         </div>
+
                         <div class="card" style="background:#f8fafc; border: 1px solid #e2e8f0;">
-                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja</h3>
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja (Vista Actual)</h3>
                             <div id="daily-summary"></div>
                         </div>
-                        
+
                         <div class="card" style="border-left: 4px solid var(--truck); margin-top: 1.5rem;">
                             <div class="flex justify-between items-center">
                                 <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas</h3>
                                 <input type="date" id="truck-date-filter" class="admin-only" style="width:auto; padding:0.3rem; font-size:0.8rem;" onchange="renderTruckLoads()">
                             </div>
                             <div class="table-container" style="max-height: 300px; overflow-y:auto;">
-                                <table id="table-truck-loads"><thead><tr><th>Hora</th><th>Chofer</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table>
+                                <table id="table-truck-loads"><thead><tr><th>Hora</th><th>Detalles</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table>
+                            </div>
+                        </div>
+
+                        <div class="card" style="border-left: 4px solid var(--pack); margin-top: 1.5rem;">
+                            <div class="flex justify-between items-center">
+                                <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="package"></i> Historial Envasados</h3>
+                                <input type="date" id="pack-date-filter" class="admin-only" style="width:auto; padding:0.3rem; font-size:0.8rem;" onchange="renderPackLoads()">
+                            </div>
+                            <div class="table-container" style="max-height: 300px; overflow-y:auto;">
+                                <table id="table-pack-loads"><thead><tr><th>Hora</th><th>Detalles</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table>
                             </div>
                         </div>
                     </div>
@@ -248,7 +275,7 @@
                         <h3><i data-feather="trending-down"></i> Registrar Gasto</h3>
                         <form id="form-expense">
                             <div style="margin-bottom:1rem;"><label>Descripción (Ej: Gasolina, Comida)</label><input type="text" id="exp-desc" required></div>
-                            <div style="margin-bottom:1rem;"><label>Monto</label><input type="number" id="exp-amount" step="0.01" required></div>
+                            <div style="margin-bottom:1rem;"><label>Monto</label><input type="number" id="exp-amount" step="0.01" min="0.01" required></div>
                             <div style="margin-bottom:1rem;"><label>Fecha</label><input type="date" id="exp-date" required></div>
                             <button type="submit" class="btn btn-red" style="width:100%">Registrar Gasto</button>
                         </form>
@@ -269,21 +296,19 @@
                         <input type="hidden" id="prod-id">
                         <div class="grid-4" style="align-items:end;">
                             <div><label>Nombre</label><input type="text" id="prod-name" required></div>
-                            <div><label>Precio</label><input type="number" id="prod-price" step="0.01" required></div>
-                            <div><label>Costo</label><input type="number" id="prod-cost" step="0.01" required></div>
-                            <div><label>Stock</label><input type="number" id="prod-stock" required></div>
+                            <div><label>Precio</label><input type="number" id="prod-price" step="0.01" min="0" required></div>
+                            <div><label>Costo</label><input type="number" id="prod-cost" step="0.01" min="0" required></div>
+                            <div><label>Stock (Entero)</label><input type="number" id="prod-stock" step="1" required></div>
                         </div>
                         <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
-                            <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" required></div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" step="1" required></div>
                             <div style="flex:1;"><label style="color:var(--primary)">Vinc. Insumo (Resta)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
-                            <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1"></div>
+                            <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1" min="0.1" step="0.1"></div>
                         </div>
-                        
                         <div style="background:#f0fdfa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
                             <label style="color:var(--success)">🔄 Al vender, recibir envase (Suma):</label>
                             <select id="prod-return-link"><option value="">-- Ninguno --</option></select>
                         </div>
-
                         <div class="flex gap-2"><button type="submit" class="btn btn-blue">Guardar</button><button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button></div>
                     </form>
                 </div>
@@ -292,12 +317,12 @@
 
             <div id="page-inventario" class="page hidden">
                 <div class="card" style="border-left: 5px solid var(--truck);">
-                    <div class="flex justify-between items-center mb-2"><h3><i data-feather="tool"></i> Insumos</h3><button onclick="showSupplyForm()" class="btn btn-sm btn-green">Nuevo</button></div>
+                    <div class="flex justify-between items-center mb-2"><h3><i data-feather="tool"></i> Insumos (Materias Primas)</h3><button onclick="showSupplyForm()" class="btn btn-sm btn-green">Nuevo</button></div>
                     <div id="box-create-supply" class="hidden" style="background:#f0fdfa; padding:1rem; margin-bottom:1rem; border-radius:8px;">
                         <form id="form-supply" class="flex gap-2 items-end">
                             <input type="hidden" id="supp-id">
                             <div style="flex:2"><label>Nombre</label><input type="text" id="supp-name" required style="margin:0"></div>
-                            <div style="flex:1"><label>Stock</label><input type="number" id="supp-stock" required style="margin:0"></div>
+                            <div style="flex:1"><label>Stock (Entero)</label><input type="number" id="supp-stock" step="1" required style="margin:0"></div>
                             <button type="submit" id="btn-save-supply" class="btn btn-green" style="margin:0">Guardar</button>
                             <button type="button" onclick="hideSupplyForm()" class="btn btn-gray" style="margin:0">Cancelar</button>
                         </form>
@@ -305,8 +330,8 @@
                     <div class="table-container"><table id="table-supplies"><thead><tr><th>Insumo</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
                 <div class="grid-split">
-                    <div class="card"><h3><i data-feather="box"></i> Stock</h3><div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada</th></tr></thead><tbody></tbody></table></div></div>
-                    <div class="card"><h3><i data-feather="activity"></i> Movimientos</h3><div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div></div>
+                    <div class="card"><h3><i data-feather="box"></i> Stock Productos</h3><div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada</th></tr></thead><tbody></tbody></table></div></div>
+                    <div class="card"><h3><i data-feather="activity"></i> Movimientos Recientes</h3><div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div></div>
                 </div>
             </div>
 
@@ -316,7 +341,7 @@
                         <h3><i data-feather="book"></i> Por Cobrar</h3>
                         <form id="form-pending">
                             <div style="margin-bottom:1rem;"><label>Cliente</label><input type="text" id="pend-client" required></div>
-                            <div class="form-grid"><div><label>Monto</label><input type="number" id="pend-total" step="0.01" required></div><div><label>Fecha</label><input type="date" id="pend-date" required></div></div>
+                            <div class="form-grid"><div><label>Monto</label><input type="number" id="pend-total" step="0.01" min="0.01" required></div><div><label>Fecha</label><input type="date" id="pend-date" required></div></div>
                             <button type="submit" class="btn btn-blue" style="width:100%;">Registrar</button>
                         </form>
                     </div>
@@ -330,9 +355,8 @@
                         <i data-feather="pie-chart"></i> Auditoría de Rentabilidad y Productos
                     </h3>
                     <p style="color:var(--gray); margin-bottom:1rem; font-size:0.9rem;">
-                        Genera un reporte detallado de unidades vendidas, ingresos totales y ganancia neta real por producto en un rango de fechas.
+                        Reporte detallado de unidades, ingresos y margen real entre fechas.
                     </p>
-                    
                     <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; align-items:end;">
                             <div><label>Fecha Inicio</label><input type="date" id="audit-start"></div>
@@ -343,23 +367,34 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="card">
-                    <h3><i data-feather="archive"></i> Descargas Rápidas</h3>
+                    <h3><i data-feather="archive"></i> Descargas Rápidas (Reporte Financiero)</h3>
+                    <div style="margin-bottom: 1rem; background: #f1f5f9; padding:10px; border-radius:8px; display:flex; gap:10px; align-items:end;">
+                        <div style="flex:1">
+                            <label style="color:var(--primary); font-weight:bold;">Desde:</label>
+                            <input type="date" id="export-start" style="font-weight:bold;">
+                        </div>
+                        <div style="flex:1">
+                            <label style="color:var(--primary); font-weight:bold;">Hasta:</label>
+                            <input type="date" id="export-end" style="font-weight:bold;">
+                        </div>
+                    </div>
                     <div class="grid-4">
                         <button onclick="exportSales()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;">
-                            <i data-feather="calendar"></i> Ventas de Hoy
+                            <i data-feather="calendar"></i> Reporte Caja (Excel)
                         </button>
                         <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;">
                             <i data-feather="box"></i> Inventario Actual
                         </button>
                     </div>
                 </div>
-                
                 <div class="card" style="border-top: 4px solid var(--warning); margin-top:1.5rem;">
                     <div class="flex justify-between items-center mb-2">
                         <h3><i data-feather="shield-off"></i> Historial de Anulaciones</h3>
-                        <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem;" onchange="renderAdminSalesTable()">
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem;">
+                            <button onclick="loadAdminSalesByDate()" class="btn btn-sm btn-blue admin-only">Buscar</button>
+                        </div>
                     </div>
                     <div class="table-container" style="max-height: 300px; overflow-y:auto;">
                         <table id="table-sales-admin"><thead><tr><th>Fecha</th><th>Producto</th><th>Obs.</th><th>Total</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table>
@@ -379,6 +414,7 @@
 
         let user = null, role = 'vendedor', products = [], supplies = [], sales = [], movements = [], expenses = [];
         
+        // --- UTILIDADES ---
         const getLocalYMD = (dateObj) => {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -386,67 +422,57 @@
             return `${year}-${month}-${day}`;
         };
         const today = () => getLocalYMD(new Date());
-
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
-        
         const fmtDate = (ts) => {
             if (!ts) return '--';
-            try {
-                if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-                return '--';
-            } catch(e) { return 'Error'; }
+            try { return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); } catch(e) { return 'Error'; }
         };
-        
         const isDateMatch = (ts, dateStrInput) => {
             if (!ts) return false;
-            try {
-                if(ts.seconds) {
-                    const d = new Date(ts.seconds * 1000);
-                    return getLocalYMD(d) === dateStrInput;
-                }
+            try { return getLocalYMD(new Date(ts.seconds * 1000)) === dateStrInput; } catch(e) { return false; }
+        };
+        const getUserName = (u) => (u || 'Desconocido').split('@')[0];
+
+        // --- VALIDACIÓN DE ROLES ---
+        const checkAdmin = () => {
+            if (role !== 'admin') {
+                toast("⛔ Acceso denegado: Solo administradores.");
                 return false;
-            } catch(e) { return false; }
+            }
+            return true;
         };
 
-        const isToday = (ts) => isDateMatch(ts, today());
-        const isCurrentMonth = (ts) => {
-            if(!ts || !ts.seconds) return false;
-            try {
-                const d = new Date(ts.seconds * 1000), n = new Date();
-                return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
-            } catch(e) { return false; }
-        };
-
+        // --- AUTH ---
         onAuthStateChanged(auth, async (u) => {
             document.getElementById('loader').classList.remove('hidden');
             if (u) {
                 user = u;
-                const docSnap = await getDoc(doc(db, "users", u.uid));
-                role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
-                document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
-                document.getElementById('auth-view').classList.add('hidden');
-                document.getElementById('app-view').classList.remove('hidden');
-                
-                document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
-                
-                const t = today();
-                document.getElementById('sales-date-filter').value = t;
-                document.getElementById('dash-date-filter').value = t;
-                document.getElementById('truck-date-filter').value = t;
-                document.getElementById('pend-date').value = t;
-                document.getElementById('exp-date').value = t;
-                document.getElementById('admin-date-filter').value = t; 
-                
-                // Inicializar fechas de auditoría
-                document.getElementById('audit-start').value = t.substring(0, 7) + '-01'; 
-                document.getElementById('audit-end').value = t;
+                try {
+                    const docSnap = await getDoc(doc(db, "users", u.uid));
+                    role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
+                    document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
+                    
+                    document.getElementById('auth-view').classList.add('hidden');
+                    document.getElementById('app-view').classList.remove('hidden');
+                    
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+                    
+                    // Inicializar Fechas
+                    const t = today();
+                    ['sales-date-filter', 'dash-date-filter', 'truck-date-filter', 'pack-date-filter', 'pend-date', 'exp-date', 'admin-date-filter', 'audit-end', 'export-start', 'export-end'].forEach(id => {
+                        const el = document.getElementById(id); if(el) el.value = t;
+                    });
+                    const startOfMonth = t.substring(0, 7) + '-01';
+                    const elStart = document.getElementById('audit-start'); if(elStart) elStart.value = startOfMonth;
 
-                initListeners();
-                nav('dashboard');
-                
-                console.log("Sistema actualizado: Auditoría Avanzada Activada.");
-                toast("✅ Sistema Seguro Activo");
-
+                    initListeners();
+                    nav('dashboard');
+                    updateDashboard(true); // Cargar dashboard inicial desde BD
+                    toast(`✅ Bienvenido, ${role === 'admin' ? 'Administrador' : 'Vendedor'}`);
+                } catch (error) {
+                    console.error("Error cargando perfil:", error);
+                    toast("Error al cargar perfil de usuario");
+                }
             } else {
                 document.getElementById('auth-view').classList.remove('hidden');
                 document.getElementById('app-view').classList.add('hidden');
@@ -454,84 +480,127 @@
             document.getElementById('loader').classList.add('hidden');
         });
 
+        // --- LISTENERS FIRESTORE ---
         function initListeners() {
-            onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
+            onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { 
+                products = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderProducts(); renderInventory(); updateSelects(); 
+            });
             
             onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
                 supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
-                renderSupplies(); 
-                updateSupplySelect(); 
-                renderProducts(); 
+                renderSupplies(); updateSupplySelect(); renderProducts(); 
             });
             
+            // Limitamos listeners a 300 para velocidad, pero NO usamos esto para el Dashboard histórico
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(300)), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
-                refreshSalesView(); 
-                updateDashboard();
-                if(role === 'admin') renderAdminSalesTable(); 
+                refreshSalesView(); // Vista "Operaciones" (Realtime)
+                if (isDateMatch(sales[0]?.timestamp, document.getElementById('dash-date-filter').value)) {
+                    // Solo actualizamos dashboard si la fecha coincide con HOY/Reciente
+                     updateDashboard(false);
+                }
             });
             
-            onSnapshot(query(collection(db, "expenses"), orderBy("date", "desc")), (sn) => {
+            onSnapshot(query(collection(db, "expenses"), orderBy("date", "desc"), limit(100)), (sn) => {
                 expenses = sn.docs.map(d => ({id: d.id, ...d.data()}));
                 renderExpenses();
-                updateDashboard();
             });
 
-            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc"), limit(100)), (sn) => { movements = sn.docs.map(d => ({id: d.id, ...d.data()})); renderMovements(); renderTruckLoads(); });
+            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc"), limit(100)), (sn) => { 
+                movements = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderMovements(); renderTruckLoads(); renderPackLoads();
+            });
+
             onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => { 
-                const list = sn.docs.map(d => ({id: d.id, ...d.data()})); renderPending(list);
+                const list = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderPending(list);
                 document.getElementById('d-pending').textContent = fmtMoney(list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0));
             });
         }
 
-        window.updateDashboard = () => {
+        // --- DASHBOARD BLINDADO (Consulta Directa a BD) ---
+        window.updateDashboard = async (forceFetch = false) => {
             const dateVal = document.getElementById('dash-date-filter').value;
-            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
-            const filteredExpenses = expenses.filter(e => e.date === dateVal);
+            let daySales = [], dayExpenses = [];
 
-            const totalSales = filteredSales.reduce((a,b)=>a+(b.price||0),0);
-            const totalProfit = filteredSales.reduce((a,b)=>a+(b.profit||0),0);
-            const totalExp = filteredExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
+            // Si es HOY y tenemos datos en memoria, usarlos (rápido)
+            if (!forceFetch && sales.length > 0 && isDateMatch(sales[0].timestamp, dateVal)) {
+                daySales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
+                dayExpenses = expenses.filter(e => e.date === dateVal);
+            } else {
+                // Si es fecha pasada, consultar BD (LENTO PERO SEGURO)
+                try {
+                    const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00"));
+                    const endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
+                    
+                    const qSales = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs));
+                    const snapSales = await getDocs(qSales);
+                    daySales = snapSales.docs.map(d => d.data());
 
-            document.getElementById('d-today').textContent = fmtMoney(totalSales);
-            document.getElementById('d-profit').textContent = fmtMoney(totalProfit - totalExp);
+                    const qExp = query(collection(db, "expenses"), where("date", "==", dateVal));
+                    const snapExp = await getDocs(qExp);
+                    dayExpenses = snapExp.docs.map(d => d.data());
+
+                } catch (e) { console.error("Error fetching dashboard stats", e); }
+            }
+
+            const stats = daySales.reduce((acc, s) => {
+                acc.sales += (s.price || 0);
+                acc.profit += (s.profit || 0);
+                return acc;
+            }, { sales: 0, profit: 0 });
+
+            const totalExp = dayExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
+
+            document.getElementById('d-today').textContent = fmtMoney(stats.sales);
+            document.getElementById('d-profit').textContent = fmtMoney(stats.profit - totalExp);
             document.getElementById('d-expenses-info').textContent = `(-${fmtMoney(totalExp)} gastos)`;
         };
 
-        window.refreshSalesView = () => {
-            renderSalesTable();
-            renderDailySummary();
-        };
+        window.refreshSalesView = () => { renderSalesTable(); renderDailySummary(); };
 
         window.renderSalesTable = () => {
             const tb = document.querySelector('#table-sales tbody');
-            if(!tb) return;
-            tb.innerHTML = '';
-            
             const filterDate = document.getElementById('sales-date-filter').value;
+            // Aquí usamos el array 'sales' local (ultimos 300) porque es vista operativa rápida
             const filtered = sales.filter(s => isDateMatch(s.timestamp, filterDate));
             
-            if(filtered.length === 0) {
-                tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray)">Sin ventas en esta fecha.</td></tr>';
-                return;
-            }
+            tb.innerHTML = '';
+            if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray)">Sin ventas recientes.</td></tr>'; return; }
 
+            const fragment = document.createDocumentFragment();
             filtered.forEach(s => {
+                const tr = document.createElement('tr');
                 const timeStr = s.timestamp ? new Date(s.timestamp.seconds * 1000).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '--:--';
-                const userStr = s.user ? s.user.split('@')[0] : 'Anon';
                 const qtyStr = s.qty_packs > 1 ? `<span style="font-weight:bold; color:var(--primary)"> (x${s.qty_packs})</span>` : '';
-                
-                const row = `
-                    <tr>
-                        <td>${timeStr}</td>
-                        <td style="font-size:0.85rem">${userStr}</td>
-                        <td style="font-size:0.85rem">${s.product}${qtyStr}</td>
-                        <td style="font-weight:bold; color:var(--dark)">${fmtMoney(s.price)}</td>
-                    </tr>
-                `;
-                tb.innerHTML += row;
+                tr.innerHTML = `<td>${timeStr}</td><td style="font-size:0.85rem">${getUserName(s.user)}</td><td style="font-size:0.85rem">${s.product}${qtyStr}</td><td style="font-weight:bold; color:var(--dark)">${fmtMoney(s.price)}</td>`;
+                fragment.appendChild(tr);
             });
+            tb.appendChild(fragment);
         };
+
+        function renderDailySummary() {
+            const filterDate = document.getElementById('sales-date-filter').value;
+            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
+            let total = 0, cash = 0, transfer = 0, prodCounts = {};
+            
+            filteredSales.forEach(s => {
+                total += (s.price || 0);
+                if(s.type === 'Efectivo') cash += (s.price || 0); else transfer += (s.price || 0);
+                prodCounts[s.product] = (prodCounts[s.product] || 0) + (s.qty_packs || 1);
+            });
+
+            let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;"><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div></div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
+            
+            Object.entries(prodCounts).forEach(([p, c]) => {
+                html += `<li style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:var(--gray)">${p}</span><b>${c}</b></li>`;
+            });
+            html += `</ul><div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">Total: ${fmtMoney(total)}</div></div>`;
+            document.getElementById('daily-summary').innerHTML = html;
+        }
+
+        // --- TRANSACCIONES DE STOCK (LÓGICA CRÍTICA) ---
 
         window.updateTruckInfo = () => {
             const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
@@ -539,121 +608,176 @@
             info.innerHTML = '';
             if(prod && prod.supplyLink && qty > 0) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${qty * (prod.supplyQty || 1)} un.)`;
+                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
             }
         };
 
-        document.getElementById('form-truck-load').addEventListener('submit', async (e) => {
-            e.preventDefault(); const btn = document.getElementById('btn-submit-truck'); btn.disabled = true; 
-            const driver = document.getElementById('truck-driver').value, pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value);
+        window.updatePackInfo = () => {
+            const pid = document.getElementById('pack-product').value, qty = parseInt(document.getElementById('pack-qty').value) || 0;
+            const prod = products.find(p => p.id === pid), info = document.getElementById('pack-supply-info');
+            info.innerHTML = '';
+            if(prod && prod.supplyLink && qty > 0) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
+            }
+        };
+
+        async function processOutput(e, type) {
+            e.preventDefault();
+            const isTruck = type === 'SALIDA_CAMION';
+            const btnId = isTruck ? 'btn-submit-truck' : 'btn-submit-pack';
+            const formId = isTruck ? 'form-truck-load' : 'form-pack-load';
+            
+            const btn = document.getElementById(btnId); btn.disabled = true; 
+            
+            const detail = isTruck ? `Chofer: ${document.getElementById('truck-driver').value}` : `Lote: ${document.getElementById('pack-detail').value}`;
+            const pid = document.getElementById(isTruck ? 'truck-product' : 'pack-product').value;
+            const qty = parseInt(document.getElementById(isTruck ? 'truck-qty' : 'pack-qty').value) || 0;
+            const dateInput = document.getElementById(isTruck ? 'truck-date-admin' : 'pack-date-admin').value;
+
+            if (qty <= 0) { toast("Cantidad inválida"); btn.disabled = false; return; }
+
             const prod = products.find(p => p.id === pid);
             if(!prod) { btn.disabled = false; return; }
             if(prod.stock < qty) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
             
-            let sDoc = null, sDeduct = 0;
+            let sDoc = null;
+            let sDeduct = 0;
             if(prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if(!s) { alert("Error: Insumo vinculado no encontrado. Revise el producto."); btn.disabled = false; return; }
+                if(!s) { alert("Error: Insumo vinculado no encontrado."); btn.disabled = false; return; }
                 sDeduct = qty * (prod.supplyQty || 1); 
                 if(s.stock < sDeduct) { showConfirm("Error", `Falta insumo: ${s.name}`, null); btn.disabled = false; return; } 
                 sDoc = s; 
             }
 
             let loadTimestamp = serverTimestamp();
-            const adminDate = document.getElementById('truck-date-admin').value;
-            if(role === 'admin' && adminDate) {
-                loadTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
-            }
+            if(role === 'admin' && dateInput) loadTimestamp = Timestamp.fromDate(new Date(dateInput + 'T12:00:00'));
 
             try {
                 await runTransaction(db, async (t) => {
-                    const pRef = doc(db, "products", pid), pData = (await t.get(pRef)).data();
-                    if(pData.stock < qty) throw "Stock insuficiente";
-                    let sRef = null, sData = null;
-                    if(sDoc) { sRef = doc(db, "supplies", sDoc.id); sData = (await t.get(sRef)).data(); if(sData.stock < sDeduct) throw "Falta insumo"; }
+                    const pRef = doc(db, "products", pid);
+                    const pSnapshot = await t.get(pRef);
+                    if(!pSnapshot.exists()) throw "Producto no existe";
+                    const pData = pSnapshot.data();
+                    if(pData.stock < qty) throw "Stock insuficiente al procesar";
+                    
+                    let sRef = null;
+                    let sData = null;
+                    if(sDoc) { 
+                        sRef = doc(db, "supplies", sDoc.id); 
+                        const sSnapshot = await t.get(sRef);
+                        sData = sSnapshot.data(); 
+                        if(sData.stock < sDeduct) throw "Falta insumo al procesar";
+                    }
                     
                     t.update(pRef, { stock: pData.stock - qty });
-                    if(sRef) t.update(sRef, { stock: sData.stock - sDeduct });
-                    t.set(doc(collection(db, "movements")), { type: "SALIDA_CAMION", product: prod.name, productId: pid, quantity: qty, supplyId: sDoc?.id||null, supplyQty: sDeduct, user: user.email, details: `Chofer: ${driver}`, timestamp: loadTimestamp });
-                });
-                toast("✅ Carga Registrada"); document.getElementById('form-truck-load').reset(); document.getElementById('truck-supply-info').innerHTML = '';
-                document.getElementById('truck-date-admin').value = '';
-            } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
-        });
+                    if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
 
-        window.renderTruckLoads = () => {
-            const tb = document.querySelector('#table-truck-loads tbody'); tb.innerHTML = '';
-            const dateVal = document.getElementById('truck-date-filter').value;
-            const loads = movements.filter(m => m.type === 'SALIDA_CAMION' && isDateMatch(m.timestamp, dateVal));
-            
-            if(loads.length===0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin cargas esa fecha.</td></tr>'; return; }
-            loads.forEach(m => {
-                const btn = (role === 'admin' || role === 'vendedor') ? `<button onclick="undoTruckLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px;"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
-                tb.innerHTML += `<tr><td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td><td style="font-size:0.8rem">${m.details.replace('Chofer: ', '')}</td><td style="font-size:0.8rem">${m.product}</td><td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td><td>${btn}</td></tr>`;
-            }); feather.replace();
+                    t.set(doc(collection(db, "movements")), { 
+                        type: type, 
+                        product: prod.name, 
+                        productId: pid, 
+                        quantity: qty, 
+                        supplyId: sDoc?.id||null, 
+                        supplyQty: sDeduct, 
+                        user: user.email, 
+                        details: detail, 
+                        timestamp: loadTimestamp 
+                    });
+                });
+                toast("✅ Registrado con éxito"); 
+                document.getElementById(formId).reset(); 
+                document.getElementById(isTruck ? 'truck-supply-info' : 'pack-supply-info').innerHTML = '';
+            } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
         }
 
-        window.undoTruckLoad = async (id) => {
+        document.getElementById('form-truck-load').addEventListener('submit', (e) => processOutput(e, 'SALIDA_CAMION'));
+        document.getElementById('form-pack-load').addEventListener('submit', (e) => processOutput(e, 'SALIDA_ENVASADO'));
+
+        function renderGenericLoads(tableId, type, filterId) {
+            const tb = document.querySelector(`#${tableId} tbody`); tb.innerHTML = '';
+            const dateVal = document.getElementById(filterId).value;
+            const loads = movements.filter(m => m.type === type && isDateMatch(m.timestamp, dateVal));
+            
+            if(loads.length===0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin registros esa fecha.</td></tr>'; return; }
+            
+            const fragment = document.createDocumentFragment();
+            loads.forEach(m => {
+                const tr = document.createElement('tr');
+                const btn = (checkAdmin() || role === 'vendedor') ? `<button onclick="undoGenericLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px;"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
+                let details = m.details || '-';
+                if(type === 'SALIDA_CAMION') details = details.replace('Chofer: ', '');
+                if(type === 'SALIDA_ENVASADO') details = details.replace('Lote: ', '');
+
+                tr.innerHTML = `<td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td><td style="font-size:0.8rem">${details}</td><td style="font-size:0.8rem">${m.product}</td><td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td><td>${btn}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
+        }
+
+        window.renderTruckLoads = () => renderGenericLoads('table-truck-loads', 'SALIDA_CAMION', 'truck-date-filter');
+        window.renderPackLoads = () => renderGenericLoads('table-pack-loads', 'SALIDA_ENVASADO', 'pack-date-filter');
+
+        window.undoGenericLoad = async (id) => {
+            if(!checkAdmin()) return;
             const m = movements.find(x => x.id === id); if(!m) return;
-            showConfirm("¿Anular Carga?", "Se devolverá el stock.", async () => {
+            const msg = m.type === 'SALIDA_CAMION' ? 'Anular Carga' : 'Anular Envasado';
+            
+            showConfirm(msg, "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        let pRef = null, pData = null;
-                        let sRef = null, sData = null;
+                        let pData = null, pRef = null;
+                        let sData = null, sRef = null;
 
                         if(m.productId) {
                             pRef = doc(db, "products", m.productId);
-                            const pDoc = await t.get(pRef);
-                            if(pDoc.exists()) pData = pDoc.data();
+                            const pSnapshot = await t.get(pRef);
+                            if(pSnapshot.exists()) pData = pSnapshot.data();
                         }
-
                         if(m.supplyId) {
                             sRef = doc(db, "supplies", m.supplyId);
-                            const sDoc = await t.get(sRef);
-                            if(sDoc.exists()) sData = sDoc.data();
+                            const sSnapshot = await t.get(sRef);
+                            if(sSnapshot.exists()) sData = sSnapshot.data();
                         }
 
-                        if(pRef && pData) {
-                            t.update(pRef, {stock: pData.stock + m.quantity});
-                        }
-                        if(sRef && sData) {
-                            t.update(sRef, {stock: sData.stock + (m.supplyQty||0)});
-                        }
+                        if(pRef && pData) t.update(pRef, {stock: pData.stock + m.quantity});
+                        if(sRef && sData) t.update(sRef, {stock: sData.stock + (m.supplyQty||0)});
                         
                         t.delete(doc(db, "movements", id));
+                        t.set(doc(collection(db, "movements")), { type: m.type === 'SALIDA_CAMION' ? 'ANULACION_CAMION' : 'ANULACION_ENVASADO', product: m.product, quantity: m.quantity, user: user.email, timestamp: serverTimestamp() });
                     }); 
-                    toast("✅ Anulado");
-                } catch(e){ 
-                    console.error(e);
-                    toast("Error: " + e.message); 
-                }
+                    toast("✅ Anulado Correctamente");
+                } catch(e){ console.error(e); toast("Error: " + e.message); }
             });
         };
 
+        // 3. REGISTRO DE VENTA
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
-            
             const pid = document.getElementById('sale-product').value;
             const qty = parseInt(document.getElementById('sale-qty').value) || 0;
             const prod = products.find(p => p.id === pid);
 
-            if (!prod || qty <= 0) return;
-            if (prod.stock < qty) { showConfirm("Stock Insuficiente", `Solo tienes ${prod.stock} unidades.`, null); return; }
+            if (!prod) return toast("Producto no válido");
+            if (qty <= 0) return toast("Cantidad debe ser mayor a 0");
+            if (prod.stock < qty) { showConfirm("Stock Insuficiente", `Stock actual: ${prod.stock}`, null); return; }
 
             btn.disabled = true;
 
             let sDoc = null, sDeduct = 0;
-            if (prod.supplyLink && prod.supplyLink !== "") {
+            if (prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
-                if (!s) { alert(`⚠️ ERROR: Insumo vinculado no existe. Revisa el producto.`); btn.disabled = false; return; }
+                if (!s) { alert(`⚠️ ERROR: Insumo vinculado no existe.`); btn.disabled = false; return; }
                 sDeduct = qty * (prod.supplyQty || 1);
-                if (s.stock < sDeduct) { showConfirm("Faltan Insumos", `No hay suficientes ${s.name}.`, null); btn.disabled = false; return; }
+                if (s.stock < sDeduct) { showConfirm("Faltan Insumos", `Falta: ${s.name}`, null); btn.disabled = false; return; }
                 sDoc = s;
             }
 
-            const totalPrice = qty * prod.price;
-            const totalCost = qty * prod.cost;
+            const totalPrice = qty * (prod.price || 0);
+            const totalCost = qty * (prod.cost || 0);
             const profit = totalPrice - totalCost;
 
             let saleTimestamp = serverTimestamp();
@@ -663,37 +787,51 @@
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid);
-                    const pData = (await t.get(pRef)).data();
-                    if (pData.stock < qty) throw "Stock insuficiente.";
+                    const pSnapshot = await t.get(pRef);
+                    if (!pSnapshot.exists()) throw "Producto no encontrado";
+                    const pData = pSnapshot.data();
+                    if (pData.stock < qty) throw "Stock cambió durante la venta.";
 
-                    let sRef = null;
+                    let sRef = null, sData = null;
                     if (sDoc) {
                         sRef = doc(db, "supplies", sDoc.id);
-                        const sData = (await t.get(sRef)).data();
+                        const sSnapshot = await t.get(sRef);
+                        if (!sSnapshot.exists()) throw "Insumo no encontrado";
+                        sData = sSnapshot.data();
                         if (sData.stock < sDeduct) throw `Falta insumo: ${sDoc.name}`;
-                        t.update(sRef, { stock: sData.stock - sDeduct });
+                    }
+
+                    let retRef = null, retData = null;
+                    if(prod.returnId) {
+                        retRef = doc(db, "products", prod.returnId);
+                        const retSnapshot = await t.get(retRef);
+                        if(retSnapshot.exists()) retData = retSnapshot.data();
                     }
 
                     t.update(pRef, { stock: pData.stock - qty });
+                    if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
 
                     let returnDetail = "";
-                    if(prod.returnId) {
-                        const retRef = doc(db, "products", prod.returnId);
-                        const retData = await t.get(retRef);
-                        if(retData.exists()) {
-                            t.update(retRef, { stock: (retData.data().stock || 0) + qty });
-                            returnDetail = ` (Recibido: ${retData.data().name})`;
-                        }
+                    if(retRef && retData) {
+                        t.update(retRef, { stock: (retData.stock || 0) + qty });
+                        returnDetail = ` + Envase`;
                     }
 
                     t.set(doc(collection(db, "sales")), {
                         product: prod.name + returnDetail, 
-                        pid: pid, qty_packs: qty, qty_total_units: qty,
-                        price: totalPrice, cost: totalCost, profit: profit,
+                        pid: pid, 
+                        qty_packs: qty, 
+                        qty_total_units: qty,
+                        price: totalPrice, 
+                        cost: totalCost, 
+                        profit: profit,
                         type: document.getElementById('sale-type').value,
                         obs: document.getElementById('sale-obs').value,
-                        user: user.email, timestamp: saleTimestamp,
-                        supplyUsed: sDoc ? sDoc.name : null, supplyId: sDoc ? sDoc.id : null, supplyQty: sDeduct,
+                        user: user.email, 
+                        timestamp: saleTimestamp,
+                        supplyUsed: sDoc ? sDoc.name : null, 
+                        supplyId: sDoc ? sDoc.id : null, 
+                        supplyQty: sDeduct,
                         returnId: prod.returnId || null
                     });
                 });
@@ -711,338 +849,393 @@
             }
         });
 
-        document.getElementById('form-expense').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const desc = document.getElementById('exp-desc').value;
-            const amount = parseFloat(document.getElementById('exp-amount').value);
-            const date = document.getElementById('exp-date').value;
-            try {
-                await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() });
-                document.getElementById('exp-desc').value = '';
-                document.getElementById('exp-amount').value = '';
-                toast("✅ Gasto registrado");
-            } catch(err) { toast("Error: Permisos insuficientes (Revisar Reglas Firebase)"); }
-        });
-
-        function renderExpenses() {
-            const tb = document.querySelector('#table-expenses tbody'); tb.innerHTML = '';
-            expenses.slice(0, 50).forEach(e => {
-                const btn = role === 'admin' ? `<button onclick="deleteExpense('${e.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
-                tb.innerHTML += `<tr><td>${e.date}</td><td>${e.desc}</td><td style="color:var(--danger); font-weight:bold;">${fmtMoney(e.amount)}</td><td>${e.user.split('@')[0]}</td><td>${btn}</td></tr>`;
-            }); feather.replace();
-        }
-
-        window.deleteExpense = async (id) => {
-            if(role!=='admin') return toast("⛔ Acción no permitida");
-            showConfirm("Borrar Gasto", "¿Estás seguro?", async () => {
-                await deleteDoc(doc(db, "expenses", id)); toast("🗑️ Eliminado");
-            });
-        };
-
-        // --- AUDITORÍA AVANZADA DETALLADA (LÓGICA CORREGIDA) ---
-        window.generateDetailedAudit = async () => {
-            const startVal = document.getElementById('audit-start').value;
-            const endVal = document.getElementById('audit-end').value;
-
-            if (!startVal || !endVal) return toast("⚠️ Selecciona Fecha Inicio y Fin");
-
-            const btn = document.querySelector("button[onclick='generateDetailedAudit()']");
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ Calculando...";
-            btn.disabled = true;
+        // 4. ANULACIÓN DE VENTA - ADMIN (MODO BÚSQUEDA)
+        window.loadAdminSalesByDate = async () => {
+            const dateVal = document.getElementById('admin-date-filter').value;
+            if(!dateVal) return;
+            
+            const btn = document.querySelector("button[onclick='loadAdminSalesByDate()']");
+            const originalText = btn.innerText; btn.innerText = "..."; btn.disabled = true;
 
             try {
-                const startDate = new Date(startVal + "T00:00:00");
-                const endDate = new Date(endVal + "T23:59:59");
-                const startTs = Timestamp.fromDate(startDate);
-                const endTs = Timestamp.fromDate(endDate);
-
-                // Consulta a la base de datos (Histórica)
-                const q = query(
-                    collection(db, "sales"),
-                    where("timestamp", ">=", startTs),
-                    where("timestamp", "<=", endTs)
-                );
-
-                const querySnapshot = await getDocs(q);
-                const salesList = querySnapshot.docs.map(d => d.data());
-
-                if (salesList.length === 0) {
-                    toast("⚠️ No hay ventas en ese rango.");
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    return;
-                }
-
-                const reportData = {};
-                let grandTotalSales = 0;
-                let grandTotalCost = 0;
-                let grandTotalProfit = 0;
-
-                salesList.forEach(s => {
-                    const prodName = s.product || "Desconocido";
-                    
-                    if (!reportData[prodName]) {
-                        reportData[prodName] = { qty: 0, revenue: 0, cost: 0, profit: 0, count: 0 };
-                    }
-
-                    // Sumar valores
-                    reportData[prodName].qty += (s.qty_total_units || s.qty_packs || 0);
-                    reportData[prodName].revenue += (s.price || 0);
-                    reportData[prodName].cost += (s.cost || 0);
-                    reportData[prodName].profit += (s.profit || 0);
-                    reportData[prodName].count += 1;
-
-                    grandTotalSales += (s.price || 0);
-                    grandTotalCost += (s.cost || 0);
-                    grandTotalProfit += (s.profit || 0);
-                });
-
-                const excelRows = [];
-                excelRows.push({ A: "REPORTE DE AUDITORÍA Y RENTABILIDAD" });
-                excelRows.push({ A: `Desde: ${startVal}  Hasta: ${endVal}` });
-                excelRows.push({}); 
-
-                excelRows.push({
-                    A: "PRODUCTO",
-                    B: "UNIDADES VENDIDAS",
-                    C: "TRANSACCIONES",
-                    D: "INGRESO TOTAL ($)",
-                    E: "COSTO TOTAL ($)",
-                    F: "GANANCIA NETA ($)",
-                    G: "MARGEN (%)"
-                });
-
-                Object.keys(reportData).sort().forEach(key => {
-                    const r = reportData[key];
-                    const margin = r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(2) + "%" : "0%";
-                    excelRows.push({
-                        A: key,
-                        B: r.qty,
-                        C: r.count,
-                        D: r.revenue,
-                        E: r.cost,
-                        F: r.profit,
-                        G: margin
-                    });
-                });
-
-                excelRows.push({});
-                excelRows.push({
-                    A: "TOTALES GENERALES:",
-                    B: "",
-                    C: salesList.length,
-                    D: grandTotalSales,
-                    E: grandTotalCost,
-                    F: grandTotalProfit,
-                    G: grandTotalSales > 0 ? ((grandTotalProfit/grandTotalSales)*100).toFixed(2)+"%" : ""
-                });
-
-                const ws = XLSX.utils.json_to_sheet(excelRows, { skipHeader: true });
-                const wscols = [{wch: 30}, {wch: 20}, {wch: 15}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 15}];
-                ws['!cols'] = wscols;
-
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Auditoria_Rentabilidad");
-                XLSX.writeFile(wb, `Auditoria_FuenteNueva_${startVal}_${endVal}.xlsx`);
-
-                toast("✅ Excel Generado con Éxito");
-
-            } catch (error) {
-                console.error(error);
-                toast("❌ Error al generar reporte: " + error.message);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+                const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00"));
+                const endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
+                
+                const q = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs), orderBy("timestamp", "desc"));
+                const snap = await getDocs(q);
+                const loadedSales = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                renderAdminSalesTable(loadedSales);
+            } catch(e) { toast("Error cargando ventas antiguas: " + e.message); } 
+            finally { btn.innerText = originalText; btn.disabled = false; }
         };
 
-        window.exportSales = () => generateSalesExcel(sales.filter(s => isToday(s.timestamp)), "Ventas_Hoy");
-        window.exportSalesMonthly = () => generateSalesExcel(sales.filter(s => isCurrentMonth(s.timestamp)), "Ventas_Mes");
-        function generateSalesExcel(list, name) {
-            if(!list.length) return toast("⚠️ Sin datos");
-            const data = list.map(s => ({ Fecha: fmtDate(s.timestamp), Producto: s.product, Packs: s.qty_packs, Total_Unid: s.qty_total_units, Total: s.price, Pago: s.type, Obs: s.obs, User: s.user }));
-            const cash = list.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0), transf = list.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
-            data.push({}); data.push({Fecha: "RESUMEN", Total: cash + transf}); data.push({Fecha: "EFECTIVO", Total: cash}); data.push({Fecha: "TRANSF", Total: transf});
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Ventas"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
-        }
-
-        window.renderAdminSalesTable = () => {
+        window.renderAdminSalesTable = (dataList = null) => {
+            const list = dataList || sales; // Si no paso lista específica, usa la local
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
-            const dateVal = document.getElementById('admin-date-filter').value; 
-            const filtered = sales.filter(s => isDateMatch(s.timestamp, dateVal)); 
+            
+            // Si usamos lista local, filtramos. Si es lista traida de BD (dataList), ya viene filtrada.
+            const dateVal = document.getElementById('admin-date-filter').value;
+            const filtered = dataList ? list : list.filter(s => isDateMatch(s.timestamp, dateVal)); 
 
-            if(filtered.length === 0) { 
-                tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas en esta fecha.</td></tr>'; 
-                return; 
-            }
+            if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas encontradas. Dale a "Buscar" si es fecha antigua.</td></tr>'; return; }
 
+            const fragment = document.createDocumentFragment();
             filtered.forEach(s => {
-                tb.innerHTML += `<tr><td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${s.user || 'Anon'}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td></tr>`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${getUserName(s.user)}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td>`;
+                fragment.appendChild(tr);
             }); 
+            tb.appendChild(fragment);
             feather.replace();
         }
 
         window.deleteSale = async (id) => {
-            if (role !== 'admin') return toast("❌ Solo admin.");
-            const s = sales.find(x => x.id === id); if(!s) return;
-            showConfirm("¿Anular Venta?", "Se repondrá stock de producto e insumos.", async () => {
+            if (!checkAdmin()) return;
+            showConfirm("¿Anular Venta?", "Se repondrá stock. Se descontará envase.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        let pRef = null, pStock = 0; let targetProdId = s.pid;
-                        if(!targetProdId) { const found = products.find(p => p.name === s.product); if(found) targetProdId = found.id; }
-                        if(targetProdId) { pRef = doc(db, "products", targetProdId); const d = await t.get(pRef); if(d.exists()) pStock = d.data().stock; }
+                        // Primero leemos la venta para saber qué devolver
+                        const saleRef = doc(db, "sales", id);
+                        const saleSnap = await t.get(saleRef);
+                        if (!saleSnap.exists()) throw "Venta no encontrada";
+                        const s = saleSnap.data();
+
+                        let pData = null, pRef = null;
+                        let sData = null, sRef = null;
+                        let retData = null, retRef = null;
+
+                        if(s.pid) {
+                            pRef = doc(db, "products", s.pid);
+                            const pSnap = await t.get(pRef);
+                            if(pSnap.exists()) pData = pSnap.data();
+                        }
                         
-                        let sRef = null, sStock = 0;
-                        if(s.supplyQty && s.supplyQty > 0) {
-                            let targetSupplyId = s.supplyId;
-                            if (!targetSupplyId && s.supplyUsed) { const foundS = supplies.find(x => x.name === s.supplyUsed); if(foundS) targetSupplyId = foundS.id; }
-                            if (targetSupplyId) { sRef = doc(db, "supplies", targetSupplyId); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; }
+                        if(s.supplyId) {
+                            sRef = doc(db, "supplies", s.supplyId);
+                            const sSnap = await t.get(sRef);
+                            if(sSnap.exists()) sData = sSnap.data();
                         }
                         
                         if(s.returnId) {
-                             const retRef = doc(db, "products", s.returnId);
-                             const retData = await t.get(retRef);
-                             if(retData.exists()) {
-                                 t.update(retRef, { stock: retData.data().stock - (s.qty_packs||0) });
-                             }
+                            retRef = doc(db, "products", s.returnId);
+                            const retSnap = await t.get(retRef);
+                            if(retSnap.exists()) retData = retSnap.data();
                         }
 
-                        if(pRef) t.update(pRef, {stock: pStock + (s.qty_total_units||0)});
-                        if(sRef) t.update(sRef, {stock: sStock + (s.supplyQty||0)});
-                        t.delete(doc(db, "sales", id));
+                        if(pRef && pData) t.update(pRef, {stock: pData.stock + (s.qty_total_units||0)});
+                        if(sRef && sData) t.update(sRef, {stock: sData.stock + (s.supplyQty||0)});
+                        
+                        if(retRef && retData) {
+                            const current = retData.stock || 0;
+                            t.update(retRef, { stock: current - (s.qty_packs||0) });
+                        }
+                        
+                        t.delete(saleRef);
                         t.set(doc(collection(db, "movements")), { type: "ANULACION_VENTA", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
-                    }); toast("✅ Venta Anulada");
+                    }); 
+                    toast("✅ Venta Anulada");
+                    loadAdminSalesByDate(); // Recargar la tabla
                 } catch(e) { toast("Error al anular: " + e.message); }
             });
         };
 
-        window.productForm = document.getElementById('form-product');
-        window.productForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); if(role !== 'admin') return toast("❌ Acceso denegado");
-            const id = document.getElementById('prod-id').value, name = document.getElementById('prod-name').value;
-            const data = { 
-                name, 
-                price: parseFloat(document.getElementById('prod-price').value), 
-                cost: parseFloat(document.getElementById('prod-cost').value), 
-                min: parseInt(document.getElementById('prod-min').value), 
-                supplyLink: document.getElementById('prod-supply-link').value||null, 
-                supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0,
-                returnId: document.getElementById('prod-return-link').value||null 
+        // --- GESTIÓN DE PRODUCTOS E INSUMOS ---
+        function updateSelects() {
+            const updateSelect = (id, hasStock) => {
+                const el = document.getElementById(id); if(!el) return;
+                const currentVal = el.value;
+                el.innerHTML = '<option value="">Seleccionar...</option>';
+                products.forEach(p => {
+                    el.innerHTML += `<option value="${p.id}">${p.name} ${hasStock ? `(Stock: ${Math.floor(p.stock)})` : ''}</option>`;
+                });
+                if(currentVal) el.value = currentVal; 
             };
-            try {
-                if(id) await updateDoc(doc(db,"products",id), data);
-                else { await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value), createdAt: serverTimestamp()}); }
-                resetProdForm(); toast("✅ Guardado");
-            } catch(e) { toast("Error"); }
-        });
+            
+            updateSelect('sale-product', true);
+            updateSelect('truck-product', true);
+            updateSelect('pack-product', true);
 
-        function renderDailySummary() {
-            const filterDate = document.getElementById('sales-date-filter').value;
-            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
-            let total = 0, cash = 0, transfer = 0, prodCounts = {};
-            filteredSales.forEach(s => {
-                total += s.price;
-                if(s.type === 'Efectivo') cash += s.price; else transfer += s.price;
-                prodCounts[s.product] = (prodCounts[s.product] || 0) + s.qty_packs;
-            });
-            let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;"><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div></div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
-            for(const [p, c] of Object.entries(prodCounts)) html += `<li style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:var(--gray)">${p}</span><b>${c}</b></li>`;
-            html += `</ul><div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">Total: ${fmtMoney(total)}</div></div>`;
-            document.getElementById('daily-summary').innerHTML = html;
+            const sRet = document.getElementById('prod-return-link');
+            if(sRet) {
+                const current = sRet.value;
+                sRet.innerHTML = '<option value="">-- Ninguno --</option>';
+                products.forEach(p => sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+                if(current) sRet.value = current;
+            }
+        }
+        
+        function updateSupplySelect() {
+            const s = document.getElementById('prod-supply-link');
+            const current = s.value;
+            s.innerHTML = '<option value="">-- Ninguno --</option>'; 
+            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`);
+            if(current) s.value = current;
         }
 
         window.updateSaleForm = () => {
             const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value)||0;
             const prod = products.find(p => p.id === pid); if(!prod) return;
-            document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price);
-            document.getElementById('sale-total').textContent = fmtMoney(qty * prod.price);
+            document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price || 0);
+            document.getElementById('sale-total').textContent = fmtMoney(qty * (prod.price || 0));
         };
+
+        document.getElementById('form-product').addEventListener('submit', async (e) => {
+            e.preventDefault(); if(!checkAdmin()) return;
+            const id = document.getElementById('prod-id').value;
+            const data = { 
+                name: document.getElementById('prod-name').value, 
+                price: parseFloat(document.getElementById('prod-price').value) || 0, 
+                cost: parseFloat(document.getElementById('prod-cost').value) || 0, 
+                min: parseInt(document.getElementById('prod-min').value) || 0, 
+                supplyLink: document.getElementById('prod-supply-link').value||null, 
+                supplyQty: parseFloat(document.getElementById('prod-supply-qty').value)||0,
+                returnId: document.getElementById('prod-return-link').value||null 
+            };
+            try {
+                if(id) await updateDoc(doc(db,"products",id), data);
+                else await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value) || 0, createdAt: serverTimestamp()});
+                resetProdForm(); toast("✅ Producto Guardado");
+            } catch(e) { toast("Error: " + e.message); }
+        });
 
         function renderProducts() {
             const tb = document.querySelector('#table-products tbody'); tb.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             products.forEach(p => {
+                const tr = document.createElement('tr');
                 let supplyInfo = '<span style="color:#cbd5e1">-</span>';
                 if (p.supplyLink) {
                     const s = supplies.find(x => x.id === p.supplyLink);
                     supplyInfo = s ? `<span style="font-size:0.8rem; color:var(--truck);"><i data-feather="link" style="width:10px"></i> ${s.name} <b>(x${p.supplyQty || 1})</b></span>` : `<span style="color:var(--danger); font-size:0.8rem;">⚠️ Vínculo Roto</span>`;
                 }
-                
-                let returnInfo = '<span style="color:#cbd5e1">-</span>';
-                if (p.returnId) {
-                    const r = products.find(x => x.id === p.returnId);
-                    returnInfo = r ? `<span style="font-size:0.8rem; color:var(--success);"><i data-feather="corner-down-left" style="width:10px"></i> ${r.name}</span>` : '-';
-                }
-
+                let returnInfo = p.returnId ? `<span style="font-size:0.8rem; color:var(--success);"><i data-feather="corner-down-left" style="width:10px"></i> Retorno</span>` : '-';
                 const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
-                tb.innerHTML += `<tr><td>${p.name}</td><td>${fmtMoney(p.price)}</td><td style="font-weight:bold">${p.stock}</td><td>${supplyInfo}</td><td>${returnInfo}</td><td>${editBtn}</td></tr>`;
-            }); feather.replace();
-        }
-        
-        function updateSelects() {
-            const s1 = document.getElementById('sale-product'), s2 = document.getElementById('truck-product'); 
-            const sRet = document.getElementById('prod-return-link'); 
-            s1.innerHTML = '<option value="">Seleccionar...</option>'; 
-            if(s2) s2.innerHTML = '<option value="">Seleccionar...</option>'; 
-            if(sRet) sRet.innerHTML = '<option value="">-- Ninguno --</option>';
-            
-            products.forEach(p => { 
-                const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; 
-                s1.innerHTML += o; 
-                if(s2) s2.innerHTML += o; 
-                if(sRet) sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+                tr.innerHTML = `<td>${p.name}</td><td>${fmtMoney(p.price || 0)}</td><td style="font-weight:bold">${Math.floor(p.stock)}</td><td>${supplyInfo}</td><td>${returnInfo}</td><td>${editBtn}</td>`;
+                fragment.appendChild(tr);
             });
+            tb.appendChild(fragment);
+            feather.replace();
         }
-        
+
         window.editProd = (id) => { 
             const p = products.find(x=>x.id==id); if(!p) return;
-            document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; 
-            
-            const sel = document.getElementById('prod-supply-link'); 
-            const target = p.supplyLink||''; 
-            if(sel.options.length > 1) sel.value = target; else sel.dataset.pending = target; 
+            document.getElementById('prod-id').value=p.id; 
+            document.getElementById('prod-name').value=p.name; 
+            document.getElementById('prod-price').value=p.price; 
+            document.getElementById('prod-cost').value=p.cost||0; 
+            document.getElementById('prod-stock').value=p.stock; 
+            document.getElementById('prod-stock').disabled = true; 
+            document.getElementById('prod-min').value=p.min||0; 
+            document.getElementById('prod-supply-link').value = p.supplyLink||''; 
             document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
-
-            const selRet = document.getElementById('prod-return-link');
-            const targetRet = p.returnId || '';
-            selRet.value = targetRet;
+            document.getElementById('prod-return-link').value = p.returnId||'';
         };
 
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
-        
-        function updateSupplySelect() {
-            const s = document.getElementById('prod-supply-link'); const pending = s.dataset.pending || s.value;
-            s.innerHTML = '<option value="">-- Ninguno --</option>'; 
-            supplies.forEach(i => {
-                const opt = `<option value="${i.id}">${i.name}</option>`;
-                s.innerHTML += opt; 
-            });
-            if(pending) s.value = pending; delete s.dataset.pending;
-        }
 
+        // Insumos
         function renderSupplies() {
             const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             supplies.forEach(s => {
+                const tr = document.createElement('tr');
                 const btns = role === 'admin' ? `<div style="display:flex; gap:5px;"><button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button><button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button></div>` : '-';
-                tb.innerHTML += `<tr><td><b>${s.name}</b></td><td>${s.stock}</td><td>${s.stock<100?'⚠️':'OK'}</td><td>${btns}</td></tr>`;
-            }); feather.replace();
+                tr.innerHTML = `<td><b>${s.name}</b></td><td>${Math.floor(s.stock)}</td><td>${s.stock<20?'⚠️':'OK'}</td><td>${btns}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
         }
         
-        window.deleteSupply = async (id) => { if(role!=='admin') return; showConfirm("Borrar Insumo", "¿Estás seguro? Esto podría afectar productos vinculados.", async () => { await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Insumo Eliminado"); }); }
+        window.deleteSupply = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Insumo", "¿Seguro?", async () => { await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Insumo Eliminado"); }); }
         window.editSupply = (id) => { const s = supplies.find(x => x.id === id); if(!s) return; window.showSupplyForm(); document.getElementById('supp-id').value = s.id; document.getElementById('supp-name').value = s.name; document.getElementById('supp-stock').value = s.stock; document.getElementById('btn-save-supply').innerText = "Actualizar"; };
         window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); document.getElementById('form-supply').reset(); document.getElementById('supp-id').value = ''; document.getElementById('btn-save-supply').innerText = "Guardar"; };
         window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
-        document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('supp-id').value, name = document.getElementById('supp-name').value, stock = parseInt(document.getElementById('supp-stock').value); try { if(id) await updateDoc(doc(db,"supplies",id), {name, stock}); else await addDoc(collection(db,"supplies"), {name, stock, createdAt: serverTimestamp()}); hideSupplyForm(); toast("✅ Listo"); } catch(e){ toast("Error"); } });
-        
-        window.openRestock = (id, type) => { const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); document.getElementById('modal-prod-name').textContent = item.name; document.getElementById('restock-id').value = item.id; document.getElementById('restock-type').value = type; document.getElementById('modal-restock').classList.remove('hidden'); };
+        document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('supp-id').value, name = document.getElementById('supp-name').value, stock = parseInt(document.getElementById('supp-stock').value) || 0; try { if(id) await updateDoc(doc(db,"supplies",id), {name, stock}); else await addDoc(collection(db,"supplies"), {name, stock, createdAt: serverTimestamp()}); hideSupplyForm(); toast("✅ Listo"); } catch(e){ toast("Error"); } });
+
+        // Inventario y Movimientos
+        window.openRestock = (id, type) => { if(!checkAdmin()) return; const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); document.getElementById('modal-prod-name').textContent = item.name; document.getElementById('restock-id').value = item.id; document.getElementById('restock-type').value = type; document.getElementById('modal-restock').classList.remove('hidden'); };
         window.closeModal = () => document.getElementById('modal-restock').classList.add('hidden');
-        document.getElementById('form-restock').addEventListener('submit', async e => { e.preventDefault(); const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value, qty = parseInt(document.getElementById('restock-qty').value); const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); try { await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: (item.stock||0) + qty }); await addDoc(collection(db, "movements"), { type: "ENTRADA", product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() }); toast("✅ Stock Actualizado"); closeModal(); } catch(e) { toast("Error"); } });
+        document.getElementById('form-restock').addEventListener('submit', async e => { 
+            e.preventDefault(); 
+            const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value;
+            let qty = parseInt(document.getElementById('restock-qty').value) || 0;
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); 
+            try { 
+                await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: (item.stock||0) + qty }); 
+                await addDoc(collection(db, "movements"), { type: "ENTRADA", product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() }); 
+                toast("✅ Stock Actualizado"); closeModal(); 
+            } catch(e) { toast("Error"); } 
+        });
 
-        function renderInventory() { const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = ''; let crit=0; products.forEach(p => { const isLow = p.stock <= p.min; if(isLow) crit++; const btn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">+</button>` : '-'; tb.innerHTML += `<tr><td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${p.stock}</td><td>${isLow?'🔴':'🟢'}</td><td>${btn}</td></tr>`; }); document.getElementById('d-critical').textContent = crit; }
-        function renderMovements() { const tb = document.querySelector('#table-movements tbody'); tb.innerHTML=''; movements.slice(0,50).forEach(m => { const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px;"><i data-feather="trash-2" style="width:12px"></i></button>` : ''; tb.innerHTML += `<tr><td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product}</td><td>${m.quantity}</td><td>${btn}</td></tr>`; }); feather.replace(); }
-        window.deleteLog = async (id) => { if(role !== 'admin') return; showConfirm("Borrar", "¿Borrar registro historial?", async () => { await deleteDoc(doc(db, "movements", id)); toast("Borrado"); }); }
+        function renderInventory() { const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = ''; let crit=0; const fragment = document.createDocumentFragment(); products.forEach(p => { const isLow = p.stock <= (p.min || 0); if(isLow) crit++; const btn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">+</button>` : '-'; const tr = document.createElement('tr'); tr.innerHTML = `<td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${Math.floor(p.stock)}</td><td>${isLow?'🔴':'🟢'}</td><td>${btn}</td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); document.getElementById('d-critical').textContent = crit; }
+        function renderMovements() { const tb = document.querySelector('#table-movements tbody'); tb.innerHTML=''; const fragment = document.createDocumentFragment(); movements.slice(0,50).forEach(m => { const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px;"><i data-feather="trash-2" style="width:12px"></i></button>` : ''; const tr = document.createElement('tr'); tr.innerHTML = `<td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product}</td><td>${m.quantity}</td><td>${btn}</td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); feather.replace(); }
+        window.deleteLog = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar", "¿Borrar registro historial?", async () => { await deleteDoc(doc(db, "movements", id)); toast("Borrado"); }); }
 
-        function renderPending(list) { const tb = document.querySelector('#table-pending tbody'); tb.innerHTML=''; list.forEach(i => { tb.innerHTML += `<tr><td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td></tr>`; }); }
+        // Gastos
+        function renderExpenses() {
+            const tb = document.querySelector('#table-expenses tbody'); tb.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            expenses.slice(0, 50).forEach(e => {
+                const tr = document.createElement('tr');
+                const btn = role === 'admin' ? `<button onclick="deleteExpense('${e.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
+                tr.innerHTML = `<td>${e.date}</td><td>${e.desc}</td><td style="color:var(--danger); font-weight:bold;">${fmtMoney(e.amount || 0)}</td><td>${getUserName(e.user)}</td><td>${btn}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
+        }
+        document.getElementById('form-expense').addEventListener('submit', async (e) => { e.preventDefault(); const desc = document.getElementById('exp-desc').value; const amount = parseFloat(document.getElementById('exp-amount').value) || 0; const date = document.getElementById('exp-date').value; try { await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() }); document.getElementById('exp-desc').value = ''; document.getElementById('exp-amount').value = ''; toast("✅ Gasto registrado"); } catch(err) { toast("Error: Permisos insuficientes"); } });
+        window.deleteExpense = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Gasto", "¿Seguro?", async () => { await deleteDoc(doc(db, "expenses", id)); toast("🗑️ Eliminado"); }); };
+
+        // --- REPORTES AUDITORÍA ---
+        window.generateDetailedAudit = async () => {
+            const startVal = document.getElementById('audit-start').value;
+            const endVal = document.getElementById('audit-end').value;
+            if (!startVal || !endVal) return toast("⚠️ Fechas requeridas");
+            if (new Date(startVal) > new Date(endVal)) return toast("⚠️ Rango de fechas inválido");
+
+            const btn = document.querySelector("button[onclick='generateDetailedAudit()']");
+            const originalText = btn.innerHTML; btn.innerHTML = "⏳ Generando..."; btn.disabled = true;
+
+            try {
+                const startTs = Timestamp.fromDate(new Date(startVal + "T00:00:00"));
+                const endTs = Timestamp.fromDate(new Date(endVal + "T23:59:59"));
+                const q = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs));
+                const snap = await getDocs(q);
+                const list = snap.docs.map(d => d.data());
+
+                if (list.length === 0) throw new Error("No hay ventas en ese rango.");
+
+                const report = {};
+                let grandSales = 0, grandCost = 0, grandProfit = 0;
+
+                list.forEach(s => {
+                    const k = s.product || "Desconocido";
+                    if (!report[k]) report[k] = { qty: 0, rev: 0, cost: 0, prof: 0, tx: 0 };
+                    report[k].qty += (s.qty_total_units || s.qty_packs || 0);
+                    report[k].rev += (s.price || 0);
+                    report[k].cost += (s.cost || 0);
+                    report[k].prof += (s.profit || 0);
+                    report[k].tx += 1;
+                    grandSales += (s.price || 0);
+                    grandCost += (s.cost || 0);
+                    grandProfit += (s.profit || 0);
+                });
+
+                const rows = [
+                    { A: "REPORTE AUDITORÍA" },
+                    { A: `Desde: ${startVal} Hasta: ${endVal}` },
+                    {},
+                    { A: "PRODUCTO", B: "CANTIDAD", C: "VENTAS ($)", D: "COSTO ($)", E: "GANANCIA ($)", F: "MARGEN %" }
+                ];
+
+                Object.keys(report).sort().forEach(k => {
+                    const r = report[k];
+                    const margin = r.rev > 0 ? ((r.prof / r.rev) * 100).toFixed(2) + "%" : "0%";
+                    rows.push({ A: k, B: r.qty, C: r.rev, D: r.cost, E: r.prof, F: margin });
+                });
+
+                rows.push({});
+                rows.push({ A: "TOTALES", C: grandSales, D: grandCost, E: grandProfit, F: grandSales > 0 ? ((grandProfit/grandSales)*100).toFixed(2)+"%" : "0%" });
+
+                const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+                XLSX.writeFile(wb, `Auditoria_${today()}.xlsx`);
+                toast("✅ Excel descargado");
+
+            } catch (error) { toast("❌ " + error.message); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
+        };
+
+        window.exportSales = () => {
+            const startVal = document.getElementById('export-start').value;
+            const endVal = document.getElementById('export-end').value;
+
+            if(!startVal || !endVal) return toast("⚠️ Seleccione ambas fechas");
+            if(startVal > endVal) return toast("⚠️ Fecha inicio mayor a fin");
+
+            // 1. Filtrar Ventas (Local si posible, pero idealmente debería ser consulta)
+            // Para mantener simpleza, usamos local 'sales' (limitado) advirtiendo, o podemos hacer fetch.
+            // Para exportación real, es mejor usar la data en memoria si asumimos que es reciente, 
+            // OJO: Si quieres exportar mes pasado, esto fallará con la limitación de 300.
+            // MEJORA: Avisar al usuario.
+            
+            const listSales = sales.filter(s => {
+                if(!s.timestamp) return false;
+                const sDate = getLocalYMD(new Date(s.timestamp.seconds * 1000));
+                return sDate >= startVal && sDate <= endVal;
+            });
+
+            const listExpenses = expenses.filter(e => {
+                return e.date >= startVal && e.date <= endVal;
+            });
+
+            if(!listSales.length && !listExpenses.length) return toast(`Sin movimientos RECIENTES en memoria. Usa Auditoría para fechas antiguas.`);
+
+            const totalCash = listSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+(b.price||0),0);
+            const totalTransf = listSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+(b.price||0),0);
+            const totalSales = totalCash + totalTransf;
+            const totalExp = listExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
+            const totalNet = totalSales - totalExp;
+
+            const data = [];
+            listSales.forEach(s => {
+                data.push({
+                    Fecha: fmtDate(s.timestamp),
+                    Tipo: "VENTA",
+                    Concepto: s.product,
+                    Metodo: s.type,
+                    Ingreso: s.price || 0,
+                    Egreso: 0,
+                    Usuario: getUserName(s.user)
+                });
+            });
+
+            if(listExpenses.length > 0) {
+                data.push({}); 
+                data.push({ Concepto: "--- DETALLE DE GASTOS ---" });
+            }
+
+            listExpenses.forEach(e => {
+                data.push({
+                    Fecha: e.date,
+                    Tipo: "GASTO",
+                    Concepto: e.desc,
+                    Metodo: "-",
+                    Ingreso: 0,
+                    Egreso: e.amount || 0,
+                    Usuario: getUserName(e.user)
+                });
+            });
+
+            data.push({});
+            data.push({});
+            data.push({ Concepto: "--- RESUMEN DE CAJA ---" });
+            data.push({ Concepto: "VENTAS EFECTIVO", Ingreso: totalCash });
+            data.push({ Concepto: "VENTAS TRANSFERENCIA", Ingreso: totalTransf });
+            data.push({ Concepto: "TOTAL VENTAS", Ingreso: totalSales });
+            data.push({ Concepto: "TOTAL GASTOS", Egreso: totalExp });
+            data.push({ Concepto: "TOTAL NETO (GANANCIA)", Ingreso: totalNet });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wscols = [{wch: 20}, {wch: 10}, {wch: 30}, {wch: 15}, {wch: 12}, {wch: 12}, {wch: 15}];
+            ws['!cols'] = wscols;
+            const wb = XLSX.utils.book_new(); 
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja"); 
+            XLSX.writeFile(wb, `Reporte_${startVal}_a_${endVal}.xlsx`);
+        };
+
+        window.exportInventory = () => {
+            const data = products.map(p => ({ Producto: p.name, Stock: Math.floor(p.stock), Costo: p.cost, ValorTotal: p.stock * (p.cost||0) }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Stock"); XLSX.writeFile(wb, `Inventario_${today()}.xlsx`);
+        };
+
+        // --- EXTRAS ---
+        function renderPending(list) { const tb = document.querySelector('#table-pending tbody'); tb.innerHTML=''; const fragment = document.createDocumentFragment(); list.forEach(i => { const tr=document.createElement('tr'); tr.innerHTML = `<td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total || 0)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); }
         window.payPending = async (id) => { showConfirm("Cobro", "¿Pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); };
         
         window.showConfirm = (t, m, c) => { document.getElementById('confirm-title').innerText=t; document.getElementById('confirm-msg').innerText=m; document.getElementById('modal-confirm').classList.remove('hidden'); const b=document.getElementById('confirm-yes-btn'); const n=b.cloneNode(true); b.parentNode.replaceChild(n, b); if(c){ n.onclick=()=>{ c(); document.getElementById('modal-confirm').classList.add('hidden'); }; } };
@@ -1055,11 +1248,7 @@
         document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); document.getElementById('tab-register').style.background='white'; document.getElementById('tab-login').style.background='transparent'; };
         document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
         document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{ email:c.user.email, role:document.getElementById('r-role').value, name:document.getElementById('r-name').value }); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
-        document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value), date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
-        
-        window.exportInventory = () => saveExcel(products.map(p=>({Producto:p.name, Stock:p.stock, Costo:p.cost})), "Inventario");
-        window.exportMovements = () => saveExcel(movements.map(m=>({Fecha:fmtDate(m.timestamp), Tipo:m.type, Prod:m.product, Cant:m.quantity})), "Auditoria");
-        function saveExcel(json, name) { const ws = XLSX.utils.json_to_sheet(json); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`); }
+        document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value)||0, date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
 
         feather.replace();
     </script>
