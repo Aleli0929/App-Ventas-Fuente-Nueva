@@ -325,35 +325,44 @@
             </div>
 
             <div id="page-reportes" class="page hidden">
-                <div class="card" style="border-top: 4px solid var(--warning);">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3><i data-feather="shield-off"></i> Anulaciones</h3>
-                        <div class="flex items-center gap-2">
-                            <small class="text-gray-500">Filtrar por fecha:</small>
-                            <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem; border-radius:6px; border:1px solid #ccc;" onchange="renderAdminSalesTable()">
+                <div class="card" style="border-top: 4px solid var(--primary);">
+                    <h3 style="color:var(--dark); display:flex; align-items:center; gap:10px;">
+                        <i data-feather="pie-chart"></i> Auditoría de Rentabilidad y Productos
+                    </h3>
+                    <p style="color:var(--gray); margin-bottom:1rem; font-size:0.9rem;">
+                        Genera un reporte detallado de unidades vendidas, ingresos totales y ganancia neta real por producto en un rango de fechas.
+                    </p>
+                    
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; align-items:end;">
+                            <div><label>Fecha Inicio</label><input type="date" id="audit-start"></div>
+                            <div><label>Fecha Fin</label><input type="date" id="audit-end"></div>
+                            <button onclick="generateDetailedAudit()" class="btn btn-blue" style="height: 42px;">
+                                <i data-feather="download"></i> Descargar Auditoría Excel
+                            </button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3><i data-feather="archive"></i> Descargas Rápidas</h3>
+                    <div class="grid-4">
+                        <button onclick="exportSales()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;">
+                            <i data-feather="calendar"></i> Ventas de Hoy
+                        </button>
+                        <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;">
+                            <i data-feather="box"></i> Inventario Actual
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-top: 4px solid var(--warning); margin-top:1.5rem;">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3><i data-feather="shield-off"></i> Historial de Anulaciones</h3>
+                        <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem;" onchange="renderAdminSalesTable()">
                     </div>
                     <div class="table-container" style="max-height: 300px; overflow-y:auto;">
                         <table id="table-sales-admin"><thead><tr><th>Fecha</th><th>Producto</th><th>Obs.</th><th>Total</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3><i data-feather="download-cloud"></i> Descargas y Contabilidad</h3>
-                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
-                        <h4 style="margin-bottom:1rem; color:var(--primary);">📊 Reporte Contable Personalizado</h4>
-                        <div style="display:flex; gap:1rem; align-items:end; flex-wrap:wrap;">
-                            <div><label>Fecha Inicio</label><input type="date" id="rpt-start"></div>
-                            <div><label>Fecha Fin</label><input type="date" id="rpt-end"></div>
-                            <button onclick="exportCustomRange()" class="btn btn-primary" style="background:var(--dark); color:white; min-width:180px;"><i data-feather="file-text"></i> Descargar Balance</button>
-                        </div>
-                    </div>
-
-                    <h4 style="margin-bottom:1rem; color:var(--gray);">Descargas Rápidas</h4>
-                    <div class="grid-4">
-                        <button onclick="exportSales()" class="btn btn-blue" style="flex-direction:column; padding:1.5rem;"><i data-feather="calendar"></i> Ventas Hoy</button>
-                        <button onclick="exportSalesMonthly()" class="btn btn-green" style="flex-direction:column; padding:1.5rem;"><i data-feather="grid"></i> Ventas Mes</button>
-                        <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="box"></i> Inventario</button>
-                        <button onclick="exportMovements()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;"><i data-feather="activity"></i> Auditoría</button>
                     </div>
                 </div>
             </div>
@@ -363,7 +372,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47", measurementId: "G-8NGS5XH8K6" };
         const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
@@ -380,7 +389,6 @@
 
         const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
         
-        // --- FECHA SEGURA (BLINDAJE CONTRA ERRORES) ---
         const fmtDate = (ts) => {
             if (!ts) return '--';
             try {
@@ -392,7 +400,6 @@
         const isDateMatch = (ts, dateStrInput) => {
             if (!ts) return false;
             try {
-                // Soporte para Timestamp de Firestore
                 if(ts.seconds) {
                     const d = new Date(ts.seconds * 1000);
                     return getLocalYMD(d) === dateStrInput;
@@ -430,13 +437,14 @@
                 document.getElementById('exp-date').value = t;
                 document.getElementById('admin-date-filter').value = t; 
                 
-                document.getElementById('rpt-start').value = t.substring(0, 7) + '-01'; 
-                document.getElementById('rpt-end').value = t;
+                // Inicializar fechas de auditoría
+                document.getElementById('audit-start').value = t.substring(0, 7) + '-01'; 
+                document.getElementById('audit-end').value = t;
 
                 initListeners();
                 nav('dashboard');
                 
-                console.log("Sistema actualizado: Versión Rápida + Filtro.");
+                console.log("Sistema actualizado: Auditoría Avanzada Activada.");
                 toast("✅ Sistema Seguro Activo");
 
             } else {
@@ -449,7 +457,6 @@
         function initListeners() {
             onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { products = sn.docs.map(d => ({id: d.id, ...d.data()})); renderProducts(); renderInventory(); updateSelects(); });
             
-            // Renderizamos productos de nuevo cuando llegan los insumos
             onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
                 supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
                 renderSupplies(); 
@@ -457,7 +464,6 @@
                 renderProducts(); 
             });
             
-            // --- OPTIMIZACIÓN: Limitamos a las últimas 300 ventas para velocidad ---
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(300)), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
                 refreshSalesView(); 
@@ -497,7 +503,6 @@
             renderDailySummary();
         };
 
-        // --- FUNCIÓN AGREGADA: PINTAR TABLA DE VENTAS ---
         window.renderSalesTable = () => {
             const tb = document.querySelector('#table-sales tbody');
             if(!tb) return;
@@ -527,7 +532,6 @@
                 tb.innerHTML += row;
             });
         };
-        // ------------------------------------------------
 
         window.updateTruckInfo = () => {
             const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
@@ -626,7 +630,6 @@
             });
         };
 
-        // --- LÓGICA DE VENTA CON AUTOMATIZACIÓN DE RETORNO (VÁLVULA -> BOTELLÓN) ---
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-sale');
@@ -640,7 +643,6 @@
 
             btn.disabled = true;
 
-            // Insumos de la Venta (Válvula)
             let sDoc = null, sDeduct = 0;
             if (prod.supplyLink && prod.supplyLink !== "") {
                 const s = supplies.find(x => x.id === prod.supplyLink);
@@ -664,7 +666,6 @@
                     const pData = (await t.get(pRef)).data();
                     if (pData.stock < qty) throw "Stock insuficiente.";
 
-                    // 1. Descontar Insumo Vinculado
                     let sRef = null;
                     if (sDoc) {
                         sRef = doc(db, "supplies", sDoc.id);
@@ -673,22 +674,18 @@
                         t.update(sRef, { stock: sData.stock - sDeduct });
                     }
 
-                    // 2. Descontar Producto Vendido
                     t.update(pRef, { stock: pData.stock - qty });
 
-                    // 3. RETORNO AUTOMÁTICO (MAGIA)
                     let returnDetail = "";
                     if(prod.returnId) {
                         const retRef = doc(db, "products", prod.returnId);
                         const retData = await t.get(retRef);
                         if(retData.exists()) {
-                            // Sumamos el stock del producto de retorno
                             t.update(retRef, { stock: (retData.data().stock || 0) + qty });
                             returnDetail = ` (Recibido: ${retData.data().name})`;
                         }
                     }
 
-                    // 4. Registrar Venta
                     t.set(doc(collection(db, "sales")), {
                         product: prod.name + returnDetail, 
                         pid: pid, qty_packs: qty, qty_total_units: qty,
@@ -697,7 +694,7 @@
                         obs: document.getElementById('sale-obs').value,
                         user: user.email, timestamp: saleTimestamp,
                         supplyUsed: sDoc ? sDoc.name : null, supplyId: sDoc ? sDoc.id : null, supplyQty: sDeduct,
-                        returnId: prod.returnId || null // Guardamos qué se devolvió para anular si es necesario
+                        returnId: prod.returnId || null
                     });
                 });
 
@@ -714,7 +711,6 @@
             }
         });
 
-        // --- GASTOS ---
         document.getElementById('form-expense').addEventListener('submit', async (e) => {
             e.preventDefault();
             const desc = document.getElementById('exp-desc').value;
@@ -743,48 +739,122 @@
             });
         };
 
-        // --- EXPORTACIÓN AVANZADA ---
-        window.exportCustomRange = () => {
-            const start = document.getElementById('rpt-start').value;
-            const end = document.getElementById('rpt-end').value;
-            if(!start || !end) return toast("⚠️ Selecciona ambas fechas");
+        // --- AUDITORÍA AVANZADA DETALLADA (LÓGICA CORREGIDA) ---
+        window.generateDetailedAudit = async () => {
+            const startVal = document.getElementById('audit-start').value;
+            const endVal = document.getElementById('audit-end').value;
 
-            const rSales = sales.filter(s => {
-                const d = getLocalYMD(new Date(s.timestamp.seconds*1000));
-                return d >= start && d <= end;
-            });
-            const rExpenses = expenses.filter(e => e.date >= start && e.date <= end);
-            if(rSales.length === 0 && rExpenses.length === 0) return toast("⚠️ Sin datos en este rango");
+            if (!startVal || !endVal) return toast("⚠️ Selecciona Fecha Inicio y Fin");
 
-            const totalCash = rSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+b.price,0);
-            const totalTransf = rSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+b.price,0);
-            const totalIncome = totalCash + totalTransf;
-            const totalExp = rExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
-            const netProfit = totalIncome - totalExp;
+            const btn = document.querySelector("button[onclick='generateDetailedAudit()']");
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Calculando...";
+            btn.disabled = true;
 
-            const data = [];
-            data.push({A: "REPORTE CONTABLE", B: `Desde: ${start} Hasta: ${end}`});
-            data.push({}); 
-            data.push({A: "DETALLE DE VENTAS"});
-            data.push({A: "Fecha", B: "Producto", C: "Cantidad", D: "Monto", E: "Metodo", F: "Usuario"});
-            rSales.forEach(s => { data.push({ A: fmtDate(s.timestamp), B: s.product, C: s.qty_packs, D: s.price, E: s.type, F: s.user }); });
+            try {
+                const startDate = new Date(startVal + "T00:00:00");
+                const endDate = new Date(endVal + "T23:59:59");
+                const startTs = Timestamp.fromDate(startDate);
+                const endTs = Timestamp.fromDate(endDate);
 
-            data.push({}); data.push({A: "DETALLE DE GASTOS"});
-            data.push({A: "Fecha", B: "Descripción", C: "Monto", D: "Responsable"});
-            rExpenses.forEach(e => { data.push({ A: e.date, B: e.desc, C: parseFloat(e.amount), D: e.user }); });
+                // Consulta a la base de datos (Histórica)
+                const q = query(
+                    collection(db, "sales"),
+                    where("timestamp", ">=", startTs),
+                    where("timestamp", "<=", endTs)
+                );
 
-            data.push({}); data.push({}); data.push({A: "BALANCE FINAL DEL PERIODO"});
-            data.push({A: "CONCEPTOS", B: "TOTALES"});
-            data.push({A: "(+) Ventas Efectivo", B: totalCash});
-            data.push({A: "(+) Ventas Transferencia", B: totalTransf});
-            data.push({A: "(=) INGRESOS TOTALES", B: totalIncome});
-            data.push({A: "(-) GASTOS TOTALES", B: totalExp});
-            data.push({A: "(=) GANANCIA REAL", B: netProfit});
+                const querySnapshot = await getDocs(q);
+                const salesList = querySnapshot.docs.map(d => d.data());
 
-            const ws = XLSX.utils.json_to_sheet(data, {skipHeader: true});
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Balance_General");
-            XLSX.writeFile(wb, `Balance_${start}_al_${end}.xlsx`);
+                if (salesList.length === 0) {
+                    toast("⚠️ No hay ventas en ese rango.");
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+
+                const reportData = {};
+                let grandTotalSales = 0;
+                let grandTotalCost = 0;
+                let grandTotalProfit = 0;
+
+                salesList.forEach(s => {
+                    const prodName = s.product || "Desconocido";
+                    
+                    if (!reportData[prodName]) {
+                        reportData[prodName] = { qty: 0, revenue: 0, cost: 0, profit: 0, count: 0 };
+                    }
+
+                    // Sumar valores
+                    reportData[prodName].qty += (s.qty_total_units || s.qty_packs || 0);
+                    reportData[prodName].revenue += (s.price || 0);
+                    reportData[prodName].cost += (s.cost || 0);
+                    reportData[prodName].profit += (s.profit || 0);
+                    reportData[prodName].count += 1;
+
+                    grandTotalSales += (s.price || 0);
+                    grandTotalCost += (s.cost || 0);
+                    grandTotalProfit += (s.profit || 0);
+                });
+
+                const excelRows = [];
+                excelRows.push({ A: "REPORTE DE AUDITORÍA Y RENTABILIDAD" });
+                excelRows.push({ A: `Desde: ${startVal}  Hasta: ${endVal}` });
+                excelRows.push({}); 
+
+                excelRows.push({
+                    A: "PRODUCTO",
+                    B: "UNIDADES VENDIDAS",
+                    C: "TRANSACCIONES",
+                    D: "INGRESO TOTAL ($)",
+                    E: "COSTO TOTAL ($)",
+                    F: "GANANCIA NETA ($)",
+                    G: "MARGEN (%)"
+                });
+
+                Object.keys(reportData).sort().forEach(key => {
+                    const r = reportData[key];
+                    const margin = r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(2) + "%" : "0%";
+                    excelRows.push({
+                        A: key,
+                        B: r.qty,
+                        C: r.count,
+                        D: r.revenue,
+                        E: r.cost,
+                        F: r.profit,
+                        G: margin
+                    });
+                });
+
+                excelRows.push({});
+                excelRows.push({
+                    A: "TOTALES GENERALES:",
+                    B: "",
+                    C: salesList.length,
+                    D: grandTotalSales,
+                    E: grandTotalCost,
+                    F: grandTotalProfit,
+                    G: grandTotalSales > 0 ? ((grandTotalProfit/grandTotalSales)*100).toFixed(2)+"%" : ""
+                });
+
+                const ws = XLSX.utils.json_to_sheet(excelRows, { skipHeader: true });
+                const wscols = [{wch: 30}, {wch: 20}, {wch: 15}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 15}];
+                ws['!cols'] = wscols;
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Auditoria_Rentabilidad");
+                XLSX.writeFile(wb, `Auditoria_FuenteNueva_${startVal}_${endVal}.xlsx`);
+
+                toast("✅ Excel Generado con Éxito");
+
+            } catch (error) {
+                console.error(error);
+                toast("❌ Error al generar reporte: " + error.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         };
 
         window.exportSales = () => generateSalesExcel(sales.filter(s => isToday(s.timestamp)), "Ventas_Hoy");
@@ -797,10 +867,8 @@
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Ventas"); XLSX.writeFile(wb, `${name}_${today()}.xlsx`);
         }
 
-        // --- FILTRO DE ANULACIONES (NUEVO) ---
         window.renderAdminSalesTable = () => {
             const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
-            
             const dateVal = document.getElementById('admin-date-filter').value; 
             const filtered = sales.filter(s => isDateMatch(s.timestamp, dateVal)); 
 
@@ -832,7 +900,6 @@
                             if (targetSupplyId) { sRef = doc(db, "supplies", targetSupplyId); const d = await t.get(sRef); if(d.exists()) sStock = d.data().stock; }
                         }
                         
-                        // DEVOLUCIÓN DE RETORNO (Si se sumó botellón, se vuelve a restar)
                         if(s.returnId) {
                              const retRef = doc(db, "products", s.returnId);
                              const retData = await t.get(retRef);
@@ -861,7 +928,7 @@
                 min: parseInt(document.getElementById('prod-min').value), 
                 supplyLink: document.getElementById('prod-supply-link').value||null, 
                 supplyQty: parseInt(document.getElementById('prod-supply-qty').value)||0,
-                returnId: document.getElementById('prod-return-link').value||null // Guardamos el retorno automático
+                returnId: document.getElementById('prod-return-link').value||null 
             };
             try {
                 if(id) await updateDoc(doc(db,"products",id), data);
@@ -923,8 +990,6 @@
                 const o = `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`; 
                 s1.innerHTML += o; 
                 if(s2) s2.innerHTML += o; 
-                
-                // Para el retorno, usamos solo el nombre
                 if(sRet) sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`;
             });
         }
@@ -933,13 +998,11 @@
             const p = products.find(x=>x.id==id); if(!p) return;
             document.getElementById('prod-id').value=p.id; document.getElementById('prod-name').value=p.name; document.getElementById('prod-price').value=p.price; document.getElementById('prod-cost').value=p.cost||0; document.getElementById('prod-stock').value=p.stock; document.getElementById('prod-stock').disabled = true; document.getElementById('prod-min').value=p.min||0; 
             
-            // Insumos
             const sel = document.getElementById('prod-supply-link'); 
             const target = p.supplyLink||''; 
             if(sel.options.length > 1) sel.value = target; else sel.dataset.pending = target; 
             document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
 
-            // Retorno
             const selRet = document.getElementById('prod-return-link');
             const targetRet = p.returnId || '';
             selRet.value = targetRet;
