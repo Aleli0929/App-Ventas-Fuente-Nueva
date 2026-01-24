@@ -2,564 +2,1348 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AquaFlow | Distribución FN</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Fuente Nueva | Gestión Pro (Lógica Mixta)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCasobPpwYRqKYzVlUtqiedD_EFqtBrZ3Y&callback=initMap&libraries=geometry" async defer></script>
 
     <style>
         :root {
-            --primary: #0284c7; --primary-dark: #0369a1; 
-            --accent: #0ea5e9; --bg: #f1f5f9; --white: #ffffff;
-            --dark: #0f172a; --gray: #64748b; --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1); --radius: 12px;
+            --primary: #1e40af; --primary-light: #3b82f6; --dark: #0f172a; --gray: #64748b;
+            --bg: #f1f5f9; --white: #ffffff;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --truck: #0891b2; --pack: #7c3aed;
+            --radius: 12px; --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
-        body { background: var(--bg); color: var(--dark); height: 100vh; overflow: hidden; }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg); color: var(--dark); padding-bottom: 40px; }
         .hidden { display: none !important; }
-        .full-screen { width: 100%; height: 100%; position: absolute; top:0; left:0; }
-        .flex-col { display: flex; flex-direction: column; }
-        .flex-row { display: flex; align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-2 { gap: 0.5rem; }
-        
-        /* Botones y UI */
-        .btn { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-primary { background: var(--primary); }
-        .btn-success { background: var(--success); }
-        .btn-danger { background: var(--danger); }
-        .btn-warning { background: var(--warning); color: black; }
-        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.75rem; } .text-primary { color: var(--primary); }
+        .text-success { color: var(--success); font-weight: 700; } .text-danger { color: var(--danger); font-weight: 700; }
+        .admin-only { display: none; } 
 
-        input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; margin-bottom: 10px; font-size: 1rem; }
+        header { background: linear-gradient(135deg, var(--primary), var(--dark)); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+        .app-title { font-size: 1.5rem; font-weight: 700; }
+        nav { display: flex; gap: 0.5rem; margin-top: 1rem; overflow-x: auto; padding-bottom: 5px; }
+        nav a { text-decoration: none; color: rgba(255,255,255,0.7); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 500; white-space: nowrap; }
+        nav a.active { background: var(--white); color: var(--primary); font-weight: 700; }
         
-        /* Mapa y Paneles */
-        #map { width: 100%; height: 100%; z-index: 0; }
-        
-        .sidebar { 
-            position: absolute; top: 0; left: 0; bottom: 0; width: 380px; 
-            background: white; z-index: 10; padding: 20px; 
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; 
-            transform: translateX(0); transition: transform 0.3s;
-        }
-        @media(max-width: 768px) { 
-            .sidebar { width: 100%; height: 60%; bottom: 0; top: auto; border-radius: 20px 20px 0 0; transform: translateY(0); } 
-            .sidebar.minimized { transform: translateY(100%); }
-        }
+        .card { background: var(--white); padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1.5rem; }
+        .card h3 { color: var(--dark); margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .main-container { max-width: 1400px; margin: 2rem auto; padding: 0 1rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+        .grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; }
+        @media(max-width: 900px) { .grid-split { grid-template-columns: 1fr; } }
 
-        /* Tarjetas de Pedido */
-        .order-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
-        .order-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .status-pending { border-left: 5px solid var(--warning); }
-        .status-route { border-left: 5px solid var(--primary); background: #f0f9ff; }
-        .status-delivered { border-left: 5px solid var(--success); opacity: 0.6; }
-
-        /* Login */
-        .login-box { width: 100%; max-width: 400px; padding: 2rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; }
-        .wrapper-center { display: flex; align-items: center; justify-content: center; height: 100vh; background: #e2e8f0; z-index: 50; }
-
-        /* UI Chofer */
-        .driver-hud { position: fixed; top: 0; left: 0; right: 0; background: rgba(255,255,255,0.95); padding: 15px; z-index: 20; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
-        .active-delivery { position: fixed; bottom: 20px; left: 20px; right: 20px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 30; border: 2px solid var(--primary); animation: slideUp 0.3s; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--gray); margin-bottom: 0.3rem; display: block; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background: #f8fafc; }
         
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { background: #cbd5e1 !important; cursor: not-allowed; opacity: 0.7; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px; }
         
-        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-        .bg-pending { background: #fef3c7; color: #d97706; }
-        .bg-route { background: #e0f2fe; color: #0284c7; }
+        .btn-blue { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
+        .btn-green { background: linear-gradient(135deg, #059669, var(--success)); }
+        .btn-truck { background: linear-gradient(135deg, #0e7490, var(--truck)); }
+        .btn-pack { background: linear-gradient(135deg, #6d28d9, var(--pack)); }
+        .btn-red { background: linear-gradient(135deg, #b91c1c, var(--danger)); }
+        .btn-gray { background: #e2e8f0; color: var(--dark); }
+
+        .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; color: var(--gray); font-size: 0.75rem; text-transform: uppercase; padding: 1rem; text-align: left; font-weight: 700; }
+        td { padding: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; white-space: nowrap; }
+
+        .auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+        .auth-box { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; }
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        #toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--dark); color: white; border-radius: 8px; display: none; z-index: 3000; box-shadow: var(--shadow); font-weight: 500;}
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(2px); }
+        .modal-content { background: white; padding: 2rem; border-radius: 16px; width: 90%; max-width: 450px; }
+        .stat-card { display: flex; justify-content: space-between; align-items: center; }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 
-    <div id="view-login" class="wrapper-center">
-        <div class="login-box">
-            <div style="background:var(--primary); width:70px; height:70px; border-radius:50%; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; color:white;">
-                <i data-feather="droplet" style="width:35px; height:35px;"></i>
-            </div>
-            <h2 style="color:var(--dark); margin-bottom:5px;">AquaFlow FN</h2>
-            <p style="color:var(--gray); margin-bottom:1.5rem;">Sistema de Logística</p>
-            
-            <form id="form-login">
-                <input type="email" id="l-email" placeholder="Correo electrónico" required>
-                <input type="password" id="l-pass" placeholder="Contraseña" required>
-                <button type="submit" class="btn btn-primary" style="width:100%">INICIAR SESIÓN</button>
-            </form>
-            <div style="margin-top:1.5rem; border-top:1px solid #e2e8f0; padding-top:1rem;">
-                <button onclick="toggleRegister()" style="background:none; border:none; color:var(--primary); font-weight:600; cursor:pointer;">Registrar Nuevo Personal</button>
+    <div id="loader" class="hidden"><div style="text-align:center"><i data-feather="droplet" style="width:50px; height:50px; color:var(--primary-light); animation:bounce 1s infinite"></i><p style="margin-top:10px; color:var(--gray)">Cargando sistema...</p></div></div>
+    <div id="toast"></div>
+
+    <div id="modal-confirm" class="modal-overlay hidden">
+        <div class="modal-content" style="text-align: center;">
+            <div style="background:#fee2e2; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem auto; color:var(--danger)"><i data-feather="alert-circle"></i></div>
+            <h3 id="confirm-title" style="margin-bottom:0.5rem; font-size:1.25rem;">Confirmar</h3>
+            <p id="confirm-msg" style="color:var(--gray); margin-bottom:1.5rem;"></p>
+            <div class="modal-actions" style="display:flex; gap:1rem; justify-content:center;">
+                <button onclick="closeConfirm()" class="btn btn-gray" style="width:100%">Cancelar</button>
+                <button id="confirm-yes-btn" class="btn btn-blue" style="width:100%">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <div id="view-register" class="wrapper-center hidden">
-        <div class="login-box">
-            <h3 style="margin-bottom:1rem;">Nuevo Registro</h3>
-            <form id="form-register">
-                <input type="text" id="r-name" placeholder="Nombre Completo" required>
-                <input type="email" id="r-email" placeholder="Correo electrónico" required>
-                <input type="password" id="r-pass" placeholder="Crear Contraseña" required>
-                <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.85rem; color:var(--gray);">Rol:</label>
-                <select id="r-role">
-                    <option value="driver">Repartidor (Chofer)</option>
-                    <option value="admin">Administrador</option>
-                </select>
-                <button type="submit" class="btn btn-success" style="width:100%">CREAR CUENTA</button>
-                <button type="button" onclick="toggleRegister()" class="btn btn-warning" style="width:100%; margin-top:10px;">CANCELAR</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="view-app" class="hidden full-screen">
-        
-        <div id="map"></div> <div id="ui-admin" class="sidebar hidden">
-            <div class="flex-row justify-between" style="margin-bottom:1.5rem;">
-                <div>
-                    <h3 style="color:var(--dark);">Pedidos</h3>
-                    <small style="color:var(--gray);">Panel de Control</small>
+    <div id="modal-restock" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="color:var(--primary); margin-bottom:0.5rem;">📥 Entrada de Inventario</h3>
+            <p style="color:var(--gray); margin-bottom: 1.5rem;">Producto: <b id="modal-prod-name" class="text-primary"></b></p>
+            <form id="form-restock">
+                <input type="hidden" id="restock-id"><input type="hidden" id="restock-type">
+                <label>Cantidad a Ingresar (Unidades enteras):</label>
+                <input type="number" id="restock-qty" min="1" step="1" placeholder="0" required style="font-size:1.5rem; padding:1rem; text-align:center; font-weight:bold; color:var(--primary); border: 2px solid var(--primary-light);">
+                <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
+                    <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
+                    <button type="submit" class="btn btn-green" style="flex:1">Guardar</button>
                 </div>
-                <button onclick="logout()" class="btn btn-sm btn-danger" title="Salir"><i data-feather="log-out"></i></button>
-            </div>
-            
-            <button onclick="openModalOrder()" class="btn btn-primary" style="width:100%; margin-bottom:1rem; padding:1rem;">
-                <i data-feather="plus-circle"></i> NUEVO PEDIDO
-            </button>
-
-            <div class="flex-row gap-2" style="margin-bottom:15px;">
-                <button onclick="filterOrders('pending')" class="btn btn-sm" style="background:white; border:1px solid #d97706; color:#d97706; flex:1;">Pendientes</button>
-                <button onclick="filterOrders('route')" class="btn btn-sm" style="background:white; border:1px solid #0284c7; color:#0284c7; flex:1;">En Ruta</button>
-            </div>
-
-            <div id="orders-list" style="padding-bottom:50px;">
-                <p style="text-align:center; color:var(--gray); margin-top:20px;">Cargando pedidos...</p>
-            </div>
+            </form>
         </div>
+    </div>
 
-        <div id="ui-driver" class="hidden">
-            <div class="driver-hud">
-                <div class="flex-row gap-2">
-                    <div style="width:40px; height:40px; background:var(--bg); border-radius:50%; display:flex; align-items:center; justify-content:center;">
-                        <i data-feather="truck" style="color:var(--dark);"></i>
+    <div id="auth-view" class="auth-wrapper">
+        <div class="auth-box">
+            <div style="margin-bottom:1.5rem;">
+                <i data-feather="droplet" style="width:40px; height:40px; color:var(--primary); fill:var(--primary-light);"></i>
+                <h2 style="color:var(--primary); margin-top:0.5rem;">Fuente Nueva</h2>
+                <p style="color:var(--gray); font-size:0.9rem;">Sistema de Control ERP</p>
+            </div>
+            <div style="display:flex; background:var(--bg); padding:4px; border-radius:8px; margin-bottom:1.5rem;">
+                <button id="tab-login" class="btn" style="flex:1; background:white; color:var(--primary); box-shadow:0 1px 3px rgba(0,0,0,0.1); padding:0.5rem;">Login</button>
+                <button id="tab-register" class="btn" style="flex:1; background:transparent; color:var(--gray); padding:0.5rem; box-shadow:none;">Registro</button>
+            </div>
+            <form id="login-form">
+                <div style="text-align:left; margin-bottom:1rem;"><label>Correo</label><input type="email" id="l-email" required></div>
+                <div style="text-align:left; margin-bottom:1.5rem;"><label>Contraseña</label><input type="password" id="l-pass" required></div>
+                <button type="submit" class="btn btn-blue" style="width:100%">Iniciar Sesión</button>
+            </form>
+            <form id="register-form" class="hidden">
+                <div style="text-align:left; margin-bottom:1rem;"><label>Nombre</label><input type="text" id="r-name" required></div>
+                <div style="text-align:left; margin-bottom:1rem;"><label>Correo</label><input type="email" id="r-email" required></div>
+                <div style="text-align:left; margin-bottom:1rem;"><label>Contraseña</label><input type="password" id="r-pass" required></div>
+                <div style="text-align:left; margin-bottom:1.5rem;"><label>Rol</label><select id="r-role"><option value="vendedor">Vendedor</option><option value="admin">Administrador</option></select></div>
+                <button type="submit" class="btn btn-blue" style="width:100%">Crear Cuenta</button>
+            </form>
+            <p id="auth-msg" style="color:var(--danger); margin-top:1rem; font-size:0.9rem; font-weight:600;"></p>
+        </div>
+    </div>
+
+    <div id="app-view" class="hidden">
+        <header>
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-feather="droplet" style="fill:white;"></i>
+                    <div class="app-title">Fuente Nueva</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:15px; text-align:right;">
+                    <button onclick="window.location.reload()" class="btn btn-sm" style="background:rgba(255,255,255,0.2); color:white;" title="Actualizar"><i data-feather="refresh-cw" style="width:14px;"></i></button>
+                    <div><div id="user-display" style="font-size:0.9rem; font-weight:600;">Usuario</div><button onclick="logout()" style="background:none; border:none; color:rgba(255,255,255,0.8); cursor:pointer; font-size:0.8rem; display:flex; align-items:center; justify-content:end; gap:4px;">Cerrar Sesión <i data-feather="log-out" style="width:12px;"></i></button></div>
+                </div>
+            </div>
+            <nav>
+                <a href="#dashboard" class="nav-link active" onclick="nav('dashboard')"><i data-feather="pie-chart" style="width:16px;"></i> Dashboard</a>
+                <a href="#ventas" class="nav-link" onclick="nav('ventas')"><i data-feather="shopping-cart" style="width:16px;"></i> Operaciones</a>
+                <a href="#gastos" class="nav-link" onclick="nav('gastos')"><i data-feather="trending-down" style="width:16px;"></i> Gastos</a>
+                <a href="#cobros" class="nav-link" onclick="nav('cobros')"><i data-feather="clock" style="width:16px;"></i> Por Cobrar</a>
+                <a href="#productos" class="nav-link admin-only" onclick="nav('productos')"><i data-feather="package" style="width:16px;"></i> Productos</a>
+                <a href="#inventario" class="nav-link admin-only" onclick="nav('inventario')"><i data-feather="clipboard" style="width:16px;"></i> Inventario</a>
+                <a href="#reportes" class="nav-link admin-only" onclick="nav('reportes')"><i data-feather="file-text" style="width:16px;"></i> Reportes</a>
+            </nav>
+        </header>
+
+        <main class="main-container">
+            <div id="page-dashboard" class="page">
+                <div class="flex justify-between items-center" style="margin-bottom:1.5rem;">
+                    <h2 style="color:var(--primary);">Resumen General</h2>
+                    <div style="background: white; padding: 5px 10px; border-radius: 8px; box-shadow: var(--shadow);">
+                        <small style="color:var(--gray); margin-right:5px;">Ver fecha:</small>
+                        <input type="date" id="dash-date-filter" style="width:auto; padding:5px; border:none; font-weight:bold;" onchange="updateDashboard(true)">
                     </div>
+                </div>
+                <div class="grid-4">
+                    <div class="card stat-card"><div><h4 style="color:var(--gray)">Ventas</h4><h2 id="d-today" style="font-size:1.8rem; color:var(--dark)">$0.00</h2></div><div class="stat-icon" style="background:#dbeafe; color:var(--primary);"><i data-feather="dollar-sign"></i></div></div>
+                    <div class="card stat-card admin-only">
+                        <div>
+                            <h4 style="color:var(--gray)">Ganancia Neta</h4>
+                            <h2 id="d-profit" class="text-success" style="font-size:1.8rem;">$0.00</h2>
+                            <small id="d-expenses-info" style="color:var(--danger); font-size:0.75rem;">(-$0.00 gastos)</small>
+                        </div>
+                        <div class="stat-icon" style="background:#d1fae5; color:var(--success);"><i data-feather="trending-up"></i></div>
+                    </div>
+                    <div class="card stat-card admin-only"><div><h4 style="color:var(--gray)">Stock Crítico</h4><h2 id="d-critical" class="text-danger" style="font-size:1.8rem;">0</h2></div><div class="stat-icon" style="background:#fee2e2; color:var(--danger);"><i data-feather="alert-triangle"></i></div></div>
+                    <div class="card stat-card"><div><h4 style="color:var(--gray)">Por Cobrar</h4><h2 id="d-pending" style="font-size:1.8rem; color:var(--warning)">$0.00</h2></div><div class="stat-icon" style="background:#fef3c7; color:var(--warning);"><i data-feather="clock"></i></div></div>
+                </div>
+            </div>
+
+            <div id="page-ventas" class="page hidden">
+                <div class="grid-split">
                     <div>
-                        <h4 id="driver-name" style="margin:0;">Conductor</h4>
-                        <small style="color:var(--success);">● En línea (GPS Activo)</small>
+                        <div class="card" style="border-top: 4px solid var(--primary-light);">
+                            <h3><i data-feather="shopping-cart"></i> Registrar Venta</h3>
+                            <form id="form-sale">
+                                <div class="admin-only" style="margin-bottom:1rem; background: #fff7ed; padding: 10px; border-radius: 6px; border: 1px dashed #fdba74;">
+                                    <label style="color:#c2410c;">📅 Registrar en fecha pasada</label>
+                                    <input type="date" id="sale-date-admin">
+                                </div>
+                                <div style="margin-bottom:1rem;"><label>Producto</label><select id="sale-product" required onchange="updateSaleForm()"></select></div>
+                                <div style="margin-bottom:1rem;"><label>Cantidad (Unidades)</label><input type="number" id="sale-qty" value="1" min="1" step="1" required oninput="updateSaleForm()"></div>
+                                <div class="form-grid"><div><label>Pago</label><select id="sale-type"><option>Efectivo</option><option>Transferencia</option></select></div></div>
+                                <div style="margin-bottom:1rem;"><label>Observaciones</label><textarea id="sale-obs" rows="1"></textarea></div>
+                                <div style="background:var(--bg); padding:1rem; border-radius:8px; margin:1rem 0;">
+                                    <div class="flex justify-between" style="margin-bottom:5px;"><small>Precio Unit:</small> <b id="sale-price-unit">$0.00</b></div>
+                                    <hr style="border-top:1px dashed #cbd5e1; margin:0.5rem 0;">
+                                    <div class="flex justify-between items-center"><span style="font-weight:600;">TOTAL:</span><span id="sale-total" style="font-size:1.5rem; font-weight:800; color:var(--primary);">$0.00</span></div>
+                                </div>
+                                <button type="submit" id="btn-submit-sale" class="btn btn-blue" style="width:100%">CONFIRMAR VENTA</button>
+                            </form>
+                        </div>
+                        
+                        <div class="card" style="border-top: 4px solid var(--truck); background: #f0fdfa;">
+                            <h3 style="color: #0f766e;"><i data-feather="truck"></i> Carga de Camión</h3>
+                            <form id="form-truck-load">
+                                <div class="admin-only" style="margin-bottom:1rem; background: #ccfbf1; padding: 10px; border-radius: 6px; border: 1px dashed #0f766e;">
+                                    <label style="color:#0f766e;">📅 Carga en fecha pasada</label>
+                                    <input type="date" id="truck-date-admin">
+                                </div>
+                                <div style="margin-bottom:1rem;"><label>Responsable</label><input type="text" id="truck-driver" required></div>
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Producto</label>
+                                        <select id="truck-product" required onchange="updateTruckInfo()"></select>
+                                        <small id="truck-supply-info" style="color:var(--truck); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small>
+                                    </div>
+                                    <div><label>Cantidad</label><input type="number" id="truck-qty" min="1" step="1" required placeholder="0" oninput="updateTruckInfo()"></div>
+                                </div>
+
+                                <div style="display:flex; gap:10px; flex-direction:column;">
+                                    <button type="button" onclick="processTruckOutput(false)" class="btn" style="background:#475569; color:white; width:100%; padding: 1rem;">
+                                        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                            <i data-feather="box"></i> 
+                                            <div style="text-align:left; line-height:1.2;">
+                                                <span style="display:block; font-size:1rem;">Cargar YA Envasados</span>
+                                                <span style="font-size:0.75rem; font-weight:400; opacity:0.9;">(Stock guardado / No gasta insumos)</span>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button type="button" onclick="processTruckOutput(true)" class="btn btn-truck" style="width:100%; padding: 1rem;">
+                                        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                            <i data-feather="settings"></i>
+                                            <div style="text-align:left; line-height:1.2;">
+                                                <span style="display:block; font-size:1rem;">Producción del Día</span>
+                                                <span style="font-size:0.75rem; font-weight:400; opacity:0.9;">(Directo de máquina / Gasta insumos)</span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card" style="border-top: 4px solid var(--pack); background: #f5f3ff;">
+                            <h3 style="color: #5b21b6;"><i data-feather="package"></i> Envasados (Stock)</h3>
+                            <form id="form-pack-load">
+                                <div class="admin-only" style="margin-bottom:1rem; background: #ddd6fe; padding: 10px; border-radius: 6px; border: 1px dashed #5b21b6;">
+                                    <label style="color:#5b21b6;">📅 Envasado en fecha pasada</label>
+                                    <input type="date" id="pack-date-admin">
+                                </div>
+                                <div style="margin-bottom:1rem;"><label>Detalles / Lote</label><input type="text" id="pack-detail" required></div>
+                                <div class="form-grid">
+                                    <div><label>Producto</label><select id="pack-product" required onchange="updatePackInfo()"></select><small id="pack-supply-info" style="color:var(--pack); font-weight:600; display:block; margin-top:4px; font-size:0.8rem;"></small></div>
+                                    <div><label>Cantidad</label><input type="number" id="pack-qty" min="1" step="1" required placeholder="0" oninput="updatePackInfo()"></div>
+                                </div>
+                                <button type="submit" id="btn-submit-pack" class="btn btn-pack" style="width:100%">REGISTRAR ENVASADO</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="card">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3><i data-feather="list"></i> Ventas Recientes</h3>
+                                <input type="date" id="sales-date-filter" class="admin-only" style="width:auto; padding:0.4rem; font-size:0.9rem;" oninput="refreshSalesView()">
+                            </div>
+                            <div class="table-container" style="max-height: 400px; overflow-y:auto;">
+                                <table id="table-sales"><thead><tr><th>Hora</th><th>Vend.</th><th>Prod.</th><th>Total</th></tr></thead><tbody></tbody></table>
+                            </div>
+                        </div>
+
+                        <div class="card" style="background:#f8fafc; border: 1px solid #e2e8f0;">
+                            <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="archive"></i> Cierre de Caja (Vista Actual)</h3>
+                            <div id="daily-summary"></div>
+                        </div>
+
+                        <div class="card" style="border-left: 4px solid var(--truck); margin-top: 1.5rem;">
+                            <div class="flex justify-between items-center">
+                                <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="truck"></i> Historial Cargas</h3>
+                                <input type="date" id="truck-date-filter" class="admin-only" style="width:auto; padding:0.3rem; font-size:0.8rem;" onchange="renderTruckLoads()">
+                            </div>
+                            <div class="table-container" style="max-height: 300px; overflow-y:auto;">
+                                <table id="table-truck-loads"><thead><tr><th>Hora</th><th>Detalles</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table>
+                            </div>
+                        </div>
+
+                        <div class="card" style="border-left: 4px solid var(--pack); margin-top: 1.5rem;">
+                            <div class="flex justify-between items-center">
+                                <h3 style="font-size:1rem; color:var(--dark);"><i data-feather="package"></i> Historial Envasados</h3>
+                                <input type="date" id="pack-date-filter" class="admin-only" style="width:auto; padding:0.3rem; font-size:0.8rem;" onchange="renderPackLoads()">
+                            </div>
+                            <div class="table-container" style="max-height: 300px; overflow-y:auto;">
+                                <table id="table-pack-loads"><thead><tr><th>Hora</th><th>Detalles</th><th>Prod.</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button onclick="logout()" class="btn btn-sm btn-danger"><i data-feather="log-out"></i></button>
             </div>
 
-            <div id="active-card" class="active-delivery hidden">
-                <div class="flex-row justify-between" style="margin-bottom:10px;">
-                    <span class="badge bg-route">EN RUTA HACIA CLIENTE</span>
-                    <strong style="color:var(--primary);" id="act-dist">--</strong>
-                </div>
-                <h2 id="act-client" style="font-size:1.4rem;">Cliente</h2>
-                <p id="act-address" style="color:var(--gray); margin-bottom:15px; font-size:0.95rem;"><i data-feather="map-pin" style="width:14px;"></i> Dirección</p>
-                
-                <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; border:1px dashed #cbd5e1;">
-                    <div class="flex-row justify-between">
-                        <strong id="act-prod">0 Botellones</strong>
-                        <strong style="color:var(--success); font-size:1.2rem;" id="act-total">$0.00</strong>
+            <div id="page-gastos" class="page hidden">
+                <div class="grid-split">
+                    <div class="card" style="border-top: 4px solid var(--danger);">
+                        <h3><i data-feather="trending-down"></i> Registrar Gasto</h3>
+                        <form id="form-expense">
+                            <div style="margin-bottom:1rem;"><label>Descripción (Ej: Gasolina, Comida)</label><input type="text" id="exp-desc" required></div>
+                            <div style="margin-bottom:1rem;"><label>Monto</label><input type="number" id="exp-amount" step="0.01" min="0.01" required></div>
+                            <div style="margin-bottom:1rem;"><label>Fecha</label><input type="date" id="exp-date" required></div>
+                            <button type="submit" class="btn btn-red" style="width:100%">Registrar Gasto</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>Historial de Gastos</h3>
+                        <div class="table-container">
+                            <table id="table-expenses"><thead><tr><th>Fecha</th><th>Descripción</th><th>Monto</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="flex-col gap-2">
-                    <button onclick="openGPS()" class="btn btn-primary" style="padding:1rem;">
-                        <i data-feather="navigation"></i> ABRIR MAPA / WAZE
-                    </button>
-                    <button onclick="completeOrder()" class="btn btn-success" style="padding:1rem;">
-                        <i data-feather="check-square"></i> MARCAR ENTREGADO
-                    </button>
+            <div id="page-productos" class="page hidden">
+                <div class="card">
+                    <h3><i data-feather="database"></i> Catálogo</h3>
+                    <form id="form-product">
+                        <input type="hidden" id="prod-id">
+                        <div class="grid-4" style="align-items:end;">
+                            <div><label>Nombre</label><input type="text" id="prod-name" required></div>
+                            <div><label>Precio</label><input type="number" id="prod-price" step="0.01" min="0" required></div>
+                            <div><label>Costo</label><input type="number" id="prod-cost" step="0.01" min="0" required></div>
+                            <div><label>Stock (Entero)</label><input type="number" id="prod-stock" step="1" required></div>
+                        </div>
+                        <div style="background:#f1f5f9; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; gap:1rem; align-items:end;">
+                            <div style="flex:1;"><label style="color:var(--primary)">Alerta Min.</label><input type="number" id="prod-min" step="1" required></div>
+                            <div style="flex:1;"><label style="color:var(--primary)">Vinc. Insumo (Resta)</label><select id="prod-supply-link"><option value="">-- Ninguno --</option></select></div>
+                            <div style="flex:1;"><label>Cant. x Unid</label><input type="number" id="prod-supply-qty" value="1" min="0.1" step="0.1"></div>
+                        </div>
+                        <div style="background:#f0fdfa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                            <label style="color:var(--success)">🔄 Al vender, recibir envase (Suma):</label>
+                            <select id="prod-return-link"><option value="">-- Ninguno --</option></select>
+                        </div>
+                        <div class="flex gap-2"><button type="submit" class="btn btn-blue">Guardar</button><button type="button" onclick="resetProdForm()" class="btn btn-gray">Limpiar</button></div>
+                    </form>
+                </div>
+                <div class="card"><div class="table-container"><table id="table-products"><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Insumo</th><th>Retorno</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
+            </div>
+
+            <div id="page-inventario" class="page hidden">
+                <div class="card" style="border-left: 5px solid var(--truck);">
+                    <div class="flex justify-between items-center mb-2"><h3><i data-feather="tool"></i> Insumos (Materias Primas)</h3><button onclick="showSupplyForm()" class="btn btn-sm btn-green">Nuevo</button></div>
+                    <div id="box-create-supply" class="hidden" style="background:#f0fdfa; padding:1rem; margin-bottom:1rem; border-radius:8px;">
+                        <form id="form-supply" class="flex gap-2 items-end">
+                            <input type="hidden" id="supp-id">
+                            <div style="flex:2"><label>Nombre</label><input type="text" id="supp-name" required style="margin:0"></div>
+                            <div style="flex:1"><label>Stock (Entero)</label><input type="number" id="supp-stock" step="1" required style="margin:0"></div>
+                            <button type="submit" id="btn-save-supply" class="btn btn-green" style="margin:0">Guardar</button>
+                            <button type="button" onclick="hideSupplyForm()" class="btn btn-gray" style="margin:0">Cancelar</button>
+                        </form>
+                    </div>
+                    <div class="table-container"><table id="table-supplies"><thead><tr><th>Insumo</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+                </div>
+                <div class="grid-split">
+                    <div class="card"><h3><i data-feather="box"></i> Stock Productos</h3><div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada</th></tr></thead><tbody></tbody></table></div></div>
+                    <div class="card"><h3><i data-feather="activity"></i> Movimientos Recientes</h3><div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div></div>
                 </div>
             </div>
 
-            <div id="no-orders-msg" class="active-delivery hidden" style="text-align:center; border:none; box-shadow:none;">
-                <i data-feather="coffee" style="width:40px; height:40px; color:var(--gray); margin-bottom:10px;"></i>
-                <h3>Todo entregado</h3>
-                <p style="color:var(--gray);">Esperando asignación del administrador...</p>
+            <div id="page-cobros" class="page hidden">
+                <div class="grid-split">
+                    <div class="card">
+                        <h3><i data-feather="book"></i> Por Cobrar</h3>
+                        <form id="form-pending">
+                            <div style="margin-bottom:1rem;"><label>Cliente</label><input type="text" id="pend-client" required></div>
+                            <div class="form-grid"><div><label>Monto</label><input type="number" id="pend-total" step="0.01" min="0.01" required></div><div><label>Fecha</label><input type="date" id="pend-date" required></div></div>
+                            <button type="submit" class="btn btn-blue" style="width:100%;">Registrar</button>
+                        </form>
+                    </div>
+                    <div class="card"><h3>Listado</h3><div class="table-container"><table id="table-pending"><thead><tr><th>Fecha</th><th>Cliente</th><th>Monto</th><th>Acción</th></tr></thead><tbody></tbody></table></div></div>
+                </div>
             </div>
-        </div>
 
-        <div id="modal-order" class="full-screen hidden" style="background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center;">
-            <div style="background:white; padding:25px; border-radius:16px; width:90%; max-width:400px; animation: slideUp 0.2s;">
-                <h3 style="margin-bottom:15px; color:var(--primary);">Nuevo Pedido</h3>
-                <form id="form-order">
-                    <input type="text" id="o-client" placeholder="Nombre del Cliente" required>
-                    <input type="tel" id="o-phone" placeholder="Teléfono (WhatsApp sin código)" required>
-                    <input type="text" id="o-address" placeholder="Dirección escrita" required>
-                    <div style="display:flex; gap:10px;">
-                        <input type="number" id="o-qty" placeholder="Cant." required style="flex:1;">
-                        <input type="number" id="o-price" placeholder="Precio ($)" required style="flex:1;">
+            <div id="page-reportes" class="page hidden">
+                <div class="card" style="border-top: 4px solid var(--primary);">
+                    <h3 style="color:var(--dark); display:flex; align-items:center; gap:10px;">
+                        <i data-feather="pie-chart"></i> Auditoría de Rentabilidad y Productos
+                    </h3>
+                    <p style="color:var(--gray); margin-bottom:1rem; font-size:0.9rem;">
+                        Reporte detallado de unidades, ingresos y margen real entre fechas.
+                    </p>
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; align-items:end;">
+                            <div><label>Fecha Inicio</label><input type="date" id="audit-start"></div>
+                            <div><label>Fecha Fin</label><input type="date" id="audit-end"></div>
+                            <button onclick="generateDetailedAudit()" class="btn btn-blue" style="height: 42px;">
+                                <i data-feather="download"></i> Descargar Auditoría Excel
+                            </button>
+                        </div>
                     </div>
-                    <div style="background:#ecfccb; padding:10px; border-radius:8px; font-size:0.8rem; color:#3f6212; margin-bottom:15px;">
-                        <i data-feather="map-pin" style="width:12px;"></i> La ubicación se tomará del centro del mapa. Mueve el mapa antes de guardar.
+                </div>
+                <div class="card">
+                    <h3><i data-feather="archive"></i> Descargas Rápidas (Reporte Financiero)</h3>
+                    <div style="margin-bottom: 1rem; background: #f1f5f9; padding:10px; border-radius:8px; display:flex; gap:10px; align-items:end;">
+                        <div style="flex:1">
+                            <label style="color:var(--primary); font-weight:bold;">Desde:</label>
+                            <input type="date" id="export-start" style="font-weight:bold;">
+                        </div>
+                        <div style="flex:1">
+                            <label style="color:var(--primary); font-weight:bold;">Hasta:</label>
+                            <input type="date" id="export-end" style="font-weight:bold;">
+                        </div>
                     </div>
-                    <div class="flex-row gap-2">
-                        <button type="button" onclick="closeModalOrder()" class="btn btn-warning" style="flex:1">CANCELAR</button>
-                        <button type="submit" class="btn btn-primary" style="flex:1">GUARDAR</button>
+                    <div class="grid-4">
+                        <button onclick="exportSales()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;">
+                            <i data-feather="calendar"></i> Reporte Caja (Excel)
+                        </button>
+                        <button onclick="exportInventory()" class="btn btn-gray" style="flex-direction:column; padding:1.5rem;">
+                            <i data-feather="box"></i> Inventario Actual
+                        </button>
                     </div>
-                </form>
+                </div>
+                <div class="card" style="border-top: 4px solid var(--warning); margin-top:1.5rem;">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3><i data-feather="shield-off"></i> Historial de Anulaciones</h3>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="date" id="admin-date-filter" class="admin-only" style="width:auto; padding:0.4rem;">
+                            <button onclick="loadAdminSalesByDate()" class="btn btn-sm btn-blue admin-only">Buscar</button>
+                        </div>
+                    </div>
+                    <div class="table-container" style="max-height: 300px; overflow-y:auto;">
+                        <table id="table-sales-admin"><thead><tr><th>Fecha</th><th>Producto</th><th>Obs.</th><th>Total</th><th>Usuario</th><th></th></tr></thead><tbody></tbody></table>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, onSnapshot, serverTimestamp, runTransaction, Timestamp, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ✅ TUS CREDENCIALES INTEGRADAS
-        const firebaseConfig = {
-          apiKey: "AIzaSyB1VWbU_ntomoLeaXHnY2C-vKxK_rG2MWI",
-          authDomain: "app-distribuidores-fn.firebaseapp.com",
-          projectId: "app-distribuidores-fn",
-          storageBucket: "app-distribuidores-fn.firebasestorage.app",
-          messagingSenderId: "839766853432",
-          appId: "1:839766853432:web:53770fd0d51578a25b63cd"
+        const firebaseConfig = { apiKey: "AIzaSyB2KV65ZhUEZbjn14hF3cWsr8d4kzLsYPk", authDomain: "fuente-nueva.firebaseapp.com", projectId: "fuente-nueva", storageBucket: "fuente-nueva.firebasestorage.app", messagingSenderId: "256396830278", appId: "1:256396830278:web:0d9cff310705e52bb20c47", measurementId: "G-8NGS5XH8K6" };
+        const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
+
+        let user = null, role = 'vendedor', products = [], supplies = [], sales = [], movements = [], expenses = [];
+        
+        // --- UTILIDADES ---
+        const getLocalYMD = (dateObj) => {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const today = () => getLocalYMD(new Date());
+        const fmtMoney = (n) => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n);
+        const fmtDate = (ts) => {
+            if (!ts) return '--';
+            try { return new Date(ts.seconds * 1000).toLocaleString('es-ES', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); } catch(e) { return 'Error'; }
+        };
+        const isDateMatch = (ts, dateStrInput) => {
+            if (!ts) return false;
+            try { return getLocalYMD(new Date(ts.seconds * 1000)) === dateStrInput; } catch(e) { return false; }
+        };
+        const getUserName = (u) => (u || 'Desconocido').split('@')[0];
+
+        // --- VALIDACIÓN DE ROLES ---
+        const checkAdmin = () => {
+            if (role !== 'admin') {
+                toast("⛔ Acceso denegado: Solo administradores.");
+                return false;
+            }
+            return true;
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // --- AUTH ---
+        onAuthStateChanged(auth, async (u) => {
+            document.getElementById('loader').classList.remove('hidden');
+            if (u) {
+                user = u;
+                try {
+                    const docSnap = await getDoc(doc(db, "users", u.uid));
+                    role = docSnap.exists() ? (docSnap.data().role || 'vendedor') : 'vendedor';
+                    document.getElementById('user-display').innerHTML = docSnap.exists() ? (docSnap.data().name || u.email) : u.email; 
+                    
+                    document.getElementById('auth-view').classList.add('hidden');
+                    document.getElementById('app-view').classList.remove('hidden');
+                    
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'admin' ? 'block' : 'none');
+                    
+                    // Inicializar Fechas
+                    const t = today();
+                    ['sales-date-filter', 'dash-date-filter', 'truck-date-filter', 'pack-date-filter', 'pend-date', 'exp-date', 'admin-date-filter', 'audit-end', 'export-start', 'export-end'].forEach(id => {
+                        const el = document.getElementById(id); if(el) el.value = t;
+                    });
+                    const startOfMonth = t.substring(0, 7) + '-01';
+                    const elStart = document.getElementById('audit-start'); if(elStart) elStart.value = startOfMonth;
 
-        // Variables Globales
-        let currentUser = null;
-        let map, userMarker;
-        let markers = {}; 
-        let currentFilter = 'all'; 
-        let activeOrder = null;
+                    initListeners();
+                    nav('dashboard');
+                    updateDashboard(true); // Cargar dashboard inicial desde BD
+                    toast(`✅ Bienvenido, ${role === 'admin' ? 'Administrador' : 'Vendedor'}`);
+                } catch (error) {
+                    console.error("Error cargando perfil:", error);
+                    toast("Error al cargar perfil de usuario");
+                }
+            } else {
+                document.getElementById('auth-view').classList.remove('hidden');
+                document.getElementById('app-view').classList.add('hidden');
+            }
+            document.getElementById('loader').classList.add('hidden');
+        });
 
-        // --- INICIALIZAR MAPA ---
-        window.initMap = () => {
-            // Centro por defecto (Ecuador)
-            const defaultCenter = { lat: -0.1807, lng: -78.4678 }; 
+        // --- LISTENERS FIRESTORE ---
+        function initListeners() {
+            onSnapshot(query(collection(db, "products"), orderBy("name")), (sn) => { 
+                products = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderProducts(); renderInventory(); updateSelects(); 
+            });
             
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 14,
-                center: defaultCenter,
-                disableDefaultUI: true,
-                styles: [ { featureType: "poi", stylers: [{ visibility: "off" }] } ] 
+            onSnapshot(query(collection(db, "supplies"), orderBy("name")), (sn) => { 
+                supplies = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderSupplies(); updateSupplySelect(); renderProducts(); 
+            });
+            
+            // Limitamos listeners a 300 para velocidad
+            onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(300)), (sn) => { 
+                sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                refreshSalesView(); // Vista "Operaciones" (Realtime)
+                if (isDateMatch(sales[0]?.timestamp, document.getElementById('dash-date-filter').value)) {
+                    // Solo actualizamos dashboard si la fecha coincide con HOY/Reciente
+                     updateDashboard(false);
+                }
+            });
+            
+            onSnapshot(query(collection(db, "expenses"), orderBy("date", "desc"), limit(100)), (sn) => {
+                expenses = sn.docs.map(d => ({id: d.id, ...d.data()}));
+                renderExpenses();
             });
 
-            // Intentar obtener ubicación real
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    const me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    map.setCenter(me);
-                    // Si es chofer, actualizamos su posición inicial
-                    if(currentUser && currentUser.role === 'driver') updateDriverLocation(me);
+            onSnapshot(query(collection(db, "movements"), orderBy("timestamp", "desc"), limit(100)), (sn) => { 
+                movements = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderMovements(); renderTruckLoads(); renderPackLoads();
+            });
+
+            onSnapshot(query(collection(db, "pending"), orderBy("date", "desc")), (sn) => { 
+                const list = sn.docs.map(d => ({id: d.id, ...d.data()})); 
+                renderPending(list);
+                document.getElementById('d-pending').textContent = fmtMoney(list.reduce((sum, i) => sum + (parseFloat(i.total)||0), 0));
+            });
+        }
+
+        // --- DASHBOARD BLINDADO (Consulta Directa a BD) ---
+        window.updateDashboard = async (forceFetch = false) => {
+            const dateVal = document.getElementById('dash-date-filter').value;
+            let daySales = [], dayExpenses = [];
+
+            // Si es HOY y tenemos datos en memoria, usarlos (rápido)
+            if (!forceFetch && sales.length > 0 && isDateMatch(sales[0].timestamp, dateVal)) {
+                daySales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
+                dayExpenses = expenses.filter(e => e.date === dateVal);
+            } else {
+                // Si es fecha pasada, consultar BD (LENTO PERO SEGURO)
+                try {
+                    const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00"));
+                    const endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
+                    
+                    const qSales = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs));
+                    const snapSales = await getDocs(qSales);
+                    daySales = snapSales.docs.map(d => d.data());
+
+                    const qExp = query(collection(db, "expenses"), where("date", "==", dateVal));
+                    const snapExp = await getDocs(qExp);
+                    dayExpenses = snapExp.docs.map(d => d.data());
+
+                } catch (e) { console.error("Error fetching dashboard stats", e); }
+            }
+
+            const stats = daySales.reduce((acc, s) => {
+                acc.sales += (s.price || 0);
+                acc.profit += (s.profit || 0);
+                return acc;
+            }, { sales: 0, profit: 0 });
+
+            const totalExp = dayExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
+
+            document.getElementById('d-today').textContent = fmtMoney(stats.sales);
+            document.getElementById('d-profit').textContent = fmtMoney(stats.profit - totalExp);
+            document.getElementById('d-expenses-info').textContent = `(-${fmtMoney(totalExp)} gastos)`;
+        };
+
+        window.refreshSalesView = () => { renderSalesTable(); renderDailySummary(); };
+
+        window.renderSalesTable = () => {
+            const tb = document.querySelector('#table-sales tbody');
+            const filterDate = document.getElementById('sales-date-filter').value;
+            // Aquí usamos el array 'sales' local (ultimos 300) porque es vista operativa rápida
+            const filtered = sales.filter(s => isDateMatch(s.timestamp, filterDate));
+            
+            tb.innerHTML = '';
+            if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray)">Sin ventas recientes.</td></tr>'; return; }
+
+            const fragment = document.createDocumentFragment();
+            filtered.forEach(s => {
+                const tr = document.createElement('tr');
+                const timeStr = s.timestamp ? new Date(s.timestamp.seconds * 1000).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) : '--:--';
+                const qtyStr = s.qty_packs > 1 ? `<span style="font-weight:bold; color:var(--primary)"> (x${s.qty_packs})</span>` : '';
+                tr.innerHTML = `<td>${timeStr}</td><td style="font-size:0.85rem">${getUserName(s.user)}</td><td style="font-size:0.85rem">${s.product}${qtyStr}</td><td style="font-weight:bold; color:var(--dark)">${fmtMoney(s.price)}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+        };
+
+        function renderDailySummary() {
+            const filterDate = document.getElementById('sales-date-filter').value;
+            const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
+            let total = 0, cash = 0, transfer = 0, prodCounts = {};
+            
+            filteredSales.forEach(s => {
+                total += (s.price || 0);
+                if(s.type === 'Efectivo') cash += (s.price || 0); else transfer += (s.price || 0);
+                prodCounts[s.product] = (prodCounts[s.product] || 0) + (s.qty_packs || 1);
+            });
+
+            let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;"><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div></div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
+            
+            Object.entries(prodCounts).forEach(([p, c]) => {
+                html += `<li style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:var(--gray)">${p}</span><b>${c}</b></li>`;
+            });
+            html += `</ul><div style="margin-top:10px; text-align:right; font-weight:800; font-size:1.1rem; border-top:2px solid var(--dark); padding-top:5px;">Total: ${fmtMoney(total)}</div></div>`;
+            document.getElementById('daily-summary').innerHTML = html;
+        }
+
+        // --- TRANSACCIONES DE STOCK (LÓGICA CRÍTICA) ---
+
+        // Función para CAMIÓN (Dos botones)
+        window.processTruckOutput = async (useSupply) => {
+            const driver = document.getElementById('truck-driver').value;
+            const pid = document.getElementById('truck-product').value;
+            const qtyVal = document.getElementById('truck-qty').value;
+            
+            if(!driver || !pid || !qtyVal) return toast("⚠️ Completa todos los campos");
+            
+            const qty = parseInt(qtyVal);
+            if (qty <= 0) return toast("Cantidad inválida");
+
+            const prod = products.find(p => p.id === pid);
+            if(!prod) return toast("Producto no válido");
+            if(prod.stock < qty) return showConfirm("Error", "Stock insuficiente", null);
+
+            // --- LÓGICA DE INSUMOS ---
+            let sDoc = null;
+            let sDeduct = 0;
+
+            if(prod.supplyLink && useSupply) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(!s) return alert("Error: Insumo vinculado no encontrado.");
+                sDeduct = qty * (prod.supplyQty || 1); 
+                if(s.stock < sDeduct) return showConfirm("Error", `Falta insumo: ${s.name}`, null);
+                sDoc = s; 
+            }
+
+            const dateInput = document.getElementById('truck-date-admin').value;
+            let loadTimestamp = serverTimestamp();
+            if(role === 'admin' && dateInput) loadTimestamp = Timestamp.fromDate(new Date(dateInput + 'T12:00:00'));
+            
+            try {
+                await runTransaction(db, async (t) => {
+                    const pRef = doc(db, "products", pid);
+                    const pSnapshot = await t.get(pRef);
+                    if(!pSnapshot.exists()) throw "Producto no existe";
+                    const pData = pSnapshot.data();
+                    if(pData.stock < qty) throw "Stock insuficiente al procesar";
+                    
+                    let sRef = null, sData = null;
+                    if(sDoc) { 
+                        sRef = doc(db, "supplies", sDoc.id); 
+                        const sSnapshot = await t.get(sRef);
+                        sData = sSnapshot.data(); 
+                        if(sData.stock < sDeduct) throw "Falta insumo al procesar";
+                    }
+                    
+                    t.update(pRef, { stock: pData.stock - qty });
+                    if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
+
+                    const originText = useSupply ? '(Prod. Día)' : '(YA Envasado)';
+                    
+                    t.set(doc(collection(db, "movements")), { 
+                        type: 'SALIDA_CAMION', 
+                        product: prod.name, 
+                        productId: pid, 
+                        quantity: qty, 
+                        supplyId: sDoc?.id||null, 
+                        supplyQty: sDeduct, 
+                        user: user.email, 
+                        details: `Chofer: ${driver} ${originText}`, 
+                        timestamp: loadTimestamp 
+                    });
                 });
+                toast("✅ Carga Registrada"); 
+                document.getElementById('form-truck-load').reset();
+                document.getElementById('truck-supply-info').innerHTML = '';
+            } catch (err) { toast("Error: " + err); }
+        };
+
+        // Función Genérica para Envasado (Siempre descuenta insumos)
+        window.processOutput = async (e, type) => {
+            e.preventDefault();
+            // Esta función solo queda para ENVASADOS (u otros futuros), el camión ya tiene la suya arriba
+            const btnId = 'btn-submit-pack';
+            const formId = 'form-pack-load';
+            
+            const btn = document.getElementById(btnId); btn.disabled = true; 
+            
+            const detail = `Lote: ${document.getElementById('pack-detail').value}`;
+            const pid = document.getElementById('pack-product').value;
+            const qty = parseInt(document.getElementById('pack-qty').value) || 0;
+            const dateInput = document.getElementById('pack-date-admin').value;
+
+            if (qty <= 0) { toast("Cantidad inválida"); btn.disabled = false; return; }
+
+            const prod = products.find(p => p.id === pid);
+            if(!prod) { btn.disabled = false; return; }
+            if(prod.stock < qty) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
+            
+            let sDoc = null;
+            let sDeduct = 0;
+            // Para Envasado SIEMPRE descontamos si hay vínculo
+            if(prod.supplyLink) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(!s) { alert("Error: Insumo vinculado no encontrado."); btn.disabled = false; return; }
+                sDeduct = qty * (prod.supplyQty || 1); 
+                if(s.stock < sDeduct) { showConfirm("Error", `Falta insumo: ${s.name}`, null); btn.disabled = false; return; } 
+                sDoc = s; 
+            }
+
+            let loadTimestamp = serverTimestamp();
+            if(role === 'admin' && dateInput) loadTimestamp = Timestamp.fromDate(new Date(dateInput + 'T12:00:00'));
+
+            try {
+                await runTransaction(db, async (t) => {
+                    const pRef = doc(db, "products", pid);
+                    const pSnapshot = await t.get(pRef);
+                    if(!pSnapshot.exists()) throw "Producto no existe";
+                    const pData = pSnapshot.data();
+                    if(pData.stock < qty) throw "Stock insuficiente al procesar";
+                    
+                    let sRef = null;
+                    let sData = null;
+                    if(sDoc) { 
+                        sRef = doc(db, "supplies", sDoc.id); 
+                        const sSnapshot = await t.get(sRef);
+                        sData = sSnapshot.data(); 
+                        if(sData.stock < sDeduct) throw "Falta insumo al procesar";
+                    }
+                    
+                    t.update(pRef, { stock: pData.stock - qty });
+                    if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
+
+                    t.set(doc(collection(db, "movements")), { 
+                        type: type, 
+                        product: prod.name, 
+                        productId: pid, 
+                        quantity: qty, 
+                        supplyId: sDoc?.id||null, 
+                        supplyQty: sDeduct, 
+                        user: user.email, 
+                        details: detail, 
+                        timestamp: loadTimestamp 
+                    });
+                });
+                toast("✅ Registrado con éxito"); 
+                document.getElementById(formId).reset(); 
+                document.getElementById('pack-supply-info').innerHTML = '';
+            } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
+        }
+
+        document.getElementById('form-pack-load').addEventListener('submit', (e) => processOutput(e, 'SALIDA_ENVASADO'));
+
+        window.updateTruckInfo = () => {
+            const pid = document.getElementById('truck-product').value;
+            const qty = parseInt(document.getElementById('truck-qty').value) || 0;
+            const prod = products.find(p => p.id === pid);
+            const info = document.getElementById('truck-supply-info');
+            info.innerHTML = '';
+            if(prod && prod.supplyLink && qty > 0) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) info.innerHTML = `<span style="color:var(--gray)">ℹ️ Si es Prod. Día: -${(qty * (prod.supplyQty || 1)).toFixed(1)} ${s.name}</span>`;
             }
         };
 
-        // --- AUTENTICACIÓN ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
+        window.updatePackInfo = () => {
+            const pid = document.getElementById('pack-product').value;
+            const qty = parseInt(document.getElementById('pack-qty').value) || 0;
+            const prod = products.find(p => p.id === pid);
+            const info = document.getElementById('pack-supply-info');
+            info.innerHTML = '';
+            // Visualmente avisamos que se gastarán insumos
+            if(prod && prod.supplyLink && qty > 0) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
+            }
+        };
+
+        function renderGenericLoads(tableId, type, filterId) {
+            const tb = document.querySelector(`#${tableId} tbody`); tb.innerHTML = '';
+            const dateVal = document.getElementById(filterId).value;
+            const loads = movements.filter(m => m.type === type && isDateMatch(m.timestamp, dateVal));
+            
+            if(loads.length===0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin registros esa fecha.</td></tr>'; return; }
+            
+            const fragment = document.createDocumentFragment();
+            loads.forEach(m => {
+                const tr = document.createElement('tr');
+                const btn = (checkAdmin() || role === 'vendedor') ? `<button onclick="undoGenericLoad('${m.id}')" class="btn btn-red btn-sm" style="padding:4px;"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
+                let details = m.details || '-';
+                if(type === 'SALIDA_CAMION') details = details.replace('Chofer: ', '');
+                if(type === 'SALIDA_ENVASADO') details = details.replace('Lote: ', '');
+
+                tr.innerHTML = `<td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td><td style="font-size:0.8rem">${details}</td><td style="font-size:0.8rem">${m.product}</td><td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td><td>${btn}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
+        }
+
+        window.renderTruckLoads = () => renderGenericLoads('table-truck-loads', 'SALIDA_CAMION', 'truck-date-filter');
+        window.renderPackLoads = () => renderGenericLoads('table-pack-loads', 'SALIDA_ENVASADO', 'pack-date-filter');
+
+        window.undoGenericLoad = async (id) => {
+            if(!checkAdmin()) return;
+            const m = movements.find(x => x.id === id); if(!m) return;
+            const msg = m.type === 'SALIDA_CAMION' ? 'Anular Carga' : 'Anular Envasado';
+            
+            showConfirm(msg, "Se devolverá el stock.", async () => {
                 try {
-                    const docSnap = await getDoc(doc(db, "users", user.uid));
-                    if (docSnap.exists()) {
-                        currentUser = { uid: user.uid, ...docSnap.data() };
-                        startApp();
-                    } else {
-                        // Usuario sin datos en BD (posible error registro manual)
-                        alert("Error de usuario. Contacte soporte.");
-                        signOut(auth);
+                    await runTransaction(db, async (t) => {
+                        let pData = null, pRef = null;
+                        let sData = null, sRef = null;
+
+                        if(m.productId) {
+                            pRef = doc(db, "products", m.productId);
+                            const pSnapshot = await t.get(pRef);
+                            if(pSnapshot.exists()) pData = pSnapshot.data();
+                        }
+                        if(m.supplyId) {
+                            sRef = doc(db, "supplies", m.supplyId);
+                            const sSnapshot = await t.get(sRef);
+                            if(sSnapshot.exists()) sData = sSnapshot.data();
+                        }
+
+                        if(pRef && pData) t.update(pRef, {stock: pData.stock + m.quantity});
+                        if(sRef && sData) t.update(sRef, {stock: sData.stock + (m.supplyQty||0)});
+                        
+                        t.delete(doc(db, "movements", id));
+                        t.set(doc(collection(db, "movements")), { type: m.type === 'SALIDA_CAMION' ? 'ANULACION_CAMION' : 'ANULACION_ENVASADO', product: m.product, quantity: m.quantity, user: user.email, timestamp: serverTimestamp() });
+                    }); 
+                    toast("✅ Anulado Correctamente");
+                } catch(e){ console.error(e); toast("Error: " + e.message); }
+            });
+        };
+
+        // 3. REGISTRO DE VENTA
+        document.getElementById('form-sale').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-sale');
+            const pid = document.getElementById('sale-product').value;
+            const qty = parseInt(document.getElementById('sale-qty').value) || 0;
+            const prod = products.find(p => p.id === pid);
+
+            if (!prod) return toast("Producto no válido");
+            if (qty <= 0) return toast("Cantidad debe ser mayor a 0");
+            if (prod.stock < qty) { showConfirm("Stock Insuficiente", `Stock actual: ${prod.stock}`, null); return; }
+
+            btn.disabled = true;
+
+            let sDoc = null, sDeduct = 0;
+            if (prod.supplyLink) {
+                const s = supplies.find(x => x.id === prod.supplyLink);
+                if (!s) { alert(`⚠️ ERROR: Insumo vinculado no existe.`); btn.disabled = false; return; }
+                sDeduct = qty * (prod.supplyQty || 1);
+                if (s.stock < sDeduct) { showConfirm("Faltan Insumos", `Falta: ${s.name}`, null); btn.disabled = false; return; }
+                sDoc = s;
+            }
+
+            const totalPrice = qty * (prod.price || 0);
+            const totalCost = qty * (prod.cost || 0);
+            const profit = totalPrice - totalCost;
+
+            let saleTimestamp = serverTimestamp();
+            const adminDate = document.getElementById('sale-date-admin').value;
+            if (role === 'admin' && adminDate) saleTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
+
+            try {
+                await runTransaction(db, async (t) => {
+                    const pRef = doc(db, "products", pid);
+                    const pSnapshot = await t.get(pRef);
+                    if (!pSnapshot.exists()) throw "Producto no encontrado";
+                    const pData = pSnapshot.data();
+                    if (pData.stock < qty) throw "Stock cambió durante la venta.";
+
+                    let sRef = null, sData = null;
+                    if (sDoc) {
+                        sRef = doc(db, "supplies", sDoc.id);
+                        const sSnapshot = await t.get(sRef);
+                        if (!sSnapshot.exists()) throw "Insumo no encontrado";
+                        sData = sSnapshot.data();
+                        if (sData.stock < sDeduct) throw `Falta insumo: ${sDoc.name}`;
                     }
-                } catch (e) { console.error(e); }
-            } else {
-                showLogin();
+
+                    let retRef = null, retData = null;
+                    if(prod.returnId) {
+                        retRef = doc(db, "products", prod.returnId);
+                        const retSnapshot = await t.get(retRef);
+                        if(retSnapshot.exists()) retData = retSnapshot.data();
+                    }
+
+                    t.update(pRef, { stock: pData.stock - qty });
+                    if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
+
+                    let returnDetail = "";
+                    if(retRef && retData) {
+                        t.update(retRef, { stock: (retData.stock || 0) + qty });
+                        returnDetail = ` + Envase`;
+                    }
+
+                    t.set(doc(collection(db, "sales")), {
+                        product: prod.name + returnDetail, 
+                        pid: pid, 
+                        qty_packs: qty, 
+                        qty_total_units: qty,
+                        price: totalPrice, 
+                        cost: totalCost, 
+                        profit: profit,
+                        type: document.getElementById('sale-type').value,
+                        obs: document.getElementById('sale-obs').value,
+                        user: user.email, 
+                        timestamp: saleTimestamp,
+                        supplyUsed: sDoc ? sDoc.name : null, 
+                        supplyId: sDoc ? sDoc.id : null, 
+                        supplyQty: sDeduct,
+                        returnId: prod.returnId || null
+                    });
+                });
+
+                toast("✅ Venta Registrada");
+                document.getElementById('form-sale').reset();
+                updateSaleForm();
+                if(document.getElementById('sale-date-admin')) document.getElementById('sale-date-admin').value = '';
+
+            } catch (err) {
+                console.error(err);
+                toast("❌ Error: " + (typeof err === 'string' ? err : err.message));
+            } finally {
+                btn.disabled = false;
             }
         });
 
-        function startApp() {
-            document.getElementById('view-login').classList.add('hidden');
-            document.getElementById('view-register').classList.add('hidden');
-            document.getElementById('view-app').classList.remove('hidden');
-
-            if (currentUser.role === 'admin') {
-                document.getElementById('ui-admin').classList.remove('hidden');
-                document.getElementById('ui-driver').classList.add('hidden');
-                loadAdminData();
-            } else {
-                document.getElementById('ui-admin').classList.add('hidden');
-                document.getElementById('ui-driver').classList.remove('hidden');
-                document.getElementById('driver-name').textContent = currentUser.name.split(' ')[0];
-                loadDriverData();
-                startDriverGPS();
-            }
+        // 4. ANULACIÓN DE VENTA - ADMIN (MODO BÚSQUEDA)
+        window.loadAdminSalesByDate = async () => {
+            const dateVal = document.getElementById('admin-date-filter').value;
+            if(!dateVal) return;
             
-            // Reajustar mapa
-            setTimeout(() => { if(map) google.maps.event.trigger(map, 'resize'); }, 1000);
-        }
+            const btn = document.querySelector("button[onclick='loadAdminSalesByDate()']");
+            const originalText = btn.innerText; btn.innerText = "..."; btn.disabled = true;
 
-        function showLogin() {
-            document.getElementById('view-app').classList.add('hidden');
-            document.getElementById('view-login').classList.remove('hidden');
-        }
-
-        // --- FUNCIONES DE ADMINISTRADOR ---
-        function loadAdminData() {
-            // Escuchar pedidos en tiempo real
-            const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-            onSnapshot(q, (snapshot) => {
-                const list = document.getElementById('orders-list');
-                list.innerHTML = '';
-                
-                // Limpiar marcadores viejos
-                Object.values(markers).forEach(m => m.setMap(null));
-                markers = {};
-
-                let hasOrders = false;
-
-                snapshot.forEach(doc => {
-                    const order = { id: doc.id, ...doc.data() };
-                    
-                    // Solo renderizar en lista según filtro
-                    if (shouldShowOrder(order)) {
-                        list.appendChild(createOrderCard(order));
-                        hasOrders = true;
-                    }
-                    
-                    // Renderizar en mapa si no está entregado
-                    if (order.status !== 'delivered') {
-                        addMapMarker(order);
-                    }
-                });
-
-                if(!hasOrders) list.innerHTML = `<p style="text-align:center; color:#94a3b8; margin-top:20px;">No hay pedidos en esta vista.</p>`;
-            });
-        }
-
-        function shouldShowOrder(order) {
-            if (currentFilter === 'all') return order.status !== 'delivered'; 
-            return order.status === currentFilter;
-        }
-
-        window.filterOrders = (status) => {
-            currentFilter = status;
-            loadAdminData(); // Forzar re-render (simplificado)
-        }
-
-        function createOrderCard(order) {
-            const div = document.createElement('div');
-            const statusClass = order.status === 'pending' ? 'status-pending' : 'status-route';
-            const statusText = order.status === 'pending' ? 'PENDIENTE' : 'EN CAMINO';
-            
-            div.className = `order-card ${statusClass}`;
-            div.innerHTML = `
-                <div class="flex-row justify-between">
-                    <strong>${order.client}</strong>
-                    <span class="badge ${order.status === 'pending' ? 'bg-pending' : 'bg-route'}">${statusText}</span>
-                </div>
-                <div style="font-size:0.9rem; color:var(--gray); margin:5px 0;">${order.address}</div>
-                <div class="flex-row justify-between" style="border-top:1px dashed #e2e8f0; padding-top:5px; margin-top:5px;">
-                    <span>🧴 ${order.qty} un.</span>
-                    <strong style="color:var(--dark);">$${parseFloat(order.total).toFixed(2)}</strong>
-                </div>
-                ${order.status === 'pending' ? 
-                    `<button onclick="assignDriver('${order.id}')" class="btn btn-sm btn-primary" style="width:100%; margin-top:10px;">ASIGNAR CHOFER</button>` :
-                    `<div style="margin-top:5px; font-size:0.8rem; color:var(--primary);">🚚 Chofer: ${order.driverName || 'Asignado'}</div>`
-                }
-            `;
-            // Click en tarjeta centra mapa
-            div.onclick = (e) => {
-                if(e.target.tagName !== 'BUTTON') {
-                    if(map) map.setCenter({ lat: order.lat, lng: order.lng });
-                    map.setZoom(16);
-                }
-            };
-            return div;
-        }
-
-        function addMapMarker(order) {
-            if (!map) return;
-            // Marcador rojo (pendiente) o azul (ruta)
-            const color = order.status === 'pending' ? "http://maps.google.com/mapfiles/ms/icons/red-dot.png" : "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
-            
-            const marker = new google.maps.Marker({
-                position: { lat: order.lat, lng: order.lng },
-                map: map,
-                icon: color,
-                title: order.client
-            });
-            markers[order.id] = marker;
-        }
-
-        window.assignDriver = async (orderId) => {
-            const email = prompt("Ingresa el CORREO del chofer para asignar:");
-            if (!email) return;
-            
             try {
-                // Actualizar pedido
-                await updateDoc(doc(db, "orders", orderId), {
-                    status: 'route',
-                    driverEmail: email,
-                    driverName: email.split('@')[0], 
-                    assignedAt: serverTimestamp()
-                });
+                const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00"));
+                const endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
                 
-                // Abrir WhatsApp Web
-                const orderDoc = await getDoc(doc(db, "orders", orderId));
-                const o = orderDoc.data();
-                // Asegurar formato de número (quitar 0 inicial si existe para formato internacional)
-                let phone = o.phone.startsWith('0') ? o.phone.substring(1) : o.phone;
-                const msg = `Hola ${o.client}, su pedido de ${o.qty} botellones va en camino 🚚. Total: $${o.total}.`;
-                window.open(`https://wa.me/593${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-
-            } catch (error) {
-                alert("Error asignando: " + error.message);
-            }
+                const q = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs), orderBy("timestamp", "desc"));
+                const snap = await getDocs(q);
+                const loadedSales = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                renderAdminSalesTable(loadedSales);
+            } catch(e) { toast("Error cargando ventas antiguas: " + e.message); } 
+            finally { btn.innerText = originalText; btn.disabled = false; }
         };
 
-        // --- FUNCIONES DE CHOFER ---
-        function loadDriverData() {
-            // Escuchar solo pedidos asignados a mi email
-            const q = query(collection(db, "orders"), 
-                where("driverEmail", "==", currentUser.email), 
-                where("status", "==", "route")
-            );
-
-            onSnapshot(q, (snapshot) => {
-                const orders = [];
-                snapshot.forEach(d => orders.push({id: d.id, ...d.data()}));
-
-                if (orders.length > 0) {
-                    activeOrder = orders[0];
-                    renderActiveOrder(activeOrder);
-                    
-                    // Marcar destino en mapa
-                    if(map) {
-                        const dest = { lat: activeOrder.lat, lng: activeOrder.lng };
-                        map.setCenter(dest);
-                        new google.maps.Marker({ position: dest, map: map, title: "Cliente", animation: google.maps.Animation.DROP });
-                    }
-                } else {
-                    activeOrder = null;
-                    document.getElementById('active-card').classList.add('hidden');
-                    document.getElementById('no-orders-msg').classList.remove('hidden');
-                }
-            });
-        }
-
-        function renderActiveOrder(order) {
-            document.getElementById('no-orders-msg').classList.add('hidden');
-            document.getElementById('active-card').classList.remove('hidden');
+        window.renderAdminSalesTable = (dataList = null) => {
+            const list = dataList || sales; // Si no paso lista específica, usa la local
+            const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
             
-            document.getElementById('act-client').textContent = order.client;
-            document.getElementById('act-address').textContent = order.address;
-            document.getElementById('act-prod').textContent = `${order.qty} Botellones`;
-            document.getElementById('act-total').textContent = `$${parseFloat(order.total).toFixed(2)}`;
+            // Si usamos lista local, filtramos. Si es lista traida de BD (dataList), ya viene filtrada.
+            const dateVal = document.getElementById('admin-date-filter').value;
+            const filtered = dataList ? list : list.filter(s => isDateMatch(s.timestamp, dateVal)); 
+
+            if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas encontradas. Dale a "Buscar" si es fecha antigua.</td></tr>'; return; }
+
+            const fragment = document.createDocumentFragment();
+            filtered.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${getUserName(s.user)}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td>`;
+                fragment.appendChild(tr);
+            }); 
+            tb.appendChild(fragment);
+            feather.replace();
         }
 
-        window.openGPS = () => {
-            if(!activeOrder) return;
-            // Enlace universal para abrir mapa nativo
-            const url = `https://www.google.com/maps/dir/?api=1&destination=${activeOrder.lat},${activeOrder.lng}`;
-            window.open(url, '_blank');
-        };
+        window.deleteSale = async (id) => {
+            if (!checkAdmin()) return;
+            showConfirm("¿Anular Venta?", "Se repondrá stock. Se descontará envase.", async () => {
+                try {
+                    await runTransaction(db, async (t) => {
+                        // Primero leemos la venta para saber qué devolver
+                        const saleRef = doc(db, "sales", id);
+                        const saleSnap = await t.get(saleRef);
+                        if (!saleSnap.exists()) throw "Venta no encontrada";
+                        const s = saleSnap.data();
 
-        window.completeOrder = async () => {
-            if(!activeOrder) return;
-            if(!confirm("¿Confirmar entrega y cobro?")) return;
+                        let pData = null, pRef = null;
+                        let sData = null, sRef = null;
+                        let retData = null, retRef = null;
 
-            await updateDoc(doc(db, "orders", activeOrder.id), {
-                status: 'delivered',
-                deliveredAt: serverTimestamp()
-            });
-            alert("✅ Pedido entregado.");
-        };
-
-        function startDriverGPS() {
-            if (navigator.geolocation) {
-                // Rastreo continuo
-                navigator.geolocation.watchPosition(pos => {
-                    const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    
-                    if(map) {
-                        if(!userMarker) {
-                            userMarker = new google.maps.Marker({
-                                position: coords, map: map,
-                                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: "#0284c7", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 }
-                            });
-                        } else {
-                            userMarker.setPosition(coords);
+                        if(s.pid) {
+                            pRef = doc(db, "products", s.pid);
+                            const pSnap = await t.get(pRef);
+                            if(pSnap.exists()) pData = pSnap.data();
                         }
-                    }
-                    // Guardar en Firebase para que Admin lo vea
-                    updateDriverLocation(coords);
-                }, err => console.log(err), { enableHighAccuracy: true });
+                        
+                        if(s.supplyId) {
+                            sRef = doc(db, "supplies", s.supplyId);
+                            const sSnap = await t.get(sRef);
+                            if(sSnap.exists()) sData = sSnap.data();
+                        }
+                        
+                        if(s.returnId) {
+                            retRef = doc(db, "products", s.returnId);
+                            const retSnap = await t.get(retRef);
+                            if(retSnap.exists()) retData = retSnap.data();
+                        }
+
+                        if(pRef && pData) t.update(pRef, {stock: pData.stock + (s.qty_total_units||0)});
+                        if(sRef && sData) t.update(sRef, {stock: sData.stock + (s.supplyQty||0)});
+                        
+                        if(retRef && retData) {
+                            const current = retData.stock || 0;
+                            t.update(retRef, { stock: current - (s.qty_packs||0) });
+                        }
+                        
+                        t.delete(saleRef);
+                        t.set(doc(collection(db, "movements")), { type: "ANULACION_VENTA", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
+                    }); 
+                    toast("✅ Venta Anulada");
+                    loadAdminSalesByDate(); // Recargar la tabla
+                } catch(e) { toast("Error al anular: " + e.message); }
+            });
+        };
+
+        // --- GESTIÓN DE PRODUCTOS E INSUMOS ---
+        function updateSelects() {
+            const updateSelect = (id, hasStock) => {
+                const el = document.getElementById(id); if(!el) return;
+                const currentVal = el.value;
+                el.innerHTML = '<option value="">Seleccionar...</option>';
+                products.forEach(p => {
+                    el.innerHTML += `<option value="${p.id}">${p.name} ${hasStock ? `(Stock: ${Math.floor(p.stock)})` : ''}</option>`;
+                });
+                if(currentVal) el.value = currentVal; 
+            };
+            
+            updateSelect('sale-product', true);
+            updateSelect('truck-product', true);
+            updateSelect('pack-product', true);
+
+            const sRet = document.getElementById('prod-return-link');
+            if(sRet) {
+                const current = sRet.value;
+                sRet.innerHTML = '<option value="">-- Ninguno --</option>';
+                products.forEach(p => sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+                if(current) sRet.value = current;
             }
         }
         
-        async function updateDriverLocation(coords) {
-            await updateDoc(doc(db, "users", currentUser.uid), {
-                location: coords,
-                lastSeen: serverTimestamp()
-            });
+        function updateSupplySelect() {
+            const s = document.getElementById('prod-supply-link');
+            const current = s.value;
+            s.innerHTML = '<option value="">-- Ninguno --</option>'; 
+            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`);
+            if(current) s.value = current;
         }
 
-        // --- CREAR NUEVO PEDIDO (ADMIN) ---
-        document.getElementById('form-order').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const center = map.getCenter();
+        window.updateSaleForm = () => {
+            const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value)||0;
+            const prod = products.find(p => p.id === pid); if(!prod) return;
+            document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price || 0);
+            document.getElementById('sale-total').textContent = fmtMoney(qty * (prod.price || 0));
+        };
 
-            const data = {
-                client: document.getElementById('o-client').value,
-                phone: document.getElementById('o-phone').value,
-                address: document.getElementById('o-address').value,
-                qty: parseInt(document.getElementById('o-qty').value),
-                price: parseFloat(document.getElementById('o-price').value),
-                total: parseInt(document.getElementById('o-qty').value) * parseFloat(document.getElementById('o-price').value),
-                lat: center.lat(),
-                lng: center.lng(),
-                status: 'pending',
-                createdAt: serverTimestamp(),
-                driverEmail: null
+        document.getElementById('form-product').addEventListener('submit', async (e) => {
+            e.preventDefault(); if(!checkAdmin()) return;
+            const id = document.getElementById('prod-id').value;
+            const data = { 
+                name: document.getElementById('prod-name').value, 
+                price: parseFloat(document.getElementById('prod-price').value) || 0, 
+                cost: parseFloat(document.getElementById('prod-cost').value) || 0, 
+                min: parseInt(document.getElementById('prod-min').value) || 0, 
+                supplyLink: document.getElementById('prod-supply-link').value||null, 
+                supplyQty: parseFloat(document.getElementById('prod-supply-qty').value)||0,
+                returnId: document.getElementById('prod-return-link').value||null 
             };
-
-            await addDoc(collection(db, "orders"), data);
-            closeModalOrder();
-            document.getElementById('form-order').reset();
-            filterOrders('pending'); // Volver a vista pendientes
+            try {
+                if(id) await updateDoc(doc(db,"products",id), data);
+                else await addDoc(collection(db,"products"), {...data, stock: parseInt(document.getElementById('prod-stock').value) || 0, createdAt: serverTimestamp()});
+                resetProdForm(); toast("✅ Producto Guardado");
+            } catch(e) { toast("Error: " + e.message); }
         });
 
-        window.openModalOrder = () => document.getElementById('modal-order').classList.remove('hidden');
-        window.closeModalOrder = () => document.getElementById('modal-order').classList.add('hidden');
+        function renderProducts() {
+            const tb = document.querySelector('#table-products tbody'); tb.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            products.forEach(p => {
+                const tr = document.createElement('tr');
+                let supplyInfo = '<span style="color:#cbd5e1">-</span>';
+                if (p.supplyLink) {
+                    const s = supplies.find(x => x.id === p.supplyLink);
+                    supplyInfo = s ? `<span style="font-size:0.8rem; color:var(--truck);"><i data-feather="link" style="width:10px"></i> ${s.name} <b>(x${p.supplyQty || 1})</b></span>` : `<span style="color:var(--danger); font-size:0.8rem;">⚠️ Vínculo Roto</span>`;
+                }
+                let returnInfo = p.returnId ? `<span style="font-size:0.8rem; color:var(--success);"><i data-feather="corner-down-left" style="width:10px"></i> Retorno</span>` : '-';
+                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
+                tr.innerHTML = `<td>${p.name}</td><td>${fmtMoney(p.price || 0)}</td><td style="font-weight:bold">${Math.floor(p.stock)}</td><td>${supplyInfo}</td><td>${returnInfo}</td><td>${editBtn}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
+        }
 
-        // --- GESTIÓN DE CUENTAS ---
-        window.toggleRegister = () => {
-            document.getElementById('view-login').classList.toggle('hidden');
-            document.getElementById('view-register').classList.toggle('hidden');
+        window.editProd = (id) => { 
+            const p = products.find(x=>x.id==id); if(!p) return;
+            document.getElementById('prod-id').value=p.id; 
+            document.getElementById('prod-name').value=p.name; 
+            document.getElementById('prod-price').value=p.price; 
+            document.getElementById('prod-cost').value=p.cost||0; 
+            document.getElementById('prod-stock').value=p.stock; 
+            document.getElementById('prod-stock').disabled = true; 
+            document.getElementById('prod-min').value=p.min||0; 
+            document.getElementById('prod-supply-link').value = p.supplyLink||''; 
+            document.getElementById('prod-supply-qty').value=p.supplyQty||1; 
+            document.getElementById('prod-return-link').value = p.returnId||'';
         };
 
-        document.getElementById('form-login').onsubmit = async (e) => {
-            e.preventDefault();
-            try {
-                await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value);
-            } catch (error) { alert("Credenciales incorrectas: " + error.message); }
-        };
+        window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
 
-        document.getElementById('form-register').onsubmit = async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('r-email').value;
-            const pass = document.getElementById('r-pass').value;
-            const name = document.getElementById('r-name').value;
-            const role = document.getElementById('r-role').value;
+        // Insumos
+        function renderSupplies() {
+            const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            supplies.forEach(s => {
+                const tr = document.createElement('tr');
+                const btns = role === 'admin' ? `<div style="display:flex; gap:5px;"><button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button><button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button></div>` : '-';
+                tr.innerHTML = `<td><b>${s.name}</b></td><td>${Math.floor(s.stock)}</td><td>${s.stock<20?'⚠️':'OK'}</td><td>${btns}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
+        }
+        
+        window.deleteSupply = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Insumo", "¿Seguro?", async () => { await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Insumo Eliminado"); }); }
+        window.editSupply = (id) => { const s = supplies.find(x => x.id === id); if(!s) return; window.showSupplyForm(); document.getElementById('supp-id').value = s.id; document.getElementById('supp-name').value = s.name; document.getElementById('supp-stock').value = s.stock; document.getElementById('btn-save-supply').innerText = "Actualizar"; };
+        window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); document.getElementById('form-supply').reset(); document.getElementById('supp-id').value = ''; document.getElementById('btn-save-supply').innerText = "Guardar"; };
+        window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
+        document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('supp-id').value, name = document.getElementById('supp-name').value, stock = parseInt(document.getElementById('supp-stock').value) || 0; try { if(id) await updateDoc(doc(db,"supplies",id), {name, stock}); else await addDoc(collection(db,"supplies"), {name, stock, createdAt: serverTimestamp()}); hideSupplyForm(); toast("✅ Listo"); } catch(e){ toast("Error"); } });
+
+        // Inventario y Movimientos
+        window.openRestock = (id, type) => { if(!checkAdmin()) return; const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); document.getElementById('modal-prod-name').textContent = item.name; document.getElementById('restock-id').value = item.id; document.getElementById('restock-type').value = type; document.getElementById('modal-restock').classList.remove('hidden'); };
+        window.closeModal = () => document.getElementById('modal-restock').classList.add('hidden');
+        document.getElementById('form-restock').addEventListener('submit', async e => { 
+            e.preventDefault(); 
+            const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value;
+            let qty = parseInt(document.getElementById('restock-qty').value) || 0;
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); 
+            try { 
+                await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: (item.stock||0) + qty }); 
+                await addDoc(collection(db, "movements"), { type: "ENTRADA", product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() }); 
+                toast("✅ Stock Actualizado"); closeModal(); 
+            } catch(e) { toast("Error"); } 
+        });
+
+        function renderInventory() { const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = ''; let crit=0; const fragment = document.createDocumentFragment(); products.forEach(p => { const isLow = p.stock <= (p.min || 0); if(isLow) crit++; const btn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">+</button>` : '-'; const tr = document.createElement('tr'); tr.innerHTML = `<td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${Math.floor(p.stock)}</td><td>${isLow?'🔴':'🟢'}</td><td>${btn}</td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); document.getElementById('d-critical').textContent = crit; }
+        function renderMovements() { const tb = document.querySelector('#table-movements tbody'); tb.innerHTML=''; const fragment = document.createDocumentFragment(); movements.slice(0,50).forEach(m => { const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px;"><i data-feather="trash-2" style="width:12px"></i></button>` : ''; const tr = document.createElement('tr'); tr.innerHTML = `<td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product}</td><td>${m.quantity}</td><td>${btn}</td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); feather.replace(); }
+        window.deleteLog = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar", "¿Borrar registro historial?", async () => { await deleteDoc(doc(db, "movements", id)); toast("Borrado"); }); }
+
+        // Gastos
+        function renderExpenses() {
+            const tb = document.querySelector('#table-expenses tbody'); tb.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            expenses.slice(0, 50).forEach(e => {
+                const tr = document.createElement('tr');
+                const btn = role === 'admin' ? `<button onclick="deleteExpense('${e.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
+                tr.innerHTML = `<td>${e.date}</td><td>${e.desc}</td><td style="color:var(--danger); font-weight:bold;">${fmtMoney(e.amount || 0)}</td><td>${getUserName(e.user)}</td><td>${btn}</td>`;
+                fragment.appendChild(tr);
+            });
+            tb.appendChild(fragment);
+            feather.replace();
+        }
+        document.getElementById('form-expense').addEventListener('submit', async (e) => { e.preventDefault(); const desc = document.getElementById('exp-desc').value; const amount = parseFloat(document.getElementById('exp-amount').value) || 0; const date = document.getElementById('exp-date').value; try { await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() }); document.getElementById('exp-desc').value = ''; document.getElementById('exp-amount').value = ''; toast("✅ Gasto registrado"); } catch(err) { toast("Error: Permisos insuficientes"); } });
+        window.deleteExpense = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Gasto", "¿Seguro?", async () => { await deleteDoc(doc(db, "expenses", id)); toast("🗑️ Eliminado"); }); };
+
+        // --- REPORTES AUDITORÍA ---
+        window.generateDetailedAudit = async () => {
+            const startVal = document.getElementById('audit-start').value;
+            const endVal = document.getElementById('audit-end').value;
+            if (!startVal || !endVal) return toast("⚠️ Fechas requeridas");
+            if (new Date(startVal) > new Date(endVal)) return toast("⚠️ Rango de fechas inválido");
+
+            const btn = document.querySelector("button[onclick='generateDetailedAudit()']");
+            const originalText = btn.innerHTML; btn.innerHTML = "⏳ Generando..."; btn.disabled = true;
 
             try {
-                const cred = await createUserWithEmailAndPassword(auth, email, pass);
-                await setDoc(doc(db, "users", cred.user.uid), {
-                    name, email, role, createdAt: serverTimestamp()
+                const startTs = Timestamp.fromDate(new Date(startVal + "T00:00:00"));
+                const endTs = Timestamp.fromDate(new Date(endVal + "T23:59:59"));
+                const q = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs));
+                const snap = await getDocs(q);
+                const list = snap.docs.map(d => d.data());
+
+                if (list.length === 0) throw new Error("No hay ventas en ese rango.");
+
+                const report = {};
+                let grandSales = 0, grandCost = 0, grandProfit = 0;
+
+                list.forEach(s => {
+                    const k = s.product || "Desconocido";
+                    if (!report[k]) report[k] = { qty: 0, rev: 0, cost: 0, prof: 0, tx: 0 };
+                    report[k].qty += (s.qty_total_units || s.qty_packs || 0);
+                    report[k].rev += (s.price || 0);
+                    report[k].cost += (s.cost || 0);
+                    report[k].prof += (s.profit || 0);
+                    report[k].tx += 1;
+                    grandSales += (s.price || 0);
+                    grandCost += (s.cost || 0);
+                    grandProfit += (s.profit || 0);
                 });
-                alert("Cuenta creada. Ingresando...");
-                window.location.reload();
-            } catch (error) { alert("Error: " + error.message); }
+
+                const rows = [
+                    { A: "REPORTE AUDITORÍA" },
+                    { A: `Desde: ${startVal} Hasta: ${endVal}` },
+                    {},
+                    { A: "PRODUCTO", B: "CANTIDAD", C: "VENTAS ($)", D: "COSTO ($)", E: "GANANCIA ($)", F: "MARGEN %" }
+                ];
+
+                Object.keys(report).sort().forEach(k => {
+                    const r = report[k];
+                    const margin = r.rev > 0 ? ((r.prof / r.rev) * 100).toFixed(2) + "%" : "0%";
+                    rows.push({ A: k, B: r.qty, C: r.rev, D: r.cost, E: r.prof, F: margin });
+                });
+
+                rows.push({});
+                rows.push({ A: "TOTALES", C: grandSales, D: grandCost, E: grandProfit, F: grandSales > 0 ? ((grandProfit/grandSales)*100).toFixed(2)+"%" : "0%" });
+
+                const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+                XLSX.writeFile(wb, `Auditoria_${today()}.xlsx`);
+                toast("✅ Excel descargado");
+
+            } catch (error) { toast("❌ " + error.message); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
         };
 
+        window.exportSales = () => {
+            const startVal = document.getElementById('export-start').value;
+            const endVal = document.getElementById('export-end').value;
+
+            if(!startVal || !endVal) return toast("⚠️ Seleccione ambas fechas");
+            if(startVal > endVal) return toast("⚠️ Fecha inicio mayor a fin");
+            
+            const listSales = sales.filter(s => {
+                if(!s.timestamp) return false;
+                const sDate = getLocalYMD(new Date(s.timestamp.seconds * 1000));
+                return sDate >= startVal && sDate <= endVal;
+            });
+
+            const listExpenses = expenses.filter(e => {
+                return e.date >= startVal && e.date <= endVal;
+            });
+
+            if(!listSales.length && !listExpenses.length) return toast(`Sin movimientos RECIENTES en memoria. Usa Auditoría para fechas antiguas.`);
+
+            const totalCash = listSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+(b.price||0),0);
+            const totalTransf = listSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+(b.price||0),0);
+            const totalSales = totalCash + totalTransf;
+            const totalExp = listExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
+            const totalNet = totalSales - totalExp;
+
+            const data = [];
+            listSales.forEach(s => {
+                data.push({
+                    Fecha: fmtDate(s.timestamp),
+                    Tipo: "VENTA",
+                    Concepto: s.product,
+                    Metodo: s.type,
+                    Ingreso: s.price || 0,
+                    Egreso: 0,
+                    Usuario: getUserName(s.user)
+                });
+            });
+
+            if(listExpenses.length > 0) {
+                data.push({}); 
+                data.push({ Concepto: "--- DETALLE DE GASTOS ---" });
+            }
+
+            listExpenses.forEach(e => {
+                data.push({
+                    Fecha: e.date,
+                    Tipo: "GASTO",
+                    Concepto: e.desc,
+                    Metodo: "-",
+                    Ingreso: 0,
+                    Egreso: e.amount || 0,
+                    Usuario: getUserName(e.user)
+                });
+            });
+
+            data.push({});
+            data.push({});
+            data.push({ Concepto: "--- RESUMEN DE CAJA ---" });
+            data.push({ Concepto: "VENTAS EFECTIVO", Ingreso: totalCash });
+            data.push({ Concepto: "VENTAS TRANSFERENCIA", Ingreso: totalTransf });
+            data.push({ Concepto: "TOTAL VENTAS", Ingreso: totalSales });
+            data.push({ Concepto: "TOTAL GASTOS", Egreso: totalExp });
+            data.push({ Concepto: "TOTAL NETO (GANANCIA)", Ingreso: totalNet });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wscols = [{wch: 20}, {wch: 10}, {wch: 30}, {wch: 15}, {wch: 12}, {wch: 12}, {wch: 15}];
+            ws['!cols'] = wscols;
+            const wb = XLSX.utils.book_new(); 
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja"); 
+            XLSX.writeFile(wb, `Reporte_${startVal}_a_${endVal}.xlsx`);
+        };
+
+        window.exportInventory = () => {
+            const data = products.map(p => ({ Producto: p.name, Stock: Math.floor(p.stock), Costo: p.cost, ValorTotal: p.stock * (p.cost||0) }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Stock"); XLSX.writeFile(wb, `Inventario_${today()}.xlsx`);
+        };
+
+        // --- EXTRAS ---
+        function renderPending(list) { const tb = document.querySelector('#table-pending tbody'); tb.innerHTML=''; const fragment = document.createDocumentFragment(); list.forEach(i => { const tr=document.createElement('tr'); tr.innerHTML = `<td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total || 0)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); }
+        window.payPending = async (id) => { showConfirm("Cobro", "¿Pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); };
+        
+        window.showConfirm = (t, m, c) => { document.getElementById('confirm-title').innerText=t; document.getElementById('confirm-msg').innerText=m; document.getElementById('modal-confirm').classList.remove('hidden'); const b=document.getElementById('confirm-yes-btn'); const n=b.cloneNode(true); b.parentNode.replaceChild(n, b); if(c){ n.onclick=()=>{ c(); document.getElementById('modal-confirm').classList.add('hidden'); }; } };
+        window.closeConfirm = () => document.getElementById('modal-confirm').classList.add('hidden');
+        window.nav = (id) => { document.querySelectorAll('.page').forEach(p => p.classList.add('hidden')); document.getElementById('page-'+id).classList.remove('hidden'); document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active')); event?.currentTarget?.classList.add('active'); };
+        window.toast = (m) => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); };
         window.logout = () => signOut(auth);
+
+        document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); document.getElementById('tab-login').style.background='white'; document.getElementById('tab-register').style.background='transparent'; };
+        document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); document.getElementById('tab-register').style.background='white'; document.getElementById('tab-login').style.background='transparent'; };
+        document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
+        document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{ email:c.user.email, role:document.getElementById('r-role').value, name:document.getElementById('r-name').value }); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
+        document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value)||0, date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
 
         feather.replace();
     </script>
