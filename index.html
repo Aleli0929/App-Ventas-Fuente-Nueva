@@ -86,12 +86,12 @@
 
     <div id="modal-restock" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3 style="color:var(--primary); margin-bottom:0.5rem;">📥 Entrada de Inventario</h3>
+            <h3 id="modal-restock-title" style="color:var(--primary); margin-bottom:0.5rem;">📥 Entrada de Inventario</h3>
             <p style="color:var(--gray); margin-bottom: 1.5rem;">Producto: <b id="modal-prod-name" class="text-primary"></b></p>
             <form id="form-restock">
                 <input type="hidden" id="restock-id"><input type="hidden" id="restock-type">
-                <label>Cantidad a Ingresar (Unidades enteras):</label>
-                <input type="number" id="restock-qty" min="1" step="1" placeholder="0" required style="font-size:1.5rem; padding:1rem; text-align:center; font-weight:bold; color:var(--primary); border: 2px solid var(--primary-light);">
+                <input type="hidden" id="restock-mode" value="add"> <label id="label-restock-qty">Cantidad a Ingresar (Unidades enteras):</label>
+                <input type="number" id="restock-qty" min="0" step="1" placeholder="0" required style="font-size:1.5rem; padding:1rem; text-align:center; font-weight:bold; color:var(--primary); border: 2px solid var(--primary-light);">
                 <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem;">
                     <button type="button" onclick="closeModal()" class="btn btn-gray" style="flex:1">Cancelar</button>
                     <button type="submit" class="btn btn-green" style="flex:1">Guardar</button>
@@ -355,7 +355,7 @@
                     <div class="table-container"><table id="table-supplies"><thead><tr><th>Insumo</th><th>Stock</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
                 </div>
                 <div class="grid-split">
-                    <div class="card"><h3><i data-feather="box"></i> Stock Productos</h3><div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada</th></tr></thead><tbody></tbody></table></div></div>
+                    <div class="card"><h3><i data-feather="box"></i> Stock Productos</h3><div class="table-container"><table id="table-inventory"><thead><tr><th>Producto</th><th>Stock</th><th>Estado</th><th>Entrada / Ajuste</th></tr></thead><tbody></tbody></table></div></div>
                     <div class="card"><h3><i data-feather="activity"></i> Movimientos Recientes</h3><div class="table-container" style="max-height:400px; overflow-y:auto;"><table id="table-movements"><thead><tr><th>Fecha</th><th>Detalle</th><th>Cant.</th><th></th></tr></thead><tbody></tbody></table></div></div>
                 </div>
             </div>
@@ -517,12 +517,10 @@
                 renderSupplies(); updateSupplySelect(); renderProducts(); 
             });
             
-            // Limitamos listeners a 300 para velocidad
             onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(300)), (sn) => { 
                 sales = sn.docs.map(d => ({id: d.id, ...d.data()})); 
-                refreshSalesView(); // Vista "Operaciones" (Realtime)
+                refreshSalesView(); 
                 if (isDateMatch(sales[0]?.timestamp, document.getElementById('dash-date-filter').value)) {
-                    // Solo actualizamos dashboard si la fecha coincide con HOY/Reciente
                      updateDashboard(false);
                 }
             });
@@ -544,29 +542,24 @@
             });
         }
 
-        // --- DASHBOARD BLINDADO (Consulta Directa a BD) ---
+        // --- DASHBOARD BLINDADO ---
         window.updateDashboard = async (forceFetch = false) => {
             const dateVal = document.getElementById('dash-date-filter').value;
             let daySales = [], dayExpenses = [];
 
-            // Si es HOY y tenemos datos en memoria, usarlos (rápido)
             if (!forceFetch && sales.length > 0 && isDateMatch(sales[0].timestamp, dateVal)) {
                 daySales = sales.filter(s => isDateMatch(s.timestamp, dateVal));
                 dayExpenses = expenses.filter(e => e.date === dateVal);
             } else {
-                // Si es fecha pasada, consultar BD (LENTO PERO SEGURO)
                 try {
                     const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00"));
                     const endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
-                    
                     const qSales = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs));
                     const snapSales = await getDocs(qSales);
                     daySales = snapSales.docs.map(d => d.data());
-
                     const qExp = query(collection(db, "expenses"), where("date", "==", dateVal));
                     const snapExp = await getDocs(qExp);
                     dayExpenses = snapExp.docs.map(d => d.data());
-
                 } catch (e) { console.error("Error fetching dashboard stats", e); }
             }
 
@@ -577,7 +570,6 @@
             }, { sales: 0, profit: 0 });
 
             const totalExp = dayExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
-
             document.getElementById('d-today').textContent = fmtMoney(stats.sales);
             document.getElementById('d-profit').textContent = fmtMoney(stats.profit - totalExp);
             document.getElementById('d-expenses-info').textContent = `(-${fmtMoney(totalExp)} gastos)`;
@@ -588,12 +580,9 @@
         window.renderSalesTable = () => {
             const tb = document.querySelector('#table-sales tbody');
             const filterDate = document.getElementById('sales-date-filter').value;
-            // Aquí usamos el array 'sales' local (ultimos 300) porque es vista operativa rápida
             const filtered = sales.filter(s => isDateMatch(s.timestamp, filterDate));
-            
             tb.innerHTML = '';
             if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray)">Sin ventas recientes.</td></tr>'; return; }
-
             const fragment = document.createDocumentFragment();
             filtered.forEach(s => {
                 const tr = document.createElement('tr');
@@ -609,15 +598,12 @@
             const filterDate = document.getElementById('sales-date-filter').value;
             const filteredSales = sales.filter(s => isDateMatch(s.timestamp, filterDate));
             let total = 0, cash = 0, transfer = 0, prodCounts = {};
-            
             filteredSales.forEach(s => {
                 total += (s.price || 0);
                 if(s.type === 'Efectivo') cash += (s.price || 0); else transfer += (s.price || 0);
                 prodCounts[s.product] = (prodCounts[s.product] || 0) + (s.qty_packs || 1);
             });
-
             let html = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;"><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Efectivo</div><div style="font-weight:bold; color:var(--success); font-size:1.1rem;">${fmtMoney(cash)}</div></div><div style="background:white; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;"><div style="font-size:0.8rem; color:var(--gray)">Transfer.</div><div style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${fmtMoney(transfer)}</div></div></div><div style="border-top:1px dashed #cbd5e1; padding-top:0.5rem;"><small style="font-weight:600; margin-bottom:5px; display:block;">Conteo:</small><ul style="list-style:none; padding:0; font-size:0.85rem;">`;
-            
             Object.entries(prodCounts).forEach(([p, c]) => {
                 html += `<li style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:var(--gray)">${p}</span><b>${c}</b></li>`;
             });
@@ -625,27 +611,18 @@
             document.getElementById('daily-summary').innerHTML = html;
         }
 
-        // --- TRANSACCIONES DE STOCK (LÓGICA CRÍTICA) ---
-
-        // Función para CAMIÓN (Dos botones)
+        // --- TRANSACCIONES DE STOCK ---
         window.processTruckOutput = async (useSupply) => {
             const driver = document.getElementById('truck-driver').value;
             const pid = document.getElementById('truck-product').value;
             const qtyVal = document.getElementById('truck-qty').value;
-            
             if(!driver || !pid || !qtyVal) return toast("⚠️ Completa todos los campos");
-            
             const qty = parseInt(qtyVal);
             if (qty <= 0) return toast("Cantidad inválida");
-
             const prod = products.find(p => p.id === pid);
             if(!prod) return toast("Producto no válido");
             if(prod.stock < qty) return showConfirm("Error", "Stock insuficiente", null);
-
-            // --- LÓGICA DE INSUMOS ---
-            let sDoc = null;
-            let sDeduct = 0;
-
+            let sDoc = null, sDeduct = 0;
             if(prod.supplyLink && useSupply) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 if(!s) return alert("Error: Insumo vinculado no encontrado.");
@@ -653,11 +630,9 @@
                 if(s.stock < sDeduct) return showConfirm("Error", `Falta insumo: ${s.name}`, null);
                 sDoc = s; 
             }
-
             const dateInput = document.getElementById('truck-date-admin').value;
             let loadTimestamp = serverTimestamp();
             if(role === 'admin' && dateInput) loadTimestamp = Timestamp.fromDate(new Date(dateInput + 'T12:00:00'));
-            
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid);
@@ -665,7 +640,6 @@
                     if(!pSnapshot.exists()) throw "Producto no existe";
                     const pData = pSnapshot.data();
                     if(pData.stock < qty) throw "Stock insuficiente al procesar";
-                    
                     let sRef = null, sData = null;
                     if(sDoc) { 
                         sRef = doc(db, "supplies", sDoc.id); 
@@ -673,23 +647,10 @@
                         sData = sSnapshot.data(); 
                         if(sData.stock < sDeduct) throw "Falta insumo al procesar";
                     }
-                    
                     t.update(pRef, { stock: pData.stock - qty });
                     if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
-
                     const originText = useSupply ? '(Prod. Día)' : '(YA Envasado)';
-                    
-                    t.set(doc(collection(db, "movements")), { 
-                        type: 'SALIDA_CAMION', 
-                        product: prod.name, 
-                        productId: pid, 
-                        quantity: qty, 
-                        supplyId: sDoc?.id||null, 
-                        supplyQty: sDeduct, 
-                        user: user.email, 
-                        details: `Chofer: ${driver} ${originText}`, 
-                        timestamp: loadTimestamp 
-                    });
+                    t.set(doc(collection(db, "movements")), { type: 'SALIDA_CAMION', product: prod.name, productId: pid, quantity: qty, supplyId: sDoc?.id||null, supplyQty: sDeduct, user: user.email, details: `Chofer: ${driver} ${originText}`, timestamp: loadTimestamp });
                 });
                 toast("✅ Carga Registrada"); 
                 document.getElementById('form-truck-load').reset();
@@ -697,29 +658,18 @@
             } catch (err) { toast("Error: " + err); }
         };
 
-        // Función Genérica para Envasado (Siempre descuenta insumos)
         window.processOutput = async (e, type) => {
             e.preventDefault();
-            // Esta función solo queda para ENVASADOS (u otros futuros), el camión ya tiene la suya arriba
-            const btnId = 'btn-submit-pack';
-            const formId = 'form-pack-load';
-            
-            const btn = document.getElementById(btnId); btn.disabled = true; 
-            
+            const btn = document.getElementById('btn-submit-pack'); btn.disabled = true; 
             const detail = `Lote: ${document.getElementById('pack-detail').value}`;
             const pid = document.getElementById('pack-product').value;
             const qty = parseInt(document.getElementById('pack-qty').value) || 0;
             const dateInput = document.getElementById('pack-date-admin').value;
-
             if (qty <= 0) { toast("Cantidad inválida"); btn.disabled = false; return; }
-
             const prod = products.find(p => p.id === pid);
             if(!prod) { btn.disabled = false; return; }
             if(prod.stock < qty) { showConfirm("Error", "Stock insuficiente", null); btn.disabled = false; return; }
-            
-            let sDoc = null;
-            let sDeduct = 0;
-            // Para Envasado SIEMPRE descontamos si hay vínculo
+            let sDoc = null, sDeduct = 0;
             if(prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 if(!s) { alert("Error: Insumo vinculado no encontrado."); btn.disabled = false; return; }
@@ -727,10 +677,8 @@
                 if(s.stock < sDeduct) { showConfirm("Error", `Falta insumo: ${s.name}`, null); btn.disabled = false; return; } 
                 sDoc = s; 
             }
-
             let loadTimestamp = serverTimestamp();
             if(role === 'admin' && dateInput) loadTimestamp = Timestamp.fromDate(new Date(dateInput + 'T12:00:00'));
-
             try {
                 await runTransaction(db, async (t) => {
                     const pRef = doc(db, "products", pid);
@@ -738,33 +686,19 @@
                     if(!pSnapshot.exists()) throw "Producto no existe";
                     const pData = pSnapshot.data();
                     if(pData.stock < qty) throw "Stock insuficiente al procesar";
-                    
-                    let sRef = null;
-                    let sData = null;
+                    let sRef = null, sData = null;
                     if(sDoc) { 
                         sRef = doc(db, "supplies", sDoc.id); 
                         const sSnapshot = await t.get(sRef);
                         sData = sSnapshot.data(); 
                         if(sData.stock < sDeduct) throw "Falta insumo al procesar";
                     }
-                    
                     t.update(pRef, { stock: pData.stock - qty });
                     if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
-
-                    t.set(doc(collection(db, "movements")), { 
-                        type: type, 
-                        product: prod.name, 
-                        productId: pid, 
-                        quantity: qty, 
-                        supplyId: sDoc?.id||null, 
-                        supplyQty: sDeduct, 
-                        user: user.email, 
-                        details: detail, 
-                        timestamp: loadTimestamp 
-                    });
+                    t.set(doc(collection(db, "movements")), { type: type, product: prod.name, productId: pid, quantity: qty, supplyId: sDoc?.id||null, supplyQty: sDeduct, user: user.email, details: detail, timestamp: loadTimestamp });
                 });
                 toast("✅ Registrado con éxito"); 
-                document.getElementById(formId).reset(); 
+                document.getElementById('form-pack-load').reset(); 
                 document.getElementById('pack-supply-info').innerHTML = '';
             } catch (err) { toast("Error: " + err); } finally { btn.disabled = false; }
         }
@@ -772,10 +706,8 @@
         document.getElementById('form-pack-load').addEventListener('submit', (e) => processOutput(e, 'SALIDA_ENVASADO'));
 
         window.updateTruckInfo = () => {
-            const pid = document.getElementById('truck-product').value;
-            const qty = parseInt(document.getElementById('truck-qty').value) || 0;
-            const prod = products.find(p => p.id === pid);
-            const info = document.getElementById('truck-supply-info');
+            const pid = document.getElementById('truck-product').value, qty = parseInt(document.getElementById('truck-qty').value) || 0;
+            const prod = products.find(p => p.id === pid), info = document.getElementById('truck-supply-info');
             info.innerHTML = '';
             if(prod && prod.supplyLink && qty > 0) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
@@ -784,12 +716,9 @@
         };
 
         window.updatePackInfo = () => {
-            const pid = document.getElementById('pack-product').value;
-            const qty = parseInt(document.getElementById('pack-qty').value) || 0;
-            const prod = products.find(p => p.id === pid);
-            const info = document.getElementById('pack-supply-info');
+            const pid = document.getElementById('pack-product').value, qty = parseInt(document.getElementById('pack-qty').value) || 0;
+            const prod = products.find(p => p.id === pid), info = document.getElementById('pack-supply-info');
             info.innerHTML = '';
-            // Visualmente avisamos que se gastarán insumos
             if(prod && prod.supplyLink && qty > 0) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
                 if(s) info.innerHTML = `⚠️ Usa: ${s.name} (${(qty * (prod.supplyQty || 1)).toFixed(1)} un.)`;
@@ -800,9 +729,7 @@
             const tb = document.querySelector(`#${tableId} tbody`); tb.innerHTML = '';
             const dateVal = document.getElementById(filterId).value;
             const loads = movements.filter(m => m.type === type && isDateMatch(m.timestamp, dateVal));
-            
             if(loads.length===0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray)">Sin registros esa fecha.</td></tr>'; return; }
-            
             const fragment = document.createDocumentFragment();
             loads.forEach(m => {
                 const tr = document.createElement('tr');
@@ -810,7 +737,6 @@
                 let details = m.details || '-';
                 if(type === 'SALIDA_CAMION') details = details.replace('Chofer: ', '');
                 if(type === 'SALIDA_ENVASADO') details = details.replace('Lote: ', '');
-
                 tr.innerHTML = `<td style="font-size:0.8rem">${fmtDate(m.timestamp).split(',')[1]}</td><td style="font-size:0.8rem">${details}</td><td style="font-size:0.8rem">${m.product}</td><td style="font-weight:bold; font-size:0.8rem">${m.quantity}</td><td>${btn}</td>`;
                 fragment.appendChild(tr);
             });
@@ -825,27 +751,14 @@
             if(!checkAdmin()) return;
             const m = movements.find(x => x.id === id); if(!m) return;
             const msg = m.type === 'SALIDA_CAMION' ? 'Anular Carga' : 'Anular Envasado';
-            
             showConfirm(msg, "Se devolverá el stock.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        let pData = null, pRef = null;
-                        let sData = null, sRef = null;
-
-                        if(m.productId) {
-                            pRef = doc(db, "products", m.productId);
-                            const pSnapshot = await t.get(pRef);
-                            if(pSnapshot.exists()) pData = pSnapshot.data();
-                        }
-                        if(m.supplyId) {
-                            sRef = doc(db, "supplies", m.supplyId);
-                            const sSnapshot = await t.get(sRef);
-                            if(sSnapshot.exists()) sData = sSnapshot.data();
-                        }
-
+                        let pData = null, pRef = null, sData = null, sRef = null;
+                        if(m.productId) { pRef = doc(db, "products", m.productId); const pSnapshot = await t.get(pRef); if(pSnapshot.exists()) pData = pSnapshot.data(); }
+                        if(m.supplyId) { sRef = doc(db, "supplies", m.supplyId); const sSnapshot = await t.get(sRef); if(sSnapshot.exists()) sData = sSnapshot.data(); }
                         if(pRef && pData) t.update(pRef, {stock: pData.stock + m.quantity});
                         if(sRef && sData) t.update(sRef, {stock: sData.stock + (m.supplyQty||0)});
-                        
                         t.delete(doc(db, "movements", id));
                         t.set(doc(collection(db, "movements")), { type: m.type === 'SALIDA_CAMION' ? 'ANULACION_CAMION' : 'ANULACION_ENVASADO', product: m.product, quantity: m.quantity, user: user.email, timestamp: serverTimestamp() });
                     }); 
@@ -854,20 +767,15 @@
             });
         };
 
-        // 3. REGISTRO DE VENTA
+        // REGISTRO DE VENTA
         document.getElementById('form-sale').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btn-submit-sale');
-            const pid = document.getElementById('sale-product').value;
-            const qty = parseInt(document.getElementById('sale-qty').value) || 0;
+            const btn = document.getElementById('btn-submit-sale'), pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value) || 0;
             const prod = products.find(p => p.id === pid);
-
             if (!prod) return toast("Producto no válido");
             if (qty <= 0) return toast("Cantidad debe ser mayor a 0");
             if (prod.stock < qty) { showConfirm("Stock Insuficiente", `Stock actual: ${prod.stock}`, null); return; }
-
             btn.disabled = true;
-
             let sDoc = null, sDeduct = 0;
             if (prod.supplyLink) {
                 const s = supplies.find(x => x.id === prod.supplyLink);
@@ -876,119 +784,57 @@
                 if (s.stock < sDeduct) { showConfirm("Faltan Insumos", `Falta: ${s.name}`, null); btn.disabled = false; return; }
                 sDoc = s;
             }
-
-            const totalPrice = qty * (prod.price || 0);
-            const totalCost = qty * (prod.cost || 0);
-            const profit = totalPrice - totalCost;
-
+            const totalPrice = qty * (prod.price || 0), totalCost = qty * (prod.cost || 0), profit = totalPrice - totalCost;
             let saleTimestamp = serverTimestamp();
             const adminDate = document.getElementById('sale-date-admin').value;
             if (role === 'admin' && adminDate) saleTimestamp = Timestamp.fromDate(new Date(adminDate + 'T12:00:00'));
-
             try {
                 await runTransaction(db, async (t) => {
-                    const pRef = doc(db, "products", pid);
-                    const pSnapshot = await t.get(pRef);
+                    const pRef = doc(db, "products", pid), pSnapshot = await t.get(pRef);
                     if (!pSnapshot.exists()) throw "Producto no encontrado";
                     const pData = pSnapshot.data();
                     if (pData.stock < qty) throw "Stock cambió durante la venta.";
-
                     let sRef = null, sData = null;
-                    if (sDoc) {
-                        sRef = doc(db, "supplies", sDoc.id);
-                        const sSnapshot = await t.get(sRef);
-                        if (!sSnapshot.exists()) throw "Insumo no encontrado";
-                        sData = sSnapshot.data();
-                        if (sData.stock < sDeduct) throw `Falta insumo: ${sDoc.name}`;
-                    }
-
+                    if (sDoc) { sRef = doc(db, "supplies", sDoc.id); const sSnapshot = await t.get(sRef); sData = sSnapshot.data(); if (sData.stock < sDeduct) throw `Falta insumo: ${sDoc.name}`; }
                     let retRef = null, retData = null;
-                    if(prod.returnId) {
-                        retRef = doc(db, "products", prod.returnId);
-                        const retSnapshot = await t.get(retRef);
-                        if(retSnapshot.exists()) retData = retSnapshot.data();
-                    }
-
+                    if(prod.returnId) { retRef = doc(db, "products", prod.returnId); const retSnapshot = await t.get(retRef); if(retSnapshot.exists()) retData = retSnapshot.data(); }
                     t.update(pRef, { stock: pData.stock - qty });
                     if (sRef && sData) t.update(sRef, { stock: sData.stock - sDeduct });
-
                     let returnDetail = "";
-                    if(retRef && retData) {
-                        t.update(retRef, { stock: (retData.stock || 0) + qty });
-                        returnDetail = ` + Envase`;
-                    }
-
-                    t.set(doc(collection(db, "sales")), {
-                        product: prod.name + returnDetail, 
-                        pid: pid, 
-                        qty_packs: qty, 
-                        qty_total_units: qty,
-                        price: totalPrice, 
-                        cost: totalCost, 
-                        profit: profit,
-                        type: document.getElementById('sale-type').value,
-                        obs: document.getElementById('sale-obs').value,
-                        user: user.email, 
-                        timestamp: saleTimestamp,
-                        supplyUsed: sDoc ? sDoc.name : null, 
-                        supplyId: sDoc ? sDoc.id : null, 
-                        supplyQty: sDeduct,
-                        returnId: prod.returnId || null
-                    });
+                    if(retRef && retData) { t.update(retRef, { stock: (retData.stock || 0) + qty }); returnDetail = ` + Envase`; }
+                    t.set(doc(collection(db, "sales")), { product: prod.name + returnDetail, pid: pid, qty_packs: qty, qty_total_units: qty, price: totalPrice, cost: totalCost, profit: profit, type: document.getElementById('sale-type').value, obs: document.getElementById('sale-obs').value, user: user.email, timestamp: saleTimestamp, supplyUsed: sDoc ? sDoc.name : null, supplyId: sDoc ? sDoc.id : null, supplyQty: sDeduct, returnId: prod.returnId || null });
                 });
-
                 toast("✅ Venta Registrada");
-                document.getElementById('form-sale').reset();
-                updateSaleForm();
+                document.getElementById('form-sale').reset(); updateSaleForm();
                 if(document.getElementById('sale-date-admin')) document.getElementById('sale-date-admin').value = '';
-
-            } catch (err) {
-                console.error(err);
-                toast("❌ Error: " + (typeof err === 'string' ? err : err.message));
-            } finally {
-                btn.disabled = false;
-            }
+            } catch (err) { toast("❌ Error: " + err.message); } finally { btn.disabled = false; }
         });
 
-        // 4. ANULACIÓN DE VENTA - ADMIN (MODO BÚSQUEDA)
+        // ANULACIÓN DE VENTA
         window.loadAdminSalesByDate = async () => {
             const dateVal = document.getElementById('admin-date-filter').value;
             if(!dateVal) return;
-            
-            const btn = document.querySelector("button[onclick='loadAdminSalesByDate()']");
-            const originalText = btn.innerText; btn.innerText = "..."; btn.disabled = true;
-
+            const btn = document.querySelector("button[onclick='loadAdminSalesByDate()']"), originalText = btn.innerText; btn.innerText = "..."; btn.disabled = true;
             try {
-                const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00"));
-                const endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
-                
+                const startTs = Timestamp.fromDate(new Date(dateVal + "T00:00:00")), endTs = Timestamp.fromDate(new Date(dateVal + "T23:59:59"));
                 const q = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs), orderBy("timestamp", "desc"));
                 const snap = await getDocs(q);
-                const loadedSales = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                
-                renderAdminSalesTable(loadedSales);
-            } catch(e) { toast("Error cargando ventas antiguas: " + e.message); } 
-            finally { btn.innerText = originalText; btn.disabled = false; }
+                renderAdminSalesTable(snap.docs.map(d => ({id: d.id, ...d.data()})));
+            } catch(e) { toast("Error: " + e.message); } finally { btn.innerText = originalText; btn.disabled = false; }
         };
 
         window.renderAdminSalesTable = (dataList = null) => {
-            const list = dataList || sales; // Si no paso lista específica, usa la local
-            const tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
-            
-            // Si usamos lista local, filtramos. Si es lista traida de BD (dataList), ya viene filtrada.
+            const list = dataList || sales, tb = document.querySelector('#table-sales-admin tbody'); if(!tb) return; tb.innerHTML = '';
             const dateVal = document.getElementById('admin-date-filter').value;
             const filtered = dataList ? list : list.filter(s => isDateMatch(s.timestamp, dateVal)); 
-
-            if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas encontradas. Dale a "Buscar" si es fecha antigua.</td></tr>'; return; }
-
+            if(filtered.length === 0) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999">No hay ventas.</td></tr>'; return; }
             const fragment = document.createDocumentFragment();
             filtered.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td>${fmtDate(s.timestamp)}</td><td>${s.product}</td><td style="font-size:0.8rem; font-style:italic;">${s.obs || '-'}</td><td style="font-weight:bold;">${fmtMoney(s.price || 0)}</td><td>${getUserName(s.user)}</td><td><button onclick="deleteSale('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2"></i></button></td>`;
                 fragment.appendChild(tr);
             }); 
-            tb.appendChild(fragment);
-            feather.replace();
+            tb.appendChild(fragment); feather.replace();
         }
 
         window.deleteSale = async (id) => {
@@ -996,91 +842,25 @@
             showConfirm("¿Anular Venta?", "Se repondrá stock. Se descontará envase.", async () => {
                 try {
                     await runTransaction(db, async (t) => {
-                        // Primero leemos la venta para saber qué devolver
-                        const saleRef = doc(db, "sales", id);
-                        const saleSnap = await t.get(saleRef);
+                        const saleRef = doc(db, "sales", id), saleSnap = await t.get(saleRef);
                         if (!saleSnap.exists()) throw "Venta no encontrada";
                         const s = saleSnap.data();
-
-                        let pData = null, pRef = null;
-                        let sData = null, sRef = null;
-                        let retData = null, retRef = null;
-
-                        if(s.pid) {
-                            pRef = doc(db, "products", s.pid);
-                            const pSnap = await t.get(pRef);
-                            if(pSnap.exists()) pData = pSnap.data();
-                        }
-                        
-                        if(s.supplyId) {
-                            sRef = doc(db, "supplies", s.supplyId);
-                            const sSnap = await t.get(sRef);
-                            if(sSnap.exists()) sData = sSnap.data();
-                        }
-                        
-                        if(s.returnId) {
-                            retRef = doc(db, "products", s.returnId);
-                            const retSnap = await t.get(retRef);
-                            if(retSnap.exists()) retData = retSnap.data();
-                        }
-
+                        let pData = null, pRef = null, sData = null, sRef = null, retData = null, retRef = null;
+                        if(s.pid) { pRef = doc(db, "products", s.pid); const pSnap = await t.get(pRef); if(pSnap.exists()) pData = pSnap.data(); }
+                        if(s.supplyId) { sRef = doc(db, "supplies", s.supplyId); const sSnap = await t.get(sRef); if(sSnap.exists()) sData = sSnap.data(); }
+                        if(s.returnId) { retRef = doc(db, "products", s.returnId); const retSnap = await t.get(retRef); if(retSnap.exists()) retData = retSnap.data(); }
                         if(pRef && pData) t.update(pRef, {stock: pData.stock + (s.qty_total_units||0)});
                         if(sRef && sData) t.update(sRef, {stock: sData.stock + (s.supplyQty||0)});
-                        
-                        if(retRef && retData) {
-                            const current = retData.stock || 0;
-                            t.update(retRef, { stock: current - (s.qty_packs||0) });
-                        }
-                        
+                        if(retRef && retData) t.update(retRef, { stock: (retData.stock || 0) - (s.qty_packs||0) });
                         t.delete(saleRef);
                         t.set(doc(collection(db, "movements")), { type: "ANULACION_VENTA", product: s.product, quantity: s.qty_total_units||0, user: user.email, timestamp: serverTimestamp() });
                     }); 
-                    toast("✅ Venta Anulada");
-                    loadAdminSalesByDate(); // Recargar la tabla
-                } catch(e) { toast("Error al anular: " + e.message); }
+                    toast("✅ Venta Anulada"); loadAdminSalesByDate();
+                } catch(e) { toast("Error: " + e.message); }
             });
         };
 
-        // --- GESTIÓN DE PRODUCTOS E INSUMOS ---
-        function updateSelects() {
-            const updateSelect = (id, hasStock) => {
-                const el = document.getElementById(id); if(!el) return;
-                const currentVal = el.value;
-                el.innerHTML = '<option value="">Seleccionar...</option>';
-                products.forEach(p => {
-                    el.innerHTML += `<option value="${p.id}">${p.name} ${hasStock ? `(Stock: ${Math.floor(p.stock)})` : ''}</option>`;
-                });
-                if(currentVal) el.value = currentVal; 
-            };
-            
-            updateSelect('sale-product', true);
-            updateSelect('truck-product', true);
-            updateSelect('pack-product', true);
-
-            const sRet = document.getElementById('prod-return-link');
-            if(sRet) {
-                const current = sRet.value;
-                sRet.innerHTML = '<option value="">-- Ninguno --</option>';
-                products.forEach(p => sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`);
-                if(current) sRet.value = current;
-            }
-        }
-        
-        function updateSupplySelect() {
-            const s = document.getElementById('prod-supply-link');
-            const current = s.value;
-            s.innerHTML = '<option value="">-- Ninguno --</option>'; 
-            supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`);
-            if(current) s.value = current;
-        }
-
-        window.updateSaleForm = () => {
-            const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value)||0;
-            const prod = products.find(p => p.id === pid); if(!prod) return;
-            document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price || 0);
-            document.getElementById('sale-total').textContent = fmtMoney(qty * (prod.price || 0));
-        };
-
+        // GESTIÓN PRODUCTOS
         document.getElementById('form-product').addEventListener('submit', async (e) => {
             e.preventDefault(); if(!checkAdmin()) return;
             const id = document.getElementById('prod-id').value;
@@ -1105,19 +885,28 @@
             const fragment = document.createDocumentFragment();
             products.forEach(p => {
                 const tr = document.createElement('tr');
-                let supplyInfo = '<span style="color:#cbd5e1">-</span>';
-                if (p.supplyLink) {
-                    const s = supplies.find(x => x.id === p.supplyLink);
-                    supplyInfo = s ? `<span style="font-size:0.8rem; color:var(--truck);"><i data-feather="link" style="width:10px"></i> ${s.name} <b>(x${p.supplyQty || 1})</b></span>` : `<span style="color:var(--danger); font-size:0.8rem;">⚠️ Vínculo Roto</span>`;
-                }
-                let returnInfo = p.returnId ? `<span style="font-size:0.8rem; color:var(--success);"><i data-feather="corner-down-left" style="width:10px"></i> Retorno</span>` : '-';
-                const editBtn = role === 'admin' ? `<button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>` : '-';
-                tr.innerHTML = `<td>${p.name}</td><td>${fmtMoney(p.price || 0)}</td><td style="font-weight:bold">${Math.floor(p.stock)}</td><td>${supplyInfo}</td><td>${returnInfo}</td><td>${editBtn}</td>`;
+                let supplyInfo = p.supplyLink ? supplies.find(x => x.id === p.supplyLink)?.name || '⚠️ Roto' : '-';
+                const actions = role === 'admin' ? `
+                    <div class="flex gap-2">
+                        <button onclick="editProd('${p.id}')" class="btn btn-sm btn-blue"><i data-feather="edit-2" style="width:12px"></i></button>
+                        <button onclick="deleteProd('${p.id}')" class="btn btn-sm btn-red"><i data-feather="trash-2" style="width:12px"></i></button>
+                    </div>` : '-';
+                tr.innerHTML = `<td>${p.name}</td><td>${fmtMoney(p.price || 0)}</td><td style="font-weight:bold">${Math.floor(p.stock)}</td><td>${supplyInfo}</td><td>${p.returnId?'Si':'-'}</td><td>${actions}</td>`;
                 fragment.appendChild(tr);
             });
-            tb.appendChild(fragment);
-            feather.replace();
+            tb.appendChild(fragment); feather.replace();
         }
+
+        // FUNCIÓN NUEVA: ELIMINAR PRODUCTO
+        window.deleteProd = async (id) => {
+            if(!checkAdmin()) return;
+            showConfirm("Eliminar Producto", "¿Estás seguro de que deseas borrar este producto del catálogo definitivamente?", async () => {
+                try {
+                    await deleteDoc(doc(db, "products", id));
+                    toast("🗑️ Producto eliminado");
+                } catch(e) { toast("Error al eliminar"); }
+            });
+        };
 
         window.editProd = (id) => { 
             const p = products.find(x=>x.id==id); if(!p) return;
@@ -1135,214 +924,174 @@
 
         window.resetProdForm = () => { document.getElementById('form-product').reset(); document.getElementById('prod-id').value=''; document.getElementById('prod-stock').disabled = false; };
 
-        // Insumos
+        // INSUMOS
         function renderSupplies() {
             const tb = document.querySelector('#table-supplies tbody'); tb.innerHTML = '';
-            const fragment = document.createDocumentFragment();
             supplies.forEach(s => {
                 const tr = document.createElement('tr');
-                const btns = role === 'admin' ? `<div style="display:flex; gap:5px;"><button onclick="openRestock('${s.id}', 'supply')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button><button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button></div>` : '-';
+                const btns = role === 'admin' ? `<div class="flex gap-2"><button onclick="openRestock('${s.id}', 'supply', 'add')" class="btn btn-green btn-sm">+</button><button onclick="editSupply('${s.id}')" class="btn btn-blue btn-sm"><i data-feather="edit-2" style="width:12px;"></i></button><button onclick="deleteSupply('${s.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px;"></i></button></div>` : '-';
                 tr.innerHTML = `<td><b>${s.name}</b></td><td>${Math.floor(s.stock)}</td><td>${s.stock<20?'⚠️':'OK'}</td><td>${btns}</td>`;
-                fragment.appendChild(tr);
+                tb.appendChild(tr);
             });
-            tb.appendChild(fragment);
             feather.replace();
         }
         
-        window.deleteSupply = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Insumo", "¿Seguro?", async () => { await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Insumo Eliminado"); }); }
-        window.editSupply = (id) => { const s = supplies.find(x => x.id === id); if(!s) return; window.showSupplyForm(); document.getElementById('supp-id').value = s.id; document.getElementById('supp-name').value = s.name; document.getElementById('supp-stock').value = s.stock; document.getElementById('btn-save-supply').innerText = "Actualizar"; };
-        window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); document.getElementById('form-supply').reset(); document.getElementById('supp-id').value = ''; document.getElementById('btn-save-supply').innerText = "Guardar"; };
+        window.deleteSupply = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Insumo", "¿Seguro?", async () => { await deleteDoc(doc(db, "supplies", id)); toast("🗑️ Eliminado"); }); }
+        window.editSupply = (id) => { const s = supplies.find(x => x.id === id); if(!s) return; window.showSupplyForm(); document.getElementById('supp-id').value = s.id; document.getElementById('supp-name').value = s.name; document.getElementById('supp-stock').value = s.stock; };
+        window.showSupplyForm = () => { document.getElementById('box-create-supply').classList.remove('hidden'); };
         window.hideSupplyForm = () => document.getElementById('box-create-supply').classList.add('hidden');
         document.getElementById('form-supply').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('supp-id').value, name = document.getElementById('supp-name').value, stock = parseInt(document.getElementById('supp-stock').value) || 0; try { if(id) await updateDoc(doc(db,"supplies",id), {name, stock}); else await addDoc(collection(db,"supplies"), {name, stock, createdAt: serverTimestamp()}); hideSupplyForm(); toast("✅ Listo"); } catch(e){ toast("Error"); } });
 
-        // Inventario y Movimientos
-        window.openRestock = (id, type) => { if(!checkAdmin()) return; const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); document.getElementById('modal-prod-name').textContent = item.name; document.getElementById('restock-id').value = item.id; document.getElementById('restock-type').value = type; document.getElementById('modal-restock').classList.remove('hidden'); };
+        // MODAL RESTOCK / CORRECCIÓN
+        window.openRestock = (id, type, mode = 'add') => { 
+            if(!checkAdmin()) return; 
+            const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); 
+            document.getElementById('modal-prod-name').textContent = item.name; 
+            document.getElementById('restock-id').value = item.id; 
+            document.getElementById('restock-type').value = type; 
+            document.getElementById('restock-mode').value = mode;
+            
+            if(mode === 'fix') {
+                document.getElementById('modal-restock-title').innerHTML = '✏️ Corregir Stock Total';
+                document.getElementById('label-restock-qty').innerText = 'Introduce la cantidad REAL exacta que hay:';
+                document.getElementById('restock-qty').value = Math.floor(item.stock);
+            } else {
+                document.getElementById('modal-restock-title').innerHTML = '📥 Entrada de Inventario';
+                document.getElementById('label-restock-qty').innerText = 'Cantidad a Ingresar (se sumará al total):';
+                document.getElementById('restock-qty').value = '';
+            }
+            document.getElementById('modal-restock').classList.remove('hidden'); 
+        };
+
         window.closeModal = () => document.getElementById('modal-restock').classList.add('hidden');
+        
         document.getElementById('form-restock').addEventListener('submit', async e => { 
             e.preventDefault(); 
-            const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value;
+            const id = document.getElementById('restock-id').value, type = document.getElementById('restock-type').value, mode = document.getElementById('restock-mode').value;
             let qty = parseInt(document.getElementById('restock-qty').value) || 0;
             const item = type === 'product' ? products.find(x => x.id === id) : supplies.find(x => x.id === id); 
             try { 
-                await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: (item.stock||0) + qty }); 
-                await addDoc(collection(db, "movements"), { type: "ENTRADA", product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() }); 
-                toast("✅ Stock Actualizado"); closeModal(); 
+                const newStock = (mode === 'fix') ? qty : (item.stock || 0) + qty;
+                await updateDoc(doc(db, type==='product'?'products':'supplies', id), { stock: newStock }); 
+                const moveType = (mode === 'fix') ? "CORRECCIÓN" : "ENTRADA";
+                await addDoc(collection(db, "movements"), { type: moveType, product: item.name, quantity: qty, user: user.email, timestamp: serverTimestamp() }); 
+                toast("✅ Inventario actualizado"); closeModal(); 
             } catch(e) { toast("Error"); } 
         });
 
-        function renderInventory() { const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = ''; let crit=0; const fragment = document.createDocumentFragment(); products.forEach(p => { const isLow = p.stock <= (p.min || 0); if(isLow) crit++; const btn = role === 'admin' ? `<button onclick="openRestock('${p.id}', 'product')" class="btn btn-green btn-sm">+</button>` : '-'; const tr = document.createElement('tr'); tr.innerHTML = `<td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${Math.floor(p.stock)}</td><td>${isLow?'🔴':'🟢'}</td><td>${btn}</td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); document.getElementById('d-critical').textContent = crit; }
-        function renderMovements() { const tb = document.querySelector('#table-movements tbody'); tb.innerHTML=''; const fragment = document.createDocumentFragment(); movements.slice(0,50).forEach(m => { const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px;"><i data-feather="trash-2" style="width:12px"></i></button>` : ''; const tr = document.createElement('tr'); tr.innerHTML = `<td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product}</td><td>${m.quantity}</td><td>${btn}</td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); feather.replace(); }
-        window.deleteLog = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar", "¿Borrar registro historial?", async () => { await deleteDoc(doc(db, "movements", id)); toast("Borrado"); }); }
+        function renderInventory() { 
+            const tb = document.querySelector('#table-inventory tbody'); tb.innerHTML = ''; 
+            let crit=0; 
+            products.forEach(p => { 
+                const isLow = p.stock <= (p.min || 0); if(isLow) crit++; 
+                const btns = role === 'admin' ? `
+                    <div class="flex gap-1">
+                        <button onclick="openRestock('${p.id}', 'product', 'add')" class="btn btn-green btn-sm" title="Añadir">+</button>
+                        <button onclick="openRestock('${p.id}', 'product', 'fix')" class="btn btn-gray btn-sm" title="Corregir Total">✏️</button>
+                    </div>` : '-'; 
+                const tr = document.createElement('tr'); 
+                tr.innerHTML = `<td><b>${p.name}</b></td><td class="${isLow?'text-danger':''}">${Math.floor(p.stock)}</td><td>${isLow?'🔴':'🟢'}</td><td>${btns}</td>`; 
+                tb.appendChild(tr); 
+            }); 
+            document.getElementById('d-critical').textContent = crit; 
+        }
 
-        // Gastos
+        function renderMovements() { 
+            const tb = document.querySelector('#table-movements tbody'); tb.innerHTML=''; 
+            movements.slice(0,50).forEach(m => { 
+                const btn = role === 'admin' ? `<button onclick="deleteLog('${m.id}')" class="btn btn-sm btn-red" style="padding:2px;"><i data-feather="trash-2" style="width:12px"></i></button>` : ''; 
+                const tr = document.createElement('tr'); 
+                tr.innerHTML = `<td>${fmtDate(m.timestamp)}</td><td>${m.type} - ${m.product}</td><td>${m.quantity}</td><td>${btn}</td>`; 
+                tb.appendChild(tr); 
+            }); 
+            feather.replace(); 
+        }
+
+        window.deleteLog = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar", "¿Borrar?", async () => { await deleteDoc(doc(db, "movements", id)); toast("Borrado"); }); }
+
         function renderExpenses() {
             const tb = document.querySelector('#table-expenses tbody'); tb.innerHTML = '';
-            const fragment = document.createDocumentFragment();
             expenses.slice(0, 50).forEach(e => {
                 const tr = document.createElement('tr');
                 const btn = role === 'admin' ? `<button onclick="deleteExpense('${e.id}')" class="btn btn-red btn-sm"><i data-feather="trash-2" style="width:12px"></i></button>` : '';
                 tr.innerHTML = `<td>${e.date}</td><td>${e.desc}</td><td style="color:var(--danger); font-weight:bold;">${fmtMoney(e.amount || 0)}</td><td>${getUserName(e.user)}</td><td>${btn}</td>`;
-                fragment.appendChild(tr);
+                tb.appendChild(tr);
             });
-            tb.appendChild(fragment);
             feather.replace();
         }
-        document.getElementById('form-expense').addEventListener('submit', async (e) => { e.preventDefault(); const desc = document.getElementById('exp-desc').value; const amount = parseFloat(document.getElementById('exp-amount').value) || 0; const date = document.getElementById('exp-date').value; try { await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() }); document.getElementById('exp-desc').value = ''; document.getElementById('exp-amount').value = ''; toast("✅ Gasto registrado"); } catch(err) { toast("Error: Permisos insuficientes"); } });
-        window.deleteExpense = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar Gasto", "¿Seguro?", async () => { await deleteDoc(doc(db, "expenses", id)); toast("🗑️ Eliminado"); }); };
 
-        // --- REPORTES AUDITORÍA ---
+        document.getElementById('form-expense').addEventListener('submit', async (e) => { e.preventDefault(); const desc = document.getElementById('exp-desc').value, amount = parseFloat(document.getElementById('exp-amount').value) || 0, date = document.getElementById('exp-date').value; try { await addDoc(collection(db, "expenses"), { desc, amount, date, user: user.email, timestamp: serverTimestamp() }); document.getElementById('form-expense').reset(); toast("✅ Registrado"); } catch(err) { toast("Error"); } });
+        window.deleteExpense = async (id) => { if(!checkAdmin()) return; showConfirm("Borrar", "¿Seguro?", async () => { await deleteDoc(doc(db, "expenses", id)); toast("🗑️ Eliminado"); }); };
+
+        // AUDITORÍA Y REPORTES
         window.generateDetailedAudit = async () => {
-            const startVal = document.getElementById('audit-start').value;
-            const endVal = document.getElementById('audit-end').value;
+            const startVal = document.getElementById('audit-start').value, endVal = document.getElementById('audit-end').value;
             if (!startVal || !endVal) return toast("⚠️ Fechas requeridas");
-            if (new Date(startVal) > new Date(endVal)) return toast("⚠️ Rango de fechas inválido");
-
-            const btn = document.querySelector("button[onclick='generateDetailedAudit()']");
-            const originalText = btn.innerHTML; btn.innerHTML = "⏳ Generando..."; btn.disabled = true;
-
             try {
-                const startTs = Timestamp.fromDate(new Date(startVal + "T00:00:00"));
-                const endTs = Timestamp.fromDate(new Date(endVal + "T23:59:59"));
+                const startTs = Timestamp.fromDate(new Date(startVal + "T00:00:00")), endTs = Timestamp.fromDate(new Date(endVal + "T23:59:59"));
                 const q = query(collection(db, "sales"), where("timestamp", ">=", startTs), where("timestamp", "<=", endTs));
                 const snap = await getDocs(q);
                 const list = snap.docs.map(d => d.data());
-
-                if (list.length === 0) throw new Error("No hay ventas en ese rango.");
-
+                if (list.length === 0) throw new Error("No hay ventas.");
                 const report = {};
-                let grandSales = 0, grandCost = 0, grandProfit = 0;
-
                 list.forEach(s => {
                     const k = s.product || "Desconocido";
-                    if (!report[k]) report[k] = { qty: 0, rev: 0, cost: 0, prof: 0, tx: 0 };
-                    report[k].qty += (s.qty_total_units || s.qty_packs || 0);
+                    if (!report[k]) report[k] = { qty: 0, rev: 0, cost: 0, prof: 0 };
+                    report[k].qty += (s.qty_total_units || 0);
                     report[k].rev += (s.price || 0);
                     report[k].cost += (s.cost || 0);
                     report[k].prof += (s.profit || 0);
-                    report[k].tx += 1;
-                    grandSales += (s.price || 0);
-                    grandCost += (s.cost || 0);
-                    grandProfit += (s.profit || 0);
                 });
-
-                const rows = [
-                    { A: "REPORTE AUDITORÍA" },
-                    { A: `Desde: ${startVal} Hasta: ${endVal}` },
-                    {},
-                    { A: "PRODUCTO", B: "CANTIDAD", C: "VENTAS ($)", D: "COSTO ($)", E: "GANANCIA ($)", F: "MARGEN %" }
-                ];
-
-                Object.keys(report).sort().forEach(k => {
-                    const r = report[k];
-                    const margin = r.rev > 0 ? ((r.prof / r.rev) * 100).toFixed(2) + "%" : "0%";
-                    rows.push({ A: k, B: r.qty, C: r.rev, D: r.cost, E: r.prof, F: margin });
-                });
-
-                rows.push({});
-                rows.push({ A: "TOTALES", C: grandSales, D: grandCost, E: grandProfit, F: grandSales > 0 ? ((grandProfit/grandSales)*100).toFixed(2)+"%" : "0%" });
-
-                const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
-                XLSX.writeFile(wb, `Auditoria_${today()}.xlsx`);
-                toast("✅ Excel descargado");
-
+                const rows = [{ A: "REPORTE PRODUCTOS" }, { A: `Desde: ${startVal} Hasta: ${endVal}` }, {}, { A: "PROD", B: "CANT", C: "REV", D: "COST", E: "GAN" }];
+                Object.keys(report).forEach(k => rows.push({ A: k, B: report[k].qty, C: report[k].rev, D: report[k].cost, E: report[k].prof }));
+                const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true }), wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Auditoria"); XLSX.writeFile(wb, `Auditoria.xlsx`);
             } catch (error) { toast("❌ " + error.message); } 
-            finally { btn.innerHTML = originalText; btn.disabled = false; }
         };
 
         window.exportSales = () => {
-            const startVal = document.getElementById('export-start').value;
-            const endVal = document.getElementById('export-end').value;
-
-            if(!startVal || !endVal) return toast("⚠️ Seleccione ambas fechas");
-            if(startVal > endVal) return toast("⚠️ Fecha inicio mayor a fin");
-            
-            const listSales = sales.filter(s => {
-                if(!s.timestamp) return false;
-                const sDate = getLocalYMD(new Date(s.timestamp.seconds * 1000));
-                return sDate >= startVal && sDate <= endVal;
-            });
-
-            const listExpenses = expenses.filter(e => {
-                return e.date >= startVal && e.date <= endVal;
-            });
-
-            if(!listSales.length && !listExpenses.length) return toast(`Sin movimientos RECIENTES en memoria. Usa Auditoría para fechas antiguas.`);
-
-            const totalCash = listSales.filter(s => s.type === 'Efectivo').reduce((a,b)=>a+(b.price||0),0);
-            const totalTransf = listSales.filter(s => s.type !== 'Efectivo').reduce((a,b)=>a+(b.price||0),0);
-            const totalSales = totalCash + totalTransf;
-            const totalExp = listExpenses.reduce((a,b)=>a+(parseFloat(b.amount)||0),0);
-            const totalNet = totalSales - totalExp;
-
-            const data = [];
-            listSales.forEach(s => {
-                data.push({
-                    Fecha: fmtDate(s.timestamp),
-                    Tipo: "VENTA",
-                    Concepto: s.product,
-                    Metodo: s.type,
-                    Ingreso: s.price || 0,
-                    Egreso: 0,
-                    Usuario: getUserName(s.user)
-                });
-            });
-
-            if(listExpenses.length > 0) {
-                data.push({}); 
-                data.push({ Concepto: "--- DETALLE DE GASTOS ---" });
-            }
-
-            listExpenses.forEach(e => {
-                data.push({
-                    Fecha: e.date,
-                    Tipo: "GASTO",
-                    Concepto: e.desc,
-                    Metodo: "-",
-                    Ingreso: 0,
-                    Egreso: e.amount || 0,
-                    Usuario: getUserName(e.user)
-                });
-            });
-
-            data.push({});
-            data.push({});
-            data.push({ Concepto: "--- RESUMEN DE CAJA ---" });
-            data.push({ Concepto: "VENTAS EFECTIVO", Ingreso: totalCash });
-            data.push({ Concepto: "VENTAS TRANSFERENCIA", Ingreso: totalTransf });
-            data.push({ Concepto: "TOTAL VENTAS", Ingreso: totalSales });
-            data.push({ Concepto: "TOTAL GASTOS", Egreso: totalExp });
-            data.push({ Concepto: "TOTAL NETO (GANANCIA)", Ingreso: totalNet });
-
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wscols = [{wch: 20}, {wch: 10}, {wch: 30}, {wch: 15}, {wch: 12}, {wch: 12}, {wch: 15}];
-            ws['!cols'] = wscols;
-            const wb = XLSX.utils.book_new(); 
-            XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja"); 
-            XLSX.writeFile(wb, `Reporte_${startVal}_a_${endVal}.xlsx`);
+            const startVal = document.getElementById('export-start').value, endVal = document.getElementById('export-end').value;
+            const data = sales.map(s => ({ Fecha: fmtDate(s.timestamp), Prod: s.product, Total: s.price, Metodo: s.type }));
+            const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Ventas"); XLSX.writeFile(wb, `Reporte_Caja.xlsx`);
         };
 
         window.exportInventory = () => {
-            const data = products.map(p => ({ Producto: p.name, Stock: Math.floor(p.stock), Costo: p.cost, ValorTotal: p.stock * (p.cost||0) }));
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Stock"); XLSX.writeFile(wb, `Inventario_${today()}.xlsx`);
+            const data = products.map(p => ({ Producto: p.name, Stock: Math.floor(p.stock), Costo: p.cost }));
+            const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Stock"); XLSX.writeFile(wb, `Inventario.xlsx`);
         };
 
-        // --- EXTRAS ---
-        function renderPending(list) { const tb = document.querySelector('#table-pending tbody'); tb.innerHTML=''; const fragment = document.createDocumentFragment(); list.forEach(i => { const tr=document.createElement('tr'); tr.innerHTML = `<td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total || 0)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td>`; fragment.appendChild(tr); }); tb.appendChild(fragment); }
+        function renderPending(list) { const tb = document.querySelector('#table-pending tbody'); tb.innerHTML=''; list.forEach(i => { const tr=document.createElement('tr'); tr.innerHTML = `<td>${i.date}</td><td>${i.client}</td><td>${fmtMoney(i.total || 0)}</td><td><button onclick="payPending('${i.id}')" class="btn btn-sm btn-green">Cobrado</button></td>`; tb.appendChild(tr); }); }
         window.payPending = async (id) => { showConfirm("Cobro", "¿Pagado?", async () => { await deleteDoc(doc(db,"pending",id)); toast("✅ Pagado"); }); };
         
-        window.showConfirm = (t, m, c) => { document.getElementById('confirm-title').innerText=t; document.getElementById('confirm-msg').innerText=m; document.getElementById('modal-confirm').classList.remove('hidden'); const b=document.getElementById('confirm-yes-btn'); const n=b.cloneNode(true); b.parentNode.replaceChild(n, b); if(c){ n.onclick=()=>{ c(); document.getElementById('modal-confirm').classList.add('hidden'); }; } };
+        window.showConfirm = (t, m, c) => { document.getElementById('confirm-title').innerText=t; document.getElementById('confirm-msg').innerText=m; document.getElementById('modal-confirm').classList.remove('hidden'); const b=document.getElementById('confirm-yes-btn'); b.onclick=()=>{ if(c) c(); document.getElementById('modal-confirm').classList.add('hidden'); }; };
         window.closeConfirm = () => document.getElementById('modal-confirm').classList.add('hidden');
-        window.nav = (id) => { document.querySelectorAll('.page').forEach(p => p.classList.add('hidden')); document.getElementById('page-'+id).classList.remove('hidden'); document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active')); event?.currentTarget?.classList.add('active'); };
+        window.nav = (id) => { document.querySelectorAll('.page').forEach(p => p.classList.add('hidden')); document.getElementById('page-'+id).classList.remove('hidden'); document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active')); if(event) event.currentTarget.classList.add('active'); };
         window.toast = (m) => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); };
         window.logout = () => signOut(auth);
 
-        document.getElementById('tab-login').onclick = (e)=>{ e.preventDefault(); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); document.getElementById('tab-login').style.background='white'; document.getElementById('tab-register').style.background='transparent'; };
-        document.getElementById('tab-register').onclick = (e)=>{ e.preventDefault(); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); document.getElementById('tab-register').style.background='white'; document.getElementById('tab-login').style.background='transparent'; };
-        document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
-        document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{ email:c.user.email, role:document.getElementById('r-role').value, name:document.getElementById('r-name').value }); } catch(err){ document.getElementById('auth-msg').textContent="Error: "+err.message; } };
+        function updateSelects() {
+            const up = (id) => {
+                const el = document.getElementById(id); if(!el) return;
+                el.innerHTML = '<option value="">Seleccionar...</option>';
+                products.forEach(p => el.innerHTML += `<option value="${p.id}">${p.name} (${Math.floor(p.stock)})</option>`);
+            };
+            up('sale-product'); up('truck-product'); up('pack-product');
+            const sRet = document.getElementById('prod-return-link'); if(sRet) { sRet.innerHTML = '<option value="">-- Ninguno --</option>'; products.forEach(p => sRet.innerHTML += `<option value="${p.id}">${p.name}</option>`); }
+        }
+        
+        function updateSupplySelect() { const s = document.getElementById('prod-supply-link'); s.innerHTML = '<option value="">-- Ninguno --</option>'; supplies.forEach(i => s.innerHTML += `<option value="${i.id}">${i.name}</option>`); }
+
+        window.updateSaleForm = () => {
+            const pid = document.getElementById('sale-product').value, qty = parseInt(document.getElementById('sale-qty').value)||0;
+            const prod = products.find(p => p.id === pid); if(!prod) return;
+            document.getElementById('sale-price-unit').textContent = fmtMoney(prod.price || 0);
+            document.getElementById('sale-total').textContent = fmtMoney(qty * (prod.price || 0));
+        };
+
+        document.getElementById('tab-login').onclick = ()=>{ document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); };
+        document.getElementById('tab-register').onclick = ()=>{ document.getElementById('register-form').classList.remove('hidden'); document.getElementById('login-form').classList.add('hidden'); };
+        document.getElementById('login-form').onsubmit = async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, document.getElementById('l-email').value, document.getElementById('l-pass').value); } catch(err){ document.getElementById('auth-msg').textContent="Error"; } };
+        document.getElementById('register-form').onsubmit = async(e)=>{ e.preventDefault(); try{ const c = await createUserWithEmailAndPassword(auth, document.getElementById('r-email').value, document.getElementById('r-pass').value); await setDoc(doc(db,"users",c.user.uid),{ email:c.user.email, role:document.getElementById('r-role').value, name:document.getElementById('r-name').value }); } catch(err){ document.getElementById('auth-msg').textContent="Error"; } };
         document.getElementById('form-pending').addEventListener('submit', async(e)=>{ e.preventDefault(); await addDoc(collection(db,"pending"),{client:document.getElementById('pend-client').value, total:parseFloat(document.getElementById('pend-total').value)||0, date:document.getElementById('pend-date').value, user:user.email}); document.getElementById('form-pending').reset(); toast("Guardado"); });
 
         feather.replace();
